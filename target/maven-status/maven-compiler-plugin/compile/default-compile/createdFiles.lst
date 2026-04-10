@@ -1,0 +1,4 @@
+module-info.class
+com\auction\client\controller\AuthController.class
+com\auction\client\navigation\SceneManager.class
+com\auction\client\MainApp.class

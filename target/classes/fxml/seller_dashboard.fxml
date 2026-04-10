@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.auction.client.controller.SellerDashboardController"
+            prefWidth="1400" prefHeight="900"
+            styleClass="seller-root">
+
+    <left>
+        <VBox prefWidth="240.0" spacing="18.0" styleClass="seller-sidebar">
+            <padding>
+                <Insets top="28" right="20" bottom="28" left="20"/>
+            </padding>
+
+            <Label text="BidWave Seller" styleClass="seller-sidebar-title"/>
+            <Label text="Seller workspace for phase 1 demo" wrapText="true" styleClass="seller-sidebar-subtitle"/>
+
+            <Button text="Dashboard" maxWidth="Infinity" styleClass="sidebar-button"/>
+            <Button text="Manage Auctions" maxWidth="Infinity" styleClass="sidebar-button"/>
+            <Button text="Create Listing" maxWidth="Infinity" styleClass="sidebar-button"/>
+            <Button text="Logout" maxWidth="Infinity" styleClass="secondary-button" onAction="#handleLogout"/>
+        </VBox>
+    </left>
+
+    <center>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="seller-scroll-pane">
+            <content>
+                <VBox spacing="20.0" styleClass="seller-page">
+                    <padding>
+                        <Insets top="24" right="24" bottom="24" left="24"/>
+                    </padding>
+
+                    <VBox spacing="6.0">
+                        <Label text="Seller Dashboard" styleClass="page-title"/>
+                        <Label text="Manage your listings and create new auctions." styleClass="page-subtitle"/>
+                    </VBox>
+
+                    <HBox spacing="16.0">
+                        <VBox HBox.hgrow="ALWAYS" spacing="8.0" styleClass="seller-stat-card">
+                            <Label fx:id="activeCountLabel" text="0" styleClass="seller-stat-number"/>
+                            <Label text="Active Auctions" styleClass="seller-stat-label"/>
+                        </VBox>
+
+                        <VBox HBox.hgrow="ALWAYS" spacing="8.0" styleClass="seller-stat-card">
+                            <Label fx:id="pendingCountLabel" text="0" styleClass="seller-stat-number"/>
+                            <Label text="Pending Review" styleClass="seller-stat-label"/>
+                        </VBox>
+
+                        <VBox HBox.hgrow="ALWAYS" spacing="8.0" styleClass="seller-stat-card">
+                            <Label fx:id="endedCountLabel" text="0" styleClass="seller-stat-number"/>
+                            <Label text="Ended Listings" styleClass="seller-stat-label"/>
+                        </VBox>
+                    </HBox>
+
+                    <HBox spacing="20.0">
+                        <VBox spacing="14.0" HBox.hgrow="ALWAYS" styleClass="seller-table-card">
+                            <padding>
+                                <Insets top="20" right="20" bottom="20" left="20"/>
+                            </padding>
+
+                            <Label text="Manage My Auctions" styleClass="seller-section-title"/>
+
+                            <TableView fx:id="listingTable" VBox.vgrow="ALWAYS">
+                                <columns>
+                                    <TableColumn fx:id="productNameColumn" text="Product" prefWidth="180.0"/>
+                                    <TableColumn fx:id="categoryColumn" text="Category" prefWidth="140.0"/>
+                                    <TableColumn fx:id="startingPriceColumn" text="Starting Price" prefWidth="130.0"/>
+                                    <TableColumn fx:id="statusColumn" text="Status" prefWidth="130.0"/>
+                                    <TableColumn fx:id="startDateColumn" text="Start Date" prefWidth="120.0"/>
+                                    <TableColumn fx:id="endDateColumn" text="End Date" prefWidth="120.0"/>
+                                </columns>
+                            </TableView>
+                        </VBox>
+
+                        <VBox spacing="14.0" prefWidth="390.0" styleClass="seller-form-card">
+                            <padding>
+                                <Insets top="20" right="20" bottom="20" left="20"/>
+                            </padding>
+
+                            <Label text="Create New Auction" styleClass="seller-section-title"/>
+
+                            <Label text="Product Name" styleClass="field-label"/>
+                            <TextField fx:id="productNameField" promptText="Enter product name"/>
+
+                            <Label text="Description" styleClass="field-label"/>
+                            <TextArea fx:id="descriptionArea" promptText="Enter short description" prefRowCount="3" wrapText="true"/>
+
+                            <Label text="Category" styleClass="field-label"/>
+                            <TextField fx:id="categoryField" promptText="Enter category"/>
+
+                            <Label text="Starting Price" styleClass="field-label"/>
+                            <TextField fx:id="startingPriceField" promptText="Enter starting price"/>
+
+                            <Label text="Reserve Price" styleClass="field-label"/>
+                            <TextField fx:id="reservePriceField" promptText="Enter reserve price (optional)"/>
+
+                            <Label text="Start Date" styleClass="field-label"/>
+                            <DatePicker fx:id="startDatePicker"/>
+
+                            <Label text="End Date" styleClass="field-label"/>
+                            <DatePicker fx:id="endDatePicker"/>
+
+                            <Label text="Upload" styleClass="field-label"/>
+                            <Label text="Upload box (demo only)" styleClass="upload-box"/>
+
+                            <Label fx:id="sellerMessageLabel" text="" styleClass="seller-message"/>
+
+                            <HBox spacing="10.0">
+                                <Button text="Submit Listing"
+                                        HBox.hgrow="ALWAYS"
+                                        maxWidth="Infinity"
+                                        styleClass="primary-button"
+                                        onAction="#handleSubmitListing"/>
+                                <Button text="Reset"
+                                        HBox.hgrow="ALWAYS"
+                                        maxWidth="Infinity"
+                                        styleClass="secondary-button"
+                                        onAction="#handleResetForm"/>
+                            </HBox>
+                        </VBox>
+                    </HBox>
+                </VBox>
+            </content>
+        </ScrollPane>
+    </center>
+</BorderPane>

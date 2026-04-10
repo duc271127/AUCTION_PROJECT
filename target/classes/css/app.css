@@ -1,0 +1,100 @@
+.root-pane {
+    -fx-background-color: linear-gradient(to bottom right, #14213d, #2d4f9f);
+}
+
+.text-field,
+.password-field,
+.combo-box {
+    -fx-background-color: #f1f5f9;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: transparent;
+    -fx-padding: 10 12;
+    -fx-font-size: 14px;
+}
+
+.text-field:focused,
+.password-field:focused,
+.combo-box:focused {
+    -fx-border-color: #2563eb;
+    -fx-background-color: white;
+}
+
+.primary-button {
+    -fx-background-color: #1d4ed8;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 10;
+    -fx-padding: 12 18;
+    -fx-cursor: hand;
+}
+
+.primary-button:hover {
+    -fx-background-color: #1e40af;
+}
+
+.secondary-button {
+    -fx-background-color: white;
+    -fx-text-fill: #15305d;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 10;
+    -fx-padding: 10 16;
+    -fx-cursor: hand;
+}
+
+.secondary-button:hover {
+    -fx-background-color: #e2e8f0;
+}
+
+.field-label {
+    -fx-text-fill: #334155;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+.error-label {
+    -fx-text-fill: #dc2626;
+    -fx-font-size: 13px;
+    -fx-wrap-text: true;
+}
+
+.title-label {
+    -fx-text-fill: white;
+    -fx-font-size: 32px;
+    -fx-font-weight: bold;
+}
+
+.subtitle-label {
+    -fx-text-fill: #dbeafe;
+    -fx-font-size: 16px;
+}
+
+.form-title {
+    -fx-text-fill: #0f172a;
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+}
+
+.form-subtitle {
+    -fx-text-fill: #64748b;
+    -fx-font-size: 14px;
+}
+
+.section-title {
+    -fx-text-fill: #0f172a;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+
+.page-title {
+    -fx-text-fill: #0f172a;
+    -fx-font-size: 30px;
+    -fx-font-weight: bold;
+}
+
+.page-subtitle {
+    -fx-text-fill: #64748b;
+    -fx-font-size: 14px;
+}
