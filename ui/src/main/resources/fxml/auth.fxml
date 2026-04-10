@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.auction.client.controller.AuthController"
+            prefWidth="1400" prefHeight="900"
+            styleClass="root-pane">
+
+    <children>
+        <HBox AnchorPane.topAnchor="0.0"
+              AnchorPane.bottomAnchor="0.0"
+              AnchorPane.leftAnchor="0.0"
+              AnchorPane.rightAnchor="0.0">
+
+            <VBox prefWidth="650.0" alignment="CENTER_LEFT" spacing="20.0" styleClass="auth-left-panel">
+                <padding>
+                    <Insets top="60" right="60" bottom="60" left="60"/>
+                </padding>
+
+                <Label text="BidWave" styleClass="brand-label"/>
+                <Label text="Experience the&#10;kinetic art of the&#10;bid"
+                       styleClass="hero-title"/>
+                <Label text="Join the world’s most sophisticated digital auction platform."
+                       wrapText="true"
+                       styleClass="hero-subtitle"/>
+            </VBox>
+
+            <StackPane HBox.hgrow="ALWAYS" styleClass="auth-right-wrapper">
+                <children>
+                    <VBox maxWidth="420.0" spacing="20.0" styleClass="auth-card">
+                        <padding>
+                            <Insets top="32" right="32" bottom="32" left="32"/>
+                        </padding>
+
+                        <TabPane fx:id="authTabPane" tabClosingPolicy="UNAVAILABLE" styleClass="auth-tabs">
+                            <tabs>
+                                <Tab text="Login">
+                                    <VBox spacing="14.0" styleClass="form-box">
+                                        <padding>
+                                            <Insets top="20" right="10" bottom="10" left="10"/>
+                                        </padding>
+
+                                        <Label text="Welcome back" styleClass="form-title"/>
+                                        <Label text="Access your dashboard and active bids." styleClass="form-subtitle"/>
+
+                                        <Label fx:id="loginErrorLabel" text="" styleClass="error-label"/>
+
+                                        <Label text="Username or Email" styleClass="field-label"/>
+                                        <TextField fx:id="loginUsernameField" promptText="Enter username or email"/>
+
+                                        <Label text="Password" styleClass="field-label"/>
+                                        <PasswordField fx:id="loginPasswordField" promptText="Enter password"/>
+
+                                        <Label text="Role" styleClass="field-label"/>
+                                        <ComboBox fx:id="loginRoleComboBox" promptText="Select role"/>
+
+                                        <Button text="Login"
+                                                styleClass="primary-button"
+                                                maxWidth="Infinity"
+                                                onAction="#handleLogin"/>
+                                    </VBox>
+                                </Tab>
+
+                                <Tab text="Register">
+                                    <VBox spacing="14.0" styleClass="form-box">
+                                        <padding>
+                                            <Insets top="20" right="10" bottom="10" left="10"/>
+                                        </padding>
+
+                                        <Label text="Create account" styleClass="form-title"/>
+                                        <Label text="Register as a bidder or seller." styleClass="form-subtitle"/>
+
+                                        <Label fx:id="registerErrorLabel" text="" styleClass="error-label"/>
+
+                                        <Label text="Username" styleClass="field-label"/>
+                                        <TextField fx:id="registerUsernameField" promptText="Choose username"/>
+
+                                        <Label text="Email" styleClass="field-label"/>
+                                        <TextField fx:id="registerEmailField" promptText="Enter email"/>
+
+                                        <Label text="Password" styleClass="field-label"/>
+                                        <PasswordField fx:id="registerPasswordField" promptText="Create password"/>
+
+                                        <Label text="Confirm Password" styleClass="field-label"/>
+                                        <PasswordField fx:id="registerConfirmPasswordField" promptText="Confirm password"/>
+
+                                        <Label text="Role" styleClass="field-label"/>
+                                        <ComboBox fx:id="registerRoleComboBox" promptText="Select role"/>
+
+                                        <Button text="Create Account"
+                                                styleClass="primary-button"
+                                                maxWidth="Infinity"
+                                                onAction="#handleRegister"/>
+                                    </VBox>
+                                </Tab>
+                            </tabs>
+                        </TabPane>
+                    </VBox>
+                </children>
+            </StackPane>
+        </HBox>
+    </children>
+</AnchorPane>
