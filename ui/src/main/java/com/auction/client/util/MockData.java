@@ -1,9 +1,13 @@
 package com.auction.client.util;
 
 import com.auction.client.model.AuctionItem;
-
 import java.util.ArrayList;
 import java.util.List;
+import com.auction.client.model.BidRecord;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import com.auction.client.model.SellerListing;
+import com.auction.client.model.AdminApprovalItem;
 
 public class MockData {
 
@@ -54,5 +58,30 @@ public class MockData {
             }
         }
         return selectedItem;
+    }
+
+    public static ObservableList<BidRecord> getMockBidHistory() {
+        return FXCollections.observableArrayList(
+                new BidRecord("Alice", "$12,500", "21:03"),
+                new BidRecord("Brian", "$13,000", "21:04"),
+                new BidRecord("Cindy", "$13,500", "21:05"),
+                new BidRecord("David", "$14,000", "21:06")
+        );
+    }
+
+    public static ObservableList<SellerListing> getMockSellerListing() {
+        return FXCollections.observableArrayList(
+                new SellerListing("Vintage Rolex Submariner", "Luxury Watch", "$10,000", "Active", "2026-04-10", "2026-04-15"),
+                new SellerListing("Rare Pokémon Card Set", "Collectibles", "$2,500", "Pending Review", "2026-04-12", "2026-04-20"),
+                new SellerListing("Signed Football Jersey", "Sports Memorabilia", "$1,200", "Ended", "2026-04-01", "2026-04-07")
+        );
+    }
+
+    public static ObservableList<AdminApprovalItem> getMockAdminApprovalItems() {
+        return FXCollections.observableArrayList(
+                new AdminApprovalItem("Vintage Rolex Submariner", "Seller Alpha", "Luxury Watch", "2026-04-10", "Pending"),
+                new AdminApprovalItem("Rare Pokémon Card Set", "Seller Beta", "Collectibles", "2026-04-11", "Pending"),
+                new AdminApprovalItem("Signed Football Jersey", "Seller Gamma", "Sports Memorabilia", "2026-04-12", "Pending")
+        );
     }
 }

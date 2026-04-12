@@ -1,0 +1,32 @@
+.home-root {
+    -fx-background-color: linear-gradient(to bottom right, #f8fafc, #e2e8f0);
+}
+
+.home-top-nav {
+    -fx-background-color: linear-gradient(to right, #15305d, #1e4ea7);
+}
+
+.home-brand {
+    -fx-text-fill: white;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+
+.hero-box {
+    -fx-background-color: linear-gradient(to right, #15305d, #1d4ed8);
+    -fx-background-radius: 20;
+    -fx-padding: 30;
+}
+
+.home-hero-title {
+    -fx-text-fill: white;
+    -fx-font-size: 40px;
+    -fx-font-weight: bold;
+    -fx-line-spacing: 6px;
+}
+
+.home-hero-subtitle {
+    -fx-text-fill: #dbeafe;
+    -fx-font-size: 16px;
+    -fx-max-width: 700px;
+}
