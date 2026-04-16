@@ -6,9 +6,10 @@ import java.util.UUID;
 @Entity
 @Table(name = "items")
 public class Item {
+
     @Id
     @Column(columnDefinition = "BINARY(16)")
-    private UUID id;
+    private UUID id = UUID.randomUUID();
 
     @Column(nullable = false)
     private String name;
@@ -19,7 +20,10 @@ public class Item {
     @Column(nullable = false)
     private double startPrice;
 
-    public Item() { this.id = UUID.randomUUID(); }
+    @Column(columnDefinition = "BINARY(16)", nullable = false)
+    private UUID sellerId;
+
+    public Item() { }
 
     public UUID getId() { return id; }
     public String getName() { return name; }
@@ -28,4 +32,6 @@ public class Item {
     public void setDescription(String description) { this.description = description; }
     public double getStartPrice() { return startPrice; }
     public void setStartPrice(double startPrice) { this.startPrice = startPrice; }
+    public UUID getSellerId() { return sellerId; }
+    public void setSellerId(UUID sellerId) { this.sellerId = sellerId; }
 }
