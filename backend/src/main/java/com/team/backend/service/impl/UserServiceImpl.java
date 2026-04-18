@@ -1,7 +1,9 @@
 package com.team.backend.service.impl;
 
-import com.team.backend.dto.LoginDto;
+import com.team.backend.dto.LoginByEmailDto;
+import com.team.backend.dto.RegisterByEmailDto;
 import com.team.backend.dto.RegisterDto;
+import com.team.backend.dto.LoginDto;
 import com.team.backend.dto.UserDto;
 import com.team.backend.entity.Admin;
 import com.team.backend.entity.Bidder;
@@ -10,7 +12,7 @@ import com.team.backend.entity.User;
 import com.team.backend.exception.BusinessRuleException;
 import com.team.backend.repository.UserRepository;
 import com.team.backend.service.UserService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,30 +21,20 @@ import java.util.UUID;
 import java.util.List;
 
 /**
- * Concrete implementation of UserService used in Phase 1.
- *
- * - Implements createAdmin, findById, findByUsername, findByRole (from UserService).
- * - Adds convenience methods register(...) and authenticate(...) returning UserDto
- *   to simplify controllers and tests in Phase 1.
- *
- * Note: This class intentionally keeps an internal BCryptPasswordEncoder instance
- * for simplicity in Phase 1. If you later provide a PasswordEncoder bean, you can
- * refactor to inject it instead.
+ * UserServiceImpl with email-based register/login.
  */
 @Service
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final PasswordEncoder passwordEncoder;
 
-    public UserServiceImpl(UserRepository userRepository) {
+    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
-    // ---------------------------
-    // Methods from UserService
-    // ---------------------------
-
+    // existing methods (createAdmin, findById, findByUsername, findByRole)...
     @Override
     @Transactional
     public User createAdmin(String username, String rawPassword, boolean superAdmin) {
@@ -81,20 +73,85 @@ public class UserServiceImpl implements UserService {
         return userRepository.findByRole(role);
     }
 
-    // ---------------------------
-    // Convenience methods (Phase 1)
-    // ---------------------------
+    // -------------------------
+    // Email-based register / authenticate
+    // -------------------------
 
-    /**
-     * Register a new user based on RegisterDto.
-     * Acceptable roles: BIDDER, SELLER, ADMIN.
-     * Returns UserDto (no password).
-     */
+    @Override
+    @Transactional
+    public UserDto registerByEmail(RegisterByEmailDto dto) {
+        if (dto == null) throw new BusinessRuleException("Register payload is required");
+        String email = dto.email == null ? null : dto.email.trim().toLowerCase();
+        String password = dto.password;
+        String role = dto.role == null ? null : dto.role.trim().toUpperCase();
+
+        if (email == null || email.isEmpty()) {
+            throw new BusinessRuleException("Email is required");
+        }
+        if (password == null || password.length() < 6) {
+            throw new BusinessRuleException("Password must be at least 6 characters");
+        }
+        if (!( "BIDDER".equals(role) || "SELLER".equals(role) || "ADMIN".equals(role) )) {
+            throw new BusinessRuleException("Invalid role. Must be BIDDER, SELLER or ADMIN");
+        }
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new BusinessRuleException("Email already registered: " + email);
+        }
+
+        User user;
+        switch (role) {
+            case "BIDDER":
+                user = new Bidder();
+                break;
+            case "SELLER":
+                user = new Seller();
+                break;
+            default:
+                Admin admin = new Admin();
+                admin.setSuperAdmin(false);
+                user = admin;
+                break;
+        }
+
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(password));
+        user.setRole(role);
+
+        User saved = userRepository.save(user);
+        return toDto(saved);
+    }
+
+    @Override
+    public UserDto authenticateByEmail(LoginByEmailDto dto) {
+        if (dto == null) throw new BusinessRuleException("Login payload is required");
+        String email = dto.email == null ? null : dto.email.trim().toLowerCase();
+        String password = dto.password;
+
+        if (email == null || email.isEmpty() || password == null) {
+            throw new BusinessRuleException("Invalid email or password");
+        }
+
+        Optional<User> opt = userRepository.findByEmail(email);
+        if (opt.isEmpty()) {
+            throw new BusinessRuleException("Invalid email or password");
+        }
+        User user = opt.get();
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new BusinessRuleException("Invalid email or password");
+        }
+        return toDto(user);
+    }
+
+    @Override
+    public User findEntityByEmail(String email) {
+        if (email == null) return null;
+        return userRepository.findByEmail(email).orElse(null);
+    }
+
+    @Override
     @Transactional
     public UserDto register(RegisterDto dto) {
-        if (dto == null) {
-            throw new BusinessRuleException("Register payload is required");
-        }
+        if (dto == null) throw new BusinessRuleException("Register payload is required");
         String username = dto.username == null ? null : dto.username.trim();
         String password = dto.password;
         String role = dto.role == null ? null : dto.role.trim().toUpperCase();
@@ -135,14 +192,9 @@ public class UserServiceImpl implements UserService {
         return toDto(saved);
     }
 
-    /**
-     * Authenticate user by username/password.
-     * Returns UserDto on success; throws BusinessRuleException on failure.
-     */
+    @Override
     public UserDto authenticate(LoginDto dto) {
-        if (dto == null) {
-            throw new BusinessRuleException("Login payload is required");
-        }
+        if (dto == null) throw new BusinessRuleException("Login payload is required");
         String username = dto.username == null ? null : dto.username.trim();
         String password = dto.password;
 
@@ -161,15 +213,13 @@ public class UserServiceImpl implements UserService {
         return toDto(user);
     }
 
-    // ---------------------------
-    // Helpers
-    // ---------------------------
-
+    // helper
     private UserDto toDto(User u) {
         if (u == null) return null;
         UserDto d = new UserDto();
         d.id = u.getId();
         d.username = u.getUsername();
+        d.email = u.getEmail();
         d.role = u.getRole();
         return d;
     }

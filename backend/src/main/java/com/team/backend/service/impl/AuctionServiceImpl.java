@@ -9,6 +9,7 @@ import com.team.backend.exception.ResourceNotFoundException;
 import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.ItemRepository;
 import com.team.backend.service.AuctionService;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,11 +18,11 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * AuctionServiceImpl - implementation mở rộng cho Phase 1/Phase 2.
- * - Giữ nguyên API cũ createAuction(Auction) để tương thích.
- * - Thêm createAuction(AuctionCreateDto, UUID sellerId) để hỗ trợ tạo auction từ DTO
- *   (nếu DTO có itemId thì dùng item hiện có; nếu không có thì tạo item mới từ itemName/startPrice).
- * - Validate start/end time, ownership, và set initial currentPrice + state.
+ * AuctionServiceImpl - full lifecycle management for auctions.
+ *
+ * - Keeps compatibility with createAuction(Auction).
+ * - Adds createAuction(AuctionCreateDto, UUID sellerId) for DTO-based creation.
+ * - Provides state transitions, scheduled refresh, and helpers for bidding validation.
  */
 @Service
 public class AuctionServiceImpl implements AuctionService {
@@ -100,6 +101,8 @@ public class AuctionServiceImpl implements AuctionService {
             throw new BusinessRuleException("Auction already finished or canceled");
         }
         a.setState(AuctionState.FINISHED);
+        // set winnerId = leaderId if any
+        a.setWinnerId(a.getLeaderId());
         auctionRepository.save(a);
     }
 
@@ -117,6 +120,7 @@ public class AuctionServiceImpl implements AuctionService {
      * @param sellerId UUID của seller (phải được cung cấp, lấy từ authenticated user)
      * @return saved Auction
      */
+    @Override
     @Transactional
     public Auction createAuction(AuctionCreateDto dto, UUID sellerId) {
         if (dto == null) {
@@ -180,6 +184,7 @@ public class AuctionServiceImpl implements AuctionService {
      * @param state AuctionState to filter
      * @return list of auctions in that state
      */
+    @Override
     public List<Auction> listAuctionsByState(AuctionState state) {
         if (state == null) {
             return listAuctions();
@@ -195,6 +200,7 @@ public class AuctionServiceImpl implements AuctionService {
      * Validate that auction exists and is in a state that allows bidding.
      * (This helper can be used by BidService before placing a bid.)
      */
+    @Override
     public void validateAuctionOpenForBidding(UUID auctionId) {
         Auction a = getAuction(auctionId);
         if (a.getState() != AuctionState.OPEN && a.getState() != AuctionState.RUNNING) {
@@ -203,6 +209,58 @@ public class AuctionServiceImpl implements AuctionService {
         Instant now = Instant.now();
         if (now.isBefore(a.getStartTime()) || now.isAfter(a.getEndTime())) {
             throw new BusinessRuleException("Auction is not within active time window");
+        }
+    }
+
+    // -------------------------
+    // Optional lifecycle helpers
+    // -------------------------
+
+    @Override
+    @Transactional
+    public void startAuction(UUID auctionId) {
+        Auction a = getAuction(auctionId);
+        if (a.getState() != AuctionState.OPEN) {
+            throw new BusinessRuleException("Auction not in OPEN state");
+        }
+        a.setState(AuctionState.RUNNING);
+        auctionRepository.save(a);
+    }
+
+    // -------------------------
+    // Scheduler to refresh states
+    // -------------------------
+    // Requires @EnableScheduling in application main class.
+    // Runs every 10 seconds by default; configurable via property auction.state.refresh.ms
+    @Scheduled(fixedDelayString = "${auction.state.refresh.ms:10000}")
+    public void scheduledRefreshStates() {
+        try {
+            refreshStates();
+        } catch (Exception ex) {
+            // log error in real app; avoid throwing to keep scheduler running
+            System.err.println("Error refreshing auction states: " + ex.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional
+    public void refreshStates() {
+        Instant now = Instant.now();
+
+        // 1) OPEN -> RUNNING when startTime <= now
+        List<Auction> toStart = auctionRepository.findByStateAndStartTimeBefore(AuctionState.OPEN, now);
+        for (Auction a : toStart) {
+            a.setState(AuctionState.RUNNING);
+            auctionRepository.save(a);
+        }
+
+        // 2) RUNNING -> FINISHED when endTime <= now
+        List<Auction> toFinish = auctionRepository.findByStateAndEndTimeBefore(AuctionState.RUNNING, now);
+        for (Auction a : toFinish) {
+            a.setState(AuctionState.FINISHED);
+            a.setWinnerId(a.getLeaderId()); // leaderId may be null
+            auctionRepository.save(a);
+            // optionally: publish event/notification here
         }
     }
 }
