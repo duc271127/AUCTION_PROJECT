@@ -11,7 +11,6 @@ public class MainApp extends Application {
         SceneManager.setPrimaryStage(primaryStage);
         SceneManager.goToHome();
     }
-
     public static void main(String[] args) {
         launch(args);
     }

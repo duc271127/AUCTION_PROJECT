@@ -1,7 +1,9 @@
 package com.auction.client.controller;
 
+import com.auction.client.dto.response.AuctionListResponse;
 import com.auction.client.model.AuctionItem;
 import com.auction.client.navigation.SceneManager;
+import com.auction.client.service.AuctionApiService;
 import com.auction.client.util.MockData;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
@@ -24,36 +26,113 @@ public class ProductDetailController {
 
     @FXML private TextField bidAmountField;
 
-    private AuctionItem currentItem;
+    private final AuctionApiService auctionApiService = new AuctionApiService();
+    private AuctionItem selectedItem;
 
     @FXML
     public void initialize() {
-        currentItem = MockData.getSelectedItem();
+        selectedItem = MockData.getSelectedItem();
 
-        if (currentItem != null) {
-            productNameLabel.setText(currentItem.getName());
-            currentBidLabel.setText("Current Highest Bid: " + currentItem.getCurrentBid());
-            countdownLabel.setText("Countdown: " + currentItem.getTimeLeft());
-            statusLabel.setText("Status: " + currentItem.getStatus());
-            specsLabel.setText(
-                    "Provenance / Specs:\n" +
-                            "- Premium curated auction item\n" +
-                            "- Demo detail for phase 1\n" +
-                            "- Seller verified (mock)\n" +
-                            "- Real-time room available in next screen"
-            );
-
-            try {
-                Image image = new Image(getClass().getResourceAsStream(currentItem.getImagePath()));
-                mainImageView.setImage(image);
-                thumb1ImageView.setImage(image);
-                thumb2ImageView.setImage(image);
-            } catch (Exception e) {
-                System.out.println("Image not found: " + currentItem.getImagePath());
-            }
+        if (selectedItem == null) {
+            showEmptyState();
+            hideBidMessage();
+            return;
         }
 
+        loadAuctionDetail();
         hideBidMessage();
+    }
+
+    private void loadAuctionDetail() {
+        try {
+            AuctionListResponse response = auctionApiService.getAuctionById(selectedItem.getId());
+            bindDetailFromApi(response);
+        } catch (Exception e) {
+            bindFallbackFromSelectedItem();
+            showBidMessage("Cannot load full detail from server. Showing fallback data.");
+        }
+    }
+
+    private void bindDetailFromApi(AuctionListResponse response) {
+        productNameLabel.setText(
+                response.getItemName() == null || response.getItemName().isBlank()
+                        ? "Unnamed Item"
+                        : response.getItemName()
+        );
+
+        currentBidLabel.setText("Current Highest Bid: $" + String.format("%,.0f", response.getCurrentPrice()));
+
+        countdownLabel.setText("Ends: " + formatDateTime(response.getEndTime()));
+
+        statusLabel.setText("Status: " + safeText(response.getState(), "UNKNOWN"));
+
+        specsLabel.setText(
+                "Auction Detail:\\n" +
+                        "- Auction ID: " + safeText(response.getId() == null ? null : response.getId().toString(), "N/A") + "\\n" +
+                        "- Item ID: " + safeText(response.getItemId() == null ? null : response.getItemId().toString(), "N/A") + "\\n" +
+                        "- Start Time: " + formatDateTime(response.getStartTime()) + "\\n" +
+                        "- End Time: " + formatDateTime(response.getEndTime()) + "\\n" +
+                        "- Leader ID: " + safeText(response.getLeaderId() == null ? null : response.getLeaderId().toString(), "No leader yet")
+        );
+
+        setDefaultImages(selectedItem.getImagePath());
+    }
+
+    private void bindFallbackFromSelectedItem() {
+        productNameLabel.setText(selectedItem.getName());
+        currentBidLabel.setText("Current Highest Bid: " + selectedItem.getCurrentBid());
+        countdownLabel.setText("Ends: " + selectedItem.getTimeLeft());
+        statusLabel.setText("Status: " + selectedItem.getStatus());
+
+        specsLabel.setText(
+                "Auction Detail:\\n" +
+                        "- Backend detail is not available right now\\n" +
+                        "- Showing selected item data from showroom\\n" +
+                        "- Full specs will be added when backend returns more fields"
+        );
+
+        setDefaultImages(selectedItem.getImagePath());
+    }
+
+    private void setDefaultImages(String imagePath) {
+        try {
+            Image image = new Image(getClass().getResourceAsStream(imagePath));
+            mainImageView.setImage(image);
+            thumb1ImageView.setImage(image);
+            thumb2ImageView.setImage(image);
+        } catch (Exception e) {
+            mainImageView.setImage(null);
+            thumb1ImageView.setImage(null);
+            thumb2ImageView.setImage(null);
+            System.out.println("Image not found: " + imagePath);
+        }
+    }
+
+    private String formatDateTime(String value) {
+        if (value == null || value.isBlank()) {
+            return "N/A";
+        }
+
+        if (value.length() >= 16) {
+            return value.substring(0, 16).replace("T", " ");
+        }
+
+        return value;
+    }
+
+    private String safeText(String value, String fallback) {
+        return (value == null || value.isBlank()) ? fallback : value;
+    }
+
+    private void showEmptyState() {
+        productNameLabel.setText("No selected item");
+        currentBidLabel.setText("Current Highest Bid: -");
+        countdownLabel.setText("Ends: -");
+        statusLabel.setText("Status: N/A");
+        specsLabel.setText("Please go back to the showroom and choose an auction item.");
+        mainImageView.setImage(null);
+        thumb1ImageView.setImage(null);
+        thumb2ImageView.setImage(null);
     }
 
     @FXML
@@ -86,7 +165,12 @@ public class ProductDetailController {
 
         int enteredBid = Integer.parseInt(numericText);
 
-        String currentBidText = currentItem.getCurrentBid().replaceAll("[^0-9]", "");
+        String currentBidText = currentBidLabel.getText().replaceAll("[^0-9]", "");
+        if (currentBidText.isEmpty()) {
+            showBidMessage("Current bid is unavailable.");
+            return;
+        }
+
         int currentBid = Integer.parseInt(currentBidText);
 
         if (enteredBid <= currentBid) {
@@ -94,7 +178,7 @@ public class ProductDetailController {
             return;
         }
 
-        showBidSuccess("Quick bid submitted successfully (demo only).");
+        showBidSuccess("Quick bid validation passed (detail screen only). Real bid will be in Block 5.");
     }
 
     private void showBidMessage(String message) {

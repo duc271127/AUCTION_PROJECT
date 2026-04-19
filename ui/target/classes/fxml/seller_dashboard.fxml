@@ -124,6 +124,19 @@
                                         maxWidth="Infinity"
                                         styleClass="primary-button"
                                         onAction="#handleSubmitListing"/>
+
+                                <Button text="Update Listing"
+                                        HBox.hgrow="ALWAYS"
+                                        maxWidth="Infinity"
+                                        styleClass="secondary-button"
+                                        onAction="#handleUpdateListing"/>
+
+                                <Button text="Delete Listing"
+                                        HBox.hgrow="ALWAYS"
+                                        maxWidth="Infinity"
+                                        styleClass="secondary-button"
+                                        onAction="#handleDeleteListing"/>
+
                                 <Button text="Reset"
                                         HBox.hgrow="ALWAYS"
                                         maxWidth="Infinity"

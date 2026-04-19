@@ -69,14 +69,6 @@ public class MockData {
         );
     }
 
-    public static ObservableList<SellerListing> getMockSellerListing() {
-        return FXCollections.observableArrayList(
-                new SellerListing("Vintage Rolex Submariner", "Luxury Watch", "$10,000", "Active", "2026-04-10", "2026-04-15"),
-                new SellerListing("Rare Pokémon Card Set", "Collectibles", "$2,500", "Pending Review", "2026-04-12", "2026-04-20"),
-                new SellerListing("Signed Football Jersey", "Sports Memorabilia", "$1,200", "Ended", "2026-04-01", "2026-04-07")
-        );
-    }
-
     public static ObservableList<AdminApprovalItem> getMockAdminApprovalItems() {
         return FXCollections.observableArrayList(
                 new AdminApprovalItem("Vintage Rolex Submariner", "Seller Alpha", "Luxury Watch", "2026-04-10", "Pending"),

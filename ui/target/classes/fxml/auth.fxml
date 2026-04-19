@@ -6,7 +6,7 @@
 
 <AnchorPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.auction.client.controller.AuthController"
-            prefWidth="1400" prefHeight="900"
+            prefWidth="1200" prefHeight="800"
             styleClass="root-pane">
 
     <children>
@@ -15,7 +15,7 @@
               AnchorPane.leftAnchor="0.0"
               AnchorPane.rightAnchor="0.0">
 
-            <VBox prefWidth="650.0" alignment="CENTER_LEFT" spacing="20.0" styleClass="auth-left-panel">
+            <VBox prefWidth="560.0" alignment="CENTER_LEFT" spacing="20.0" styleClass="auth-left-panel">
                 <padding>
                     <Insets top="60" right="60" bottom="60" left="60"/>
                 </padding>
@@ -30,75 +30,86 @@
 
             <StackPane HBox.hgrow="ALWAYS" styleClass="auth-right-wrapper">
                 <children>
-                    <VBox maxWidth="420.0" spacing="20.0" styleClass="auth-card">
-                        <padding>
-                            <Insets top="32" right="32" bottom="32" left="32"/>
-                        </padding>
+                    <ScrollPane fitToWidth="true"
+                                hbarPolicy="NEVER"
+                                vbarPolicy="AS_NEEDED"
+                                pannable="true"
+                                maxWidth="520.0"
+                                StackPane.alignment="CENTER"
+                                style="-fx-background-color: transparent; -fx-background: transparent;">
 
-                        <TabPane fx:id="authTabPane" tabClosingPolicy="UNAVAILABLE" styleClass="auth-tabs">
-                            <tabs>
-                                <Tab text="Login">
-                                    <VBox spacing="14.0" styleClass="form-box">
-                                        <padding>
-                                            <Insets top="20" right="10" bottom="10" left="10"/>
-                                        </padding>
+                        <content>
+                            <VBox prefWidth="420.0" maxWidth="420.0" spacing="20.0" styleClass="auth-card">
+                                <padding>
+                                    <Insets top="32" right="32" bottom="32" left="32"/>
+                                </padding>
 
-                                        <Label text="Welcome back" styleClass="form-title"/>
-                                        <Label text="Access your dashboard and active bids." styleClass="form-subtitle"/>
+                                <TabPane fx:id="authTabPane" tabClosingPolicy="UNAVAILABLE" styleClass="auth-tabs">
+                                    <tabs>
+                                        <Tab text="Login">
+                                            <VBox spacing="14.0" styleClass="form-box">
+                                                <padding>
+                                                    <Insets top="20" right="10" bottom="10" left="10"/>
+                                                </padding>
 
-                                        <Label fx:id="loginErrorLabel" text="" styleClass="error-label"/>
+                                                <Label text="Welcome back" styleClass="form-title"/>
+                                                <Label text="Access your dashboard and active bids." styleClass="form-subtitle"/>
 
-                                        <Label text="Username or Email" styleClass="field-label"/>
-                                        <TextField fx:id="loginUsernameField" promptText="Enter username or email"/>
+                                                <Label fx:id="loginErrorLabel" text="" styleClass="error-label"/>
 
-                                        <Label text="Password" styleClass="field-label"/>
-                                        <PasswordField fx:id="loginPasswordField" promptText="Enter password"/>
+                                                <Label text="Username or Email" styleClass="field-label"/>
+                                                <TextField fx:id="loginUsernameField" promptText="Enter username or email"/>
 
-                                        <Label text="Role" styleClass="field-label"/>
-                                        <ComboBox fx:id="loginRoleComboBox" promptText="Select role"/>
+                                                <Label text="Password" styleClass="field-label"/>
+                                                <PasswordField fx:id="loginPasswordField" promptText="Enter password"/>
 
-                                        <Button text="Login"
-                                                styleClass="primary-button"
-                                                maxWidth="Infinity"
-                                                onAction="#handleLogin"/>
-                                    </VBox>
-                                </Tab>
+                                                <Label text="Role" styleClass="field-label"/>
+                                                <ComboBox fx:id="loginRoleComboBox" promptText="Select role"/>
 
-                                <Tab text="Register">
-                                    <VBox spacing="14.0" styleClass="form-box">
-                                        <padding>
-                                            <Insets top="20" right="10" bottom="10" left="10"/>
-                                        </padding>
+                                                <Button text="Login"
+                                                        styleClass="primary-button"
+                                                        maxWidth="Infinity"
+                                                        onAction="#handleLogin"/>
+                                            </VBox>
+                                        </Tab>
 
-                                        <Label text="Create account" styleClass="form-title"/>
-                                        <Label text="Register as a bidder or seller." styleClass="form-subtitle"/>
+                                        <Tab text="Register">
+                                            <VBox spacing="14.0" styleClass="form-box">
+                                                <padding>
+                                                    <Insets top="20" right="10" bottom="10" left="10"/>
+                                                </padding>
 
-                                        <Label fx:id="registerErrorLabel" text="" styleClass="error-label"/>
+                                                <Label text="Create account" styleClass="form-title"/>
+                                                <Label text="Register as a bidder or seller." styleClass="form-subtitle"/>
 
-                                        <Label text="Username" styleClass="field-label"/>
-                                        <TextField fx:id="registerUsernameField" promptText="Choose username"/>
+                                                <Label fx:id="registerErrorLabel" text="" styleClass="error-label"/>
 
-                                        <Label text="Email" styleClass="field-label"/>
-                                        <TextField fx:id="registerEmailField" promptText="Enter email"/>
+                                                <Label text="Username" styleClass="field-label"/>
+                                                <TextField fx:id="registerUsernameField" promptText="Choose username"/>
 
-                                        <Label text="Password" styleClass="field-label"/>
-                                        <PasswordField fx:id="registerPasswordField" promptText="Create password"/>
+                                                <Label text="Email" styleClass="field-label"/>
+                                                <TextField fx:id="registerEmailField" promptText="Enter email"/>
 
-                                        <Label text="Confirm Password" styleClass="field-label"/>
-                                        <PasswordField fx:id="registerConfirmPasswordField" promptText="Confirm password"/>
+                                                <Label text="Password" styleClass="field-label"/>
+                                                <PasswordField fx:id="registerPasswordField" promptText="Create password"/>
 
-                                        <Label text="Role" styleClass="field-label"/>
-                                        <ComboBox fx:id="registerRoleComboBox" promptText="Select role"/>
+                                                <Label text="Confirm Password" styleClass="field-label"/>
+                                                <PasswordField fx:id="registerConfirmPasswordField" promptText="Confirm password"/>
 
-                                        <Button text="Create Account"
-                                                styleClass="primary-button"
-                                                maxWidth="Infinity"
-                                                onAction="#handleRegister"/>
-                                    </VBox>
-                                </Tab>
-                            </tabs>
-                        </TabPane>
-                    </VBox>
+                                                <Label text="Role" styleClass="field-label"/>
+                                                <ComboBox fx:id="registerRoleComboBox" promptText="Select role"/>
+
+                                                <Button text="Create Account"
+                                                        styleClass="primary-button"
+                                                        maxWidth="Infinity"
+                                                        onAction="#handleRegister"/>
+                                            </VBox>
+                                        </Tab>
+                                    </tabs>
+                                </TabPane>
+                            </VBox>
+                        </content>
+                    </ScrollPane>
                 </children>
             </StackPane>
         </HBox>
