@@ -5,16 +5,16 @@ import com.team.backend.bidding.BidProcessingResult;
 public class BidLockPrototype {
 
     public static void main(String[] args) throws InterruptedException {
-        AuctionState auction = new AuctionState(1L, 100.0, "No Leader yet", "OPEN");
+        AuctionState auction = new AuctionState(1L, 100.0, "No Leader yet", "CLOSED");
         ConcurrentBidProcessor processor = new ConcurrentBidProcessor();
 
         Runnable bidderA = () -> {
-            BidProcessingResult result = processor.processBid(auction, "UserA", 120.0);
+            BidProcessingResult result = processor.processBid(auction, "UserA", 130.0);
             System.out.println(Thread.currentThread().getName() + " -> " + result);
         };
 
         Runnable bidderB = () -> {
-            BidProcessingResult result = processor.processBid(auction, "UserB", 130.0);
+            BidProcessingResult result = processor.processBid(auction, "UserB", 120.0);
             System.out.println(Thread.currentThread().getName() + " -> " + result);
         };
 
