@@ -2,6 +2,7 @@ package com.team.backend.entity;
 
 import jakarta.persistence.*;
 import java.util.UUID;
+import java.time.Instant;
 
 @Entity
 @Table(name = "items")
@@ -23,6 +24,9 @@ public class Item {
     @Column(columnDefinition = "BINARY(16)", nullable = false)
     private UUID sellerId;
 
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
+
     public Item() { }
 
     public UUID getId() { return id; }
@@ -35,4 +39,6 @@ public class Item {
     public void setStartPrice(double startPrice) { this.startPrice = startPrice; }
     public UUID getSellerId() { return sellerId; }
     public void setSellerId(UUID sellerId) { this.sellerId = sellerId; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 }
