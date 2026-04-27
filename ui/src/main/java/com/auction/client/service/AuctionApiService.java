@@ -1,10 +1,12 @@
 package com.auction.client.service;
 
+import com.auction.client.dto.request.BidRequest;
 import com.auction.client.dto.response.AuctionListResponse;
 import com.auction.client.exception.ApiException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public class AuctionApiService {
@@ -34,6 +36,15 @@ public class AuctionApiService {
             return objectMapper.readValue(responseBody, AuctionListResponse.class);
         } catch (Exception e) {
             throw new ApiException("Load auction detail failed: " + e.getMessage(), e);
+        }
+    }
+    public AuctionListResponse placeBid(String auctionId, BidRequest request) {
+        try {
+            String jsonBody = objectMapper.writeValueAsString(request);
+            String responseBody = apiClient.post("/api/auctions/" + auctionId + "/bids", jsonBody);
+            return objectMapper.readValue(responseBody, AuctionListResponse.class);
+        } catch (Exception e) {
+            throw new ApiException("Place bid failed: " + e.getMessage(), e);
         }
     }
 }

@@ -37,8 +37,13 @@ public class AuthController {
         loginRoleComboBox.setValue("Bidder");
         registerRoleComboBox.setValue("Bidder");
 
-        hideLoginError();
-        hideRegisterError();
+        loginErrorLabel.setText("");
+        loginErrorLabel.setManaged(true);
+        loginErrorLabel.setVisible(true);
+
+        registerErrorLabel.setText("");
+        registerErrorLabel.setManaged(true);
+        registerErrorLabel.setVisible(true);
     }
 
     @FXML
@@ -90,6 +95,7 @@ public class AuthController {
 
             SessionManager.setUsername(sessionDisplayName);
             SessionManager.setRole(response.getRole());
+            SessionManager.setUserId(response.getId());
 
             if (response.getToken() != null && !response.getToken().isBlank()) {
                 SessionManager.setToken(response.getToken());
@@ -199,33 +205,23 @@ public class AuthController {
     private void showLoginError(String message) {
         loginErrorLabel.setText(message);
         loginErrorLabel.setStyle("-fx-text-fill: #dc2626;");
-        loginErrorLabel.setManaged(true);
-        loginErrorLabel.setVisible(true);
     }
 
     private void hideLoginError() {
         loginErrorLabel.setText("");
-        loginErrorLabel.setManaged(false);
-        loginErrorLabel.setVisible(false);
     }
 
     private void showRegisterError(String message) {
         registerErrorLabel.setText(message);
         registerErrorLabel.setStyle("-fx-text-fill: #dc2626;");
-        registerErrorLabel.setManaged(true);
-        registerErrorLabel.setVisible(true);
     }
 
     private void showRegisterSuccess(String message) {
         registerErrorLabel.setText(message);
         registerErrorLabel.setStyle("-fx-text-fill: #16a34a;");
-        registerErrorLabel.setManaged(true);
-        registerErrorLabel.setVisible(true);
     }
 
     private void hideRegisterError() {
         registerErrorLabel.setText("");
-        registerErrorLabel.setManaged(false);
-        registerErrorLabel.setVisible(false);
     }
 }

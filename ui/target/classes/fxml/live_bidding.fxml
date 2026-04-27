@@ -37,6 +37,7 @@
                 <VBox spacing="6.0" styleClass="price-box">
                     <Label text="Current Highest Bid" styleClass="section-label"/>
                     <Label fx:id="currentBidLabel" styleClass="current-bid-label"/>
+                    <Label fx:id="leaderLabel" text="Leader: -" styleClass="section-label"/>
                 </VBox>
 
                 <VBox spacing="6.0" styleClass="countdown-box">
@@ -44,7 +45,12 @@
                     <Label fx:id="countdownLabel" styleClass="countdown-label"/>
                 </VBox>
 
-                <Label fx:id="outbidAlertLabel" text="" styleClass="live-alert"/>
+                <Label fx:id="outbidAlertLabel"
+                       text=""
+                       wrapText="true"
+                       minHeight="32.0"
+                       prefHeight="32.0"
+                       styleClass="live-alert"/>
 
                 <VBox spacing="8.0">
                     <Label text="Enter Your Bid" styleClass="section-label"/>

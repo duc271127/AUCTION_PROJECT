@@ -82,7 +82,13 @@
                                                 <Label text="Create account" styleClass="form-title"/>
                                                 <Label text="Register as a bidder or seller." styleClass="form-subtitle"/>
 
-                                                <Label fx:id="registerErrorLabel" text="" styleClass="error-label"/>
+                                                <Label fx:id="registerErrorLabel"
+                                                       text=""
+                                                       wrapText="true"
+                                                       minHeight="40.0"
+                                                       prefHeight="40.0"
+                                                       maxWidth="Infinity"
+                                                       styleClass="error-label"/>
 
                                                 <Label text="Username" styleClass="field-label"/>
                                                 <TextField fx:id="registerUsernameField" promptText="Choose username"/>
