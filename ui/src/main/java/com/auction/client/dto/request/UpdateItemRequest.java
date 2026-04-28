@@ -1,6 +1,9 @@
 package com.auction.client.dto.request;
 
+import java.util.UUID;
+
 public class UpdateItemRequest {
+    private UUID sellerId;
     private String productName;
     private String description;
     private String category;
@@ -8,13 +11,15 @@ public class UpdateItemRequest {
     private double reservePrice;
     private String startDate;
     private String endDate;
+    private String imagePath;
 
     public UpdateItemRequest() {
     }
 
-    public UpdateItemRequest(String productName, String description, String category,
+    public UpdateItemRequest(UUID sellerId, String productName, String description, String category,
                              double startingPrice, double reservePrice,
-                             String startDate, String endDate) {
+                             String startDate, String endDate, String imagePath) {
+        this.sellerId = sellerId;
         this.productName = productName;
         this.description = description;
         this.category = category;
@@ -22,6 +27,14 @@ public class UpdateItemRequest {
         this.reservePrice = reservePrice;
         this.startDate = startDate;
         this.endDate = endDate;
+        this.imagePath = imagePath;
+    }
+    public UUID getSellerId() {
+        return sellerId;
+    }
+
+    public void setSellerId(UUID sellerId) {
+        this.sellerId = sellerId;
     }
 
     public String getProductName() {
@@ -78,5 +91,12 @@ public class UpdateItemRequest {
 
     public void setEndDate(String endDate) {
         this.endDate = endDate;
+    }
+    public String getImagePath() {
+        return imagePath;
+    }
+
+    public void setImagePath(String imagePath) {
+        this.imagePath = imagePath;
     }
 }

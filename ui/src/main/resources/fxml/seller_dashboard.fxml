@@ -13,6 +13,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Priority?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.image.ImageView?>
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.auction.client.controller.SellerDashboardController"
@@ -113,8 +114,22 @@
                             <Label text="End Date" styleClass="field-label"/>
                             <DatePicker fx:id="endDatePicker"/>
 
-                            <Label text="Upload" styleClass="field-label"/>
-                            <Label text="Upload box (demo only)" styleClass="upload-box"/>
+                            <Label text="Product Image" styleClass="field-label"/>
+
+                            <Button text="Choose Image"
+                                    maxWidth="Infinity"
+                                    styleClass="secondary-button"
+                                    onAction="#handleChooseImage"/>
+
+                            <ImageView fx:id="productImagePreview"
+                                       fitWidth="220"
+                                       fitHeight="140"
+                                       preserveRatio="true"/>
+
+                            <Label fx:id="selectedImageLabel"
+                                   text="No image selected"
+                                   wrapText="true"
+                                   styleClass="field-label"/>
 
                             <Label fx:id="sellerMessageLabel" text="" styleClass="seller-message"/>
 

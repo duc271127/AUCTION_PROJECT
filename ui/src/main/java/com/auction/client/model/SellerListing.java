@@ -1,7 +1,9 @@
 package com.auction.client.model;
+import java.util.UUID;
 
 public class SellerListing {
-    private Long id;
+    private UUID id;
+    private UUID sellerId;
     private String productName;
     private String description;
     private String category;
@@ -10,14 +12,16 @@ public class SellerListing {
     private String status;
     private String startDate;
     private String endDate;
+    private String imagePath;
 
     public SellerListing() {
     }
 
-    public SellerListing(Long id, String productName, String description, String category,
+    public SellerListing(UUID id, UUID sellerId, String productName, String description, String category,
                          String startingPrice, String reservePrice,
-                         String status, String startDate, String endDate) {
+                         String status, String startDate, String endDate,  String imagePath) {
         this.id = id;
+        this.sellerId = sellerId;
         this.productName = productName;
         this.description = description;
         this.category = category;
@@ -26,14 +30,23 @@ public class SellerListing {
         this.status = status;
         this.startDate = startDate;
         this.endDate = endDate;
+        this.imagePath = imagePath;
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
+    }
+
+    public UUID getSellerId() {
+        return sellerId;
+    }
+
+    public void setSellerId(UUID sellerId) {
+        this.sellerId = sellerId;
     }
 
     public String getProductName() {
@@ -98,5 +111,12 @@ public class SellerListing {
 
     public void setEndDate(String endDate) {
         this.endDate = endDate;
+    }
+
+    public String getImagePath() {
+        return imagePath;
+    }
+    public void setImagePath(String imagePath) {
+        this.imagePath = imagePath;
     }
 }

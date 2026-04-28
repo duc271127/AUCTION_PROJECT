@@ -7,12 +7,17 @@ import com.auction.client.exception.ApiException;
 import com.auction.client.model.SellerListing;
 import com.auction.client.navigation.SceneManager;
 import com.auction.client.service.SellerItemApiService;
+import com.auction.client.session.SessionManager;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.stage.FileChooser;
 
+import java.io.File;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -39,10 +44,14 @@ public class SellerDashboardController {
     @FXML private DatePicker startDatePicker;
     @FXML private DatePicker endDatePicker;
 
+    @FXML private ImageView productImagePreview;
+    @FXML private Label selectedImageLabel;
+
     private final SellerItemApiService sellerItemApiService = new SellerItemApiService();
     private final ObservableList<SellerListing> sellerListing = FXCollections.observableArrayList();
 
     private SellerListing selectedListing;
+    private File selectedImageFile;
 
     @FXML
     public void initialize() {
@@ -65,6 +74,7 @@ public class SellerDashboardController {
     private void setupSelectionListener() {
         listingTable.getSelectionModel().selectedItemProperty().addListener((obs, oldItem, newItem) -> {
             selectedListing = newItem;
+
             if (newItem != null) {
                 fillFormFromSelectedItem(newItem);
             }
@@ -89,6 +99,22 @@ public class SellerDashboardController {
         } else {
             endDatePicker.setValue(null);
         }
+
+        selectedImageFile = null;
+
+        if (item.getImagePath() != null && !item.getImagePath().isBlank()) {
+            selectedImageLabel.setText(item.getImagePath());
+
+            try {
+                Image image = new Image(new File(item.getImagePath()).toURI().toString());
+                productImagePreview.setImage(image);
+            } catch (Exception e) {
+                productImagePreview.setImage(null);
+            }
+        } else {
+            selectedImageLabel.setText("No image selected");
+            productImagePreview.setImage(null);
+        }
     }
 
     private void loadSellerItems() {
@@ -96,16 +122,43 @@ public class SellerDashboardController {
             List<ItemResponse> responseList = sellerItemApiService.getMyItems();
 
             sellerListing.clear();
+
             for (ItemResponse item : responseList) {
                 sellerListing.add(mapToSellerListing(item));
             }
 
             updateStats();
+
         } catch (ApiException e) {
             showError("Cannot load seller items: " + e.getMessage());
         } catch (Exception e) {
-            showError("Cannot load seller items.");
+            showError("Cannot load seller items: " + e.getMessage());
         }
+    }
+
+    @FXML
+    private void handleChooseImage() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Choose product image");
+
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter(
+                        "Image Files",
+                        "*.png", "*.jpg", "*.jpeg", "*.webp"
+                )
+        );
+
+        File file = fileChooser.showOpenDialog(productNameField.getScene().getWindow());
+
+        if (file == null) {
+            return;
+        }
+
+        selectedImageFile = file;
+        selectedImageLabel.setText(file.getName());
+
+        Image image = new Image(file.toURI().toString());
+        productImagePreview.setImage(image);
     }
 
     @FXML
@@ -118,18 +171,28 @@ public class SellerDashboardController {
             return;
         }
 
+        if (SessionManager.getUserId() == null) {
+            showError("Seller id is missing. Please login again.");
+            return;
+        }
+
         try {
+            String imagePath = selectedImageFile == null ? "" : selectedImageFile.getAbsolutePath();
+
             CreateItemRequest request = new CreateItemRequest(
+                    SessionManager.getUserId(),
                     productNameField.getText().trim(),
                     descriptionArea.getText().trim(),
                     getCategoryOrDefault(),
                     Double.parseDouble(startingPriceField.getText().trim()),
                     getReservePriceValue(),
                     startDatePicker.getValue().toString(),
-                    endDatePicker.getValue().toString()
+                    endDatePicker.getValue().toString(),
+                    imagePath
             );
 
             sellerItemApiService.createItem(request);
+
             showSuccess("Listing created successfully.");
             clearForm();
             loadSellerItems();
@@ -137,7 +200,7 @@ public class SellerDashboardController {
         } catch (ApiException e) {
             showError("Create failed: " + e.getMessage());
         } catch (Exception e) {
-            showError("Create failed.");
+            showError("Create failed: " + e.getMessage());
         }
     }
 
@@ -156,18 +219,34 @@ public class SellerDashboardController {
             return;
         }
 
+        if (SessionManager.getUserId() == null) {
+            showError("Seller id is missing. Please login again.");
+            return;
+        }
+
         try {
+            String imagePath;
+
+            if (selectedImageFile != null) {
+                imagePath = selectedImageFile.getAbsolutePath();
+            } else {
+                imagePath = selectedListing.getImagePath();
+            }
+
             UpdateItemRequest request = new UpdateItemRequest(
+                    SessionManager.getUserId(),
                     productNameField.getText().trim(),
                     descriptionArea.getText().trim(),
                     getCategoryOrDefault(),
                     Double.parseDouble(startingPriceField.getText().trim()),
                     getReservePriceValue(),
                     startDatePicker.getValue().toString(),
-                    endDatePicker.getValue().toString()
+                    endDatePicker.getValue().toString(),
+                    imagePath
             );
 
             sellerItemApiService.updateItem(selectedListing.getId(), request);
+
             showSuccess("Listing updated successfully.");
             clearForm();
             loadSellerItems();
@@ -175,7 +254,7 @@ public class SellerDashboardController {
         } catch (ApiException e) {
             showError("Update failed: " + e.getMessage());
         } catch (Exception e) {
-            showError("Update failed.");
+            showError("Update failed: " + e.getMessage());
         }
     }
 
@@ -199,6 +278,7 @@ public class SellerDashboardController {
 
         try {
             sellerItemApiService.deleteItem(selectedListing.getId());
+
             showSuccess("Listing deleted successfully.");
             clearForm();
             loadSellerItems();
@@ -206,7 +286,7 @@ public class SellerDashboardController {
         } catch (ApiException e) {
             showError("Delete failed: " + e.getMessage());
         } catch (Exception e) {
-            showError("Delete failed.");
+            showError("Delete failed: " + e.getMessage());
         }
     }
 
@@ -255,6 +335,7 @@ public class SellerDashboardController {
         if (!reservePriceText.isEmpty()) {
             try {
                 double reservePrice = Double.parseDouble(reservePriceText);
+
                 if (reservePrice < 0) {
                     return ValidationResult.invalid("Reserve price cannot be negative.");
                 }
@@ -262,6 +343,7 @@ public class SellerDashboardController {
                 if (reservePrice < startingPrice) {
                     return ValidationResult.invalid("Reserve price cannot be smaller than starting price.");
                 }
+
             } catch (NumberFormatException e) {
                 return ValidationResult.invalid("Reserve price must be a valid number.");
             }
@@ -289,15 +371,18 @@ public class SellerDashboardController {
 
     private double getReservePriceValue() {
         String reservePriceText = reservePriceField.getText().trim();
+
         if (reservePriceText.isEmpty()) {
             return 0;
         }
+
         return Double.parseDouble(reservePriceText);
     }
 
     private SellerListing mapToSellerListing(ItemResponse item) {
         return new SellerListing(
                 item.getId(),
+                item.getSellerId(),
                 item.getProductName(),
                 item.getDescription(),
                 item.getCategory(),
@@ -305,7 +390,8 @@ public class SellerDashboardController {
                 String.valueOf(item.getReservePrice()),
                 item.getStatus(),
                 item.getStartDate(),
-                item.getEndDate()
+                item.getEndDate(),
+                item.getImagePath()
         );
     }
 
@@ -337,8 +423,14 @@ public class SellerDashboardController {
         categoryField.clear();
         startingPriceField.clear();
         reservePriceField.clear();
+
         startDatePicker.setValue(null);
         endDatePicker.setValue(null);
+
+        selectedImageFile = null;
+        productImagePreview.setImage(null);
+        selectedImageLabel.setText("No image selected");
+
         listingTable.getSelectionModel().clearSelection();
         selectedListing = null;
     }

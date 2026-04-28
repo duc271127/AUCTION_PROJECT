@@ -1,7 +1,10 @@
 package com.auction.client.dto.response;
 
+import java.util.UUID;
+
 public class ItemResponse {
-    private Long id;
+    private UUID id;
+    private UUID sellerId;
     private String productName;
     private String description;
     private String category;
@@ -10,16 +13,25 @@ public class ItemResponse {
     private String status;
     private String startDate;
     private String endDate;
+    private String imagePath;
 
     public ItemResponse() {
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
+    }
+
+    public UUID getSellerId() {
+        return sellerId;
+    }
+
+    public void setSellerId(UUID sellerId) {
+        this.sellerId = sellerId;
     }
 
     public String getProductName() {
@@ -84,5 +96,13 @@ public class ItemResponse {
 
     public void setEndDate(String endDate) {
         this.endDate = endDate;
+    }
+
+    public String getImagePath() {
+        return imagePath;
+    }
+
+    public void setImagePath(String imagePath) {
+        this.imagePath = imagePath;
     }
 }
