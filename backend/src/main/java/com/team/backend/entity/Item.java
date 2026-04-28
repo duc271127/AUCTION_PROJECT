@@ -1,44 +1,84 @@
 package com.team.backend.entity;
 
 import jakarta.persistence.*;
-import java.util.UUID;
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Table(name = "items")
 public class Item {
 
     @Id
-    @Column(columnDefinition = "BINARY(16)")
-    private UUID id = UUID.randomUUID();
+    @GeneratedValue
+    private UUID id;
 
-    @Column(nullable = false)
-    private String name;
-
-    @Column(length = 2000)
-    private String description;
-
-    @Column(nullable = false)
-    private double startPrice;
-
-    @Column(columnDefinition = "BINARY(16)", nullable = false)
+    @Column(name = "seller_id", nullable = false)
     private UUID sellerId;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "name", nullable = false)
+    private String name; // maps to productName
+
+    @Column(name = "description", columnDefinition = "text")
+    private String description;
+
+    @Column(name = "category")
+    private String category;
+
+    @Column(name = "starting_price", nullable = false)
+    private Double startingPrice;
+
+    @Column(name = "reserve_price")
+    private Double reservePrice;
+
+    @Column(name = "status")
+    private String status;
+
+    @Column(name = "start_time")
+    private Instant startTime;
+
+    @Column(name = "end_time")
+    private Instant endTime;
+
+    @Column(name = "image_path")
+    private String imagePath;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    public Item() { }
-
+    // getters / setters
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-    public double getStartPrice() { return startPrice; }
-    public void setStartPrice(double startPrice) { this.startPrice = startPrice; }
+
     public UUID getSellerId() { return sellerId; }
     public void setSellerId(UUID sellerId) { this.sellerId = sellerId; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
+
+    public Double getStartingPrice() { return startingPrice; }
+    public void setStartingPrice(Double startingPrice) { this.startingPrice = startingPrice; }
+
+    public Double getReservePrice() { return reservePrice; }
+    public void setReservePrice(Double reservePrice) { this.reservePrice = reservePrice; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+
+    public Instant getStartTime() { return startTime; }
+    public void setStartTime(Instant startTime) { this.startTime = startTime; }
+
+    public Instant getEndTime() { return endTime; }
+    public void setEndTime(Instant endTime) { this.endTime = endTime; }
+
+    public String getImagePath() { return imagePath; }
+    public void setImagePath(String imagePath) { this.imagePath = imagePath; }
+
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 }

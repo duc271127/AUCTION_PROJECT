@@ -1,7 +1,9 @@
 package com.team.backend.service.impl;
 
 import com.team.backend.dto.ItemCreateDto;
+import com.team.backend.dto.ItemCreateRequest;
 import com.team.backend.dto.ItemDto;
+import com.team.backend.dto.ItemResponse;
 import com.team.backend.entity.Item;
 import com.team.backend.exception.BusinessRuleException;
 import com.team.backend.repository.ItemRepository;
@@ -10,25 +12,30 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
  * ItemServiceImpl - mở rộng để hỗ trợ thao tác theo seller:
- * - findBySellerId
- * - createForSeller
- * - updateForSeller
- * - deleteForSeller
- *
- * Vẫn giữ createItem(ItemCreateDto, UUID) và getItem(UUID) như trước.
+ * - findBySellerId (legacy returning ItemDto)
+ * - createForSeller / updateForSeller / deleteForSeller (legacy ItemDto)
+ * Đồng thời bổ sung API trả về ItemResponse (dùng cho frontend):
+ * - findResponsesBySellerId
+ * - createForSeller(UUID, ItemCreateRequest)
+ * - updateForSeller(UUID, UUID, ItemCreateRequest)
+ * - deleteForSellerResponse(UUID, UUID)
  */
 @Service
 public class ItemServiceImpl implements ItemService {
 
     private final ItemRepository itemRepository;
+    private final DateTimeFormatter iso = DateTimeFormatter.ISO_INSTANT;
 
-    public ItemServiceImpl(ItemRepository itemRepository) { this.itemRepository = itemRepository; }
+    public ItemServiceImpl(ItemRepository itemRepository) {
+        this.itemRepository = itemRepository;
+    }
 
     // -------------------------
     // Existing methods (kept)
@@ -36,6 +43,9 @@ public class ItemServiceImpl implements ItemService {
     @Override
     @Transactional
     public Item createItem(ItemCreateDto dto, UUID sellerId) {
+        if (dto == null) {
+            throw new BusinessRuleException("ItemCreateDto is required");
+        }
         if (dto.name == null || dto.name.trim().isEmpty()) {
             throw new BusinessRuleException("Item name is required");
         }
@@ -49,7 +59,7 @@ public class ItemServiceImpl implements ItemService {
         Item item = new Item();
         item.setName(dto.name.trim());
         item.setDescription(dto.description == null ? "" : dto.description.trim());
-        item.setStartPrice(dto.startPrice);
+        item.setStartingPrice(dto.startPrice);
         item.setSellerId(sellerId);
         item.setCreatedAt(Instant.now());
 
@@ -62,9 +72,8 @@ public class ItemServiceImpl implements ItemService {
     }
 
     // -------------------------
-    // New methods for seller
+    // Legacy DTO methods (ItemDto)
     // -------------------------
-
     /**
      * Trả về danh sách ItemDto của seller, sắp xếp theo createdAt desc.
      */
@@ -102,7 +111,7 @@ public class ItemServiceImpl implements ItemService {
         item.setSellerId(dto.getSellerId());
         item.setName(dto.getTitle().trim());
         item.setDescription(dto.getDescription() == null ? "" : dto.getDescription().trim());
-        item.setStartPrice(dto.getStartingPrice());
+        item.setStartingPrice(dto.getStartingPrice());
         item.setCreatedAt(Instant.now());
 
         Item saved = itemRepository.save(item);
@@ -134,7 +143,7 @@ public class ItemServiceImpl implements ItemService {
             item.setDescription(dto.getDescription().trim());
         }
         if (dto.getStartingPrice() != null && dto.getStartingPrice() > 0) {
-            item.setStartPrice(dto.getStartingPrice());
+            item.setStartingPrice(dto.getStartingPrice());
         }
 
         Item saved = itemRepository.save(item);
@@ -162,6 +171,120 @@ public class ItemServiceImpl implements ItemService {
     }
 
     // -------------------------
+    // New methods for frontend contract (ItemCreateRequest / ItemResponse)
+    // -------------------------
+    /**
+     * Trả về danh sách ItemResponse (format phù hợp frontend) của seller,
+     * sắp xếp theo createdAt desc.
+     */
+    public List<ItemResponse> findResponsesBySellerId(UUID sellerId) {
+        if (sellerId == null) {
+            throw new BusinessRuleException("sellerId is required");
+        }
+        return itemRepository.findBySellerIdOrderByCreatedAtDesc(sellerId)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Tạo item cho seller dựa trên request từ frontend, trả về ItemResponse.
+     */
+    @Transactional
+    public ItemResponse createForSeller(UUID sellerId, ItemCreateRequest request) {
+        if (sellerId == null) {
+            throw new BusinessRuleException("sellerId is required");
+        }
+        if (request == null) {
+            throw new BusinessRuleException("request is required");
+        }
+        if (request.getProductName() == null || request.getProductName().trim().isEmpty()) {
+            throw new BusinessRuleException("productName is required");
+        }
+        if (request.getStartingPrice() == null || request.getStartingPrice() <= 0) {
+            throw new BusinessRuleException("startingPrice must be positive");
+        }
+
+        Item item = new Item();
+        item.setSellerId(sellerId);
+        item.setName(request.getProductName().trim());
+        item.setDescription(request.getDescription());
+        item.setCategory(request.getCategory());
+        item.setStartingPrice(request.getStartingPrice());
+        item.setReservePrice(request.getReservePrice());
+        item.setStatus(request.getStatus());
+        item.setStartTime(request.getStartDate());
+        item.setEndTime(request.getEndDate());
+        item.setImagePath(request.getImagePath());
+        item.setCreatedAt(Instant.now());
+
+        Item saved = itemRepository.save(item);
+        return toResponse(saved);
+    }
+
+    /**
+     * Cập nhật item cho seller dựa trên request từ frontend, trả về ItemResponse.
+     */
+    @Transactional
+    public ItemResponse updateForSeller(UUID itemId, UUID sellerId, ItemCreateRequest request) {
+        if (itemId == null) {
+            throw new BusinessRuleException("itemId is required");
+        }
+        if (sellerId == null) {
+            throw new BusinessRuleException("sellerId is required");
+        }
+        if (request == null) {
+            throw new BusinessRuleException("request is required");
+        }
+
+        Item item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new BusinessRuleException("Item not found: " + itemId));
+        if (!sellerId.equals(item.getSellerId())) {
+            throw new BusinessRuleException("Item not found for this seller");
+        }
+
+        if (request.getProductName() != null && !request.getProductName().trim().isEmpty()) {
+            item.setName(request.getProductName().trim());
+        }
+        if (request.getDescription() != null) {
+            item.setDescription(request.getDescription());
+        }
+        if (request.getCategory() != null) {
+            item.setCategory(request.getCategory());
+        }
+        if (request.getStartingPrice() != null && request.getStartingPrice() > 0) {
+            item.setStartingPrice(request.getStartingPrice());
+        }
+        if (request.getReservePrice() != null) {
+            item.setReservePrice(request.getReservePrice());
+        }
+        if (request.getStatus() != null) {
+            item.setStatus(request.getStatus());
+        }
+        if (request.getStartDate() != null) {
+            item.setStartTime(request.getStartDate());
+        }
+        if (request.getEndDate() != null) {
+            item.setEndTime(request.getEndDate());
+        }
+        if (request.getImagePath() != null) {
+            item.setImagePath(request.getImagePath());
+        }
+
+        Item saved = itemRepository.save(item);
+        return toResponse(saved);
+    }
+
+    /**
+     * Xóa item cho seller (phiên bản trả về/điều khiển frontend).
+     */
+    @Transactional
+    public void deleteForSellerResponse(UUID itemId, UUID sellerId) {
+        // reuse existing delete logic
+        deleteForSeller(itemId, sellerId);
+    }
+
+    // -------------------------
     // Helpers: mapping
     // -------------------------
     private ItemDto toDto(Item item) {
@@ -170,8 +293,23 @@ public class ItemServiceImpl implements ItemService {
         dto.setSellerId(item.getSellerId());
         dto.setTitle(item.getName());
         dto.setDescription(item.getDescription());
-        dto.setStartingPrice(item.getStartPrice());
+        dto.setStartingPrice(item.getStartingPrice());
         dto.setCreatedAt(item.getCreatedAt());
         return dto;
+    }
+
+    private ItemResponse toResponse(Item item) {
+        ItemResponse r = new ItemResponse();
+        r.setId(item.getId());
+        r.setProductName(item.getName());
+        r.setDescription(item.getDescription());
+        r.setCategory(item.getCategory());
+        r.setStartingPrice(item.getStartingPrice() == null ? 0.0 : item.getStartingPrice());
+        r.setReservePrice(item.getReservePrice());
+        r.setStatus(item.getStatus());
+        r.setImagePath(item.getImagePath());
+        r.setStartDate(item.getStartTime() == null ? null : iso.format(item.getStartTime()));
+        r.setEndDate(item.getEndTime() == null ? null : iso.format(item.getEndTime()));
+        return r;
     }
 }
