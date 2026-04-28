@@ -24,7 +24,7 @@ public class Item {
     @Column(name = "category")
     private String category;
 
-    @Column(name = "starting_price", nullable = false)
+    @Column(name = "start_price", nullable = false)
     private Double startingPrice;
 
     @Column(name = "reserve_price")
