@@ -4,6 +4,7 @@ import java.util.UUID;
 
 public class ItemResponse {
     private UUID id;
+    private UUID sellerId;
     private String productName;
     private String description;
     private String category;
@@ -17,6 +18,10 @@ public class ItemResponse {
     // getters / setters
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
+
+    public UUID getSellerId() { return sellerId; }
+
+    public void setSellerId(UUID sellerId) { this.sellerId = sellerId; }
 
     public String getProductName() { return productName; }
     public void setProductName(String productName) { this.productName = productName; }

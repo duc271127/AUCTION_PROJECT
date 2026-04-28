@@ -137,10 +137,12 @@ public class SellerItemController {
             @RequestHeader(value = "X-Seller-Id", required = false) UUID sellerIdHeader,
             @RequestBody @Valid ItemCreateRequest request) {
 
-        UUID sellerId = sellerIdHeader;
+        UUID sellerId = sellerIdHeader != null ? sellerIdHeader : request.getSellerId();
+
         if (sellerId == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
+
         ItemResponse created = itemService.createForSeller(sellerId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
@@ -152,10 +154,12 @@ public class SellerItemController {
             @RequestHeader(value = "X-Seller-Id", required = false) UUID sellerIdHeader,
             @RequestBody @Valid ItemCreateRequest request) {
 
-        UUID sellerId = sellerIdHeader;
+        UUID sellerId = sellerIdHeader != null ? sellerIdHeader : request.getSellerId();
+
         if (sellerId == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
+
         ItemResponse updated = itemService.updateForSeller(id, sellerId, request);
         return ResponseEntity.ok(updated);
     }

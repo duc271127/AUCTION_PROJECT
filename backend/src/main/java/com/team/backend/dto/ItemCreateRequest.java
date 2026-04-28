@@ -4,17 +4,21 @@ import java.time.Instant;
 import java.util.UUID;
 
 public class ItemCreateRequest {
+    private UUID sellerId;
     private String productName;
     private String description;
     private String category;
     private Double startingPrice;
     private Double reservePrice;
     private String status; // optional initial status
-    private Instant startDate; // frontend có thể gửi ISO string -> map thành Instant
-    private Instant endDate;
+    private String startDate; // frontend có thể gửi ISO string -> map thành Instant
+    private String endDate;
     private String imagePath;
 
     // getters / setters
+    public UUID getSellerId() { return sellerId; }
+    public void setSellerId(UUID sellerId) { this.sellerId = sellerId; }
+
     public String getProductName() { return productName; }
     public void setProductName(String productName) { this.productName = productName; }
 
@@ -33,11 +37,11 @@ public class ItemCreateRequest {
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 
-    public Instant getStartDate() { return startDate; }
-    public void setStartDate(Instant startDate) { this.startDate = startDate; }
+    public String getStartDate() { return startDate; }
+    public void setStartDate(String startDate) { this.startDate = startDate; }
 
-    public Instant getEndDate() { return endDate; }
-    public void setEndDate(Instant endDate) { this.endDate = endDate; }
+    public String getEndDate() { return endDate; }
+    public void setEndDate(String endDate) { this.endDate = endDate; }
 
     public String getImagePath() { return imagePath; }
     public void setImagePath(String imagePath) { this.imagePath = imagePath; }

@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -21,11 +23,13 @@ import java.util.stream.Collectors;
  * ItemServiceImpl - mở rộng để hỗ trợ thao tác theo seller:
  * - findBySellerId (legacy returning ItemDto)
  * - createForSeller / updateForSeller / deleteForSeller (legacy ItemDto)
+ *
  * Đồng thời bổ sung API trả về ItemResponse (dùng cho frontend):
  * - findResponsesBySellerId
  * - createForSeller(UUID, ItemCreateRequest)
  * - updateForSeller(UUID, UUID, ItemCreateRequest)
  * - deleteForSellerResponse(UUID, UUID)
+ .
  */
 @Service
 public class ItemServiceImpl implements ItemService {
@@ -177,6 +181,7 @@ public class ItemServiceImpl implements ItemService {
      * Trả về danh sách ItemResponse (format phù hợp frontend) của seller,
      * sắp xếp theo createdAt desc.
      */
+    @Override
     public List<ItemResponse> findResponsesBySellerId(UUID sellerId) {
         if (sellerId == null) {
             throw new BusinessRuleException("sellerId is required");
@@ -191,6 +196,7 @@ public class ItemServiceImpl implements ItemService {
      * Tạo item cho seller dựa trên request từ frontend, trả về ItemResponse.
      */
     @Transactional
+    @Override
     public ItemResponse createForSeller(UUID sellerId, ItemCreateRequest request) {
         if (sellerId == null) {
             throw new BusinessRuleException("sellerId is required");
@@ -213,8 +219,8 @@ public class ItemServiceImpl implements ItemService {
         item.setStartingPrice(request.getStartingPrice());
         item.setReservePrice(request.getReservePrice());
         item.setStatus(request.getStatus());
-        item.setStartTime(request.getStartDate());
-        item.setEndTime(request.getEndDate());
+        item.setStartTime(parseStartDate(request.getStartDate()));
+        item.setEndTime(parseEndDate(request.getEndDate()));
         item.setImagePath(request.getImagePath());
         item.setCreatedAt(Instant.now());
 
@@ -226,6 +232,7 @@ public class ItemServiceImpl implements ItemService {
      * Cập nhật item cho seller dựa trên request từ frontend, trả về ItemResponse.
      */
     @Transactional
+    @Override
     public ItemResponse updateForSeller(UUID itemId, UUID sellerId, ItemCreateRequest request) {
         if (itemId == null) {
             throw new BusinessRuleException("itemId is required");
@@ -261,11 +268,11 @@ public class ItemServiceImpl implements ItemService {
         if (request.getStatus() != null) {
             item.setStatus(request.getStatus());
         }
-        if (request.getStartDate() != null) {
-            item.setStartTime(request.getStartDate());
+        if (request.getStartDate() != null && !request.getStartDate().isBlank()) {
+            item.setStartTime(parseStartDate(request.getStartDate()));
         }
-        if (request.getEndDate() != null) {
-            item.setEndTime(request.getEndDate());
+        if (request.getEndDate() != null && !request.getEndDate().isBlank()) {
+            item.setEndTime(parseEndDate(request.getEndDate()));
         }
         if (request.getImagePath() != null) {
             item.setImagePath(request.getImagePath());
@@ -301,6 +308,7 @@ public class ItemServiceImpl implements ItemService {
     private ItemResponse toResponse(Item item) {
         ItemResponse r = new ItemResponse();
         r.setId(item.getId());
+        r.setSellerId(item.getSellerId());
         r.setProductName(item.getName());
         r.setDescription(item.getDescription());
         r.setCategory(item.getCategory());
@@ -308,8 +316,36 @@ public class ItemServiceImpl implements ItemService {
         r.setReservePrice(item.getReservePrice());
         r.setStatus(item.getStatus());
         r.setImagePath(item.getImagePath());
-        r.setStartDate(item.getStartTime() == null ? null : iso.format(item.getStartTime()));
-        r.setEndDate(item.getEndTime() == null ? null : iso.format(item.getEndTime()));
+        r.setStartDate(formatDate(item.getStartTime()));
+        r.setEndDate(formatDate(item.getEndTime()));
         return r;
+    }
+
+    private Instant parseStartDate(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return LocalDate.parse(value)
+                .atStartOfDay()
+                .toInstant(ZoneOffset.UTC);
+    }
+
+    private Instant parseEndDate(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return LocalDate.parse(value)
+                .atTime(23, 59, 59)
+                .toInstant(ZoneOffset.UTC);
+    }
+
+    private String formatDate(Instant value) {
+        if (value == null) {
+            return null;
+        }
+
+        return LocalDate.ofInstant(value, ZoneOffset.UTC).toString();
     }
 }
