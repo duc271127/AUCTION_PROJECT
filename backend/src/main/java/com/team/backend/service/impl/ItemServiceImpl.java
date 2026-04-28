@@ -214,14 +214,18 @@ public class ItemServiceImpl implements ItemService {
         Item item = new Item();
         item.setSellerId(sellerId);
         item.setName(request.getProductName().trim());
-        item.setDescription(request.getDescription());
-        item.setCategory(request.getCategory());
+        item.setDescription(request.getDescription() == null ? "" : request.getDescription().trim());
+        item.setCategory(request.getCategory() == null || request.getCategory().isBlank()
+                ? "General"
+                : request.getCategory().trim());
         item.setStartingPrice(request.getStartingPrice());
-        item.setReservePrice(request.getReservePrice());
-        item.setStatus(request.getStatus());
+        item.setReservePrice(request.getReservePrice() == null ? 0.0 : request.getReservePrice());
+        item.setStatus(request.getStatus() == null || request.getStatus().isBlank()
+                ? "Pending"
+                : request.getStatus().trim());
         item.setStartTime(parseStartDate(request.getStartDate()));
         item.setEndTime(parseEndDate(request.getEndDate()));
-        item.setImagePath(request.getImagePath());
+        item.setImagePath(request.getImagePath() == null ? "" : request.getImagePath());
         item.setCreatedAt(Instant.now());
 
         Item saved = itemRepository.save(item);

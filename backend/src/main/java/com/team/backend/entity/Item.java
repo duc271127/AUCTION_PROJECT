@@ -39,7 +39,7 @@ public class Item {
     @Column(name = "end_time")
     private Instant endTime;
 
-    @Column(name = "image_path")
+    @Column(name = "image_path", length = 1000)
     private String imagePath;
 
     @Column(name = "created_at", nullable = false, updatable = false)

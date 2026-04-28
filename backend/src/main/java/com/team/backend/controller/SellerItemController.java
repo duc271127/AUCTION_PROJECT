@@ -190,7 +190,8 @@ public class SellerItemController {
     // Generic fallback (optional)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleOther(Exception ex) {
-        // avoid leaking internal details in production; return generic message
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal server error");
+        ex.printStackTrace();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ex.getClass().getSimpleName() + ": " + ex.getMessage());
     }
 }
