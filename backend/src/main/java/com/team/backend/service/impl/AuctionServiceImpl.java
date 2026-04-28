@@ -54,13 +54,13 @@ public class AuctionServiceImpl implements AuctionService {
         if (auction.getItem() == null) {
             throw new BusinessRuleException("Auction must reference an Item");
         }
-        if (auction.getItem().getStartPrice() <= 0) {
+        if (auction.getItem().getStartingPrice() <= 0) {
             throw new BusinessRuleException("Item startPrice must be positive");
         }
 
         // set initial state and price
         Instant now = Instant.now();
-        auction.setCurrentPrice(auction.getItem().getStartPrice());
+        auction.setCurrentPrice(auction.getItem().getStartingPrice());
         if (auction.getStartTime().isAfter(now)) {
             auction.setState(AuctionState.OPEN);
         } else if (!auction.getEndTime().isBefore(now)) {
@@ -149,7 +149,7 @@ public class AuctionServiceImpl implements AuctionService {
             Item newItem = new Item();
             newItem.setName(dto.itemName.trim());
             newItem.setDescription(dto.itemDescription == null ? "" : dto.itemDescription.trim());
-            newItem.setStartPrice(dto.startPrice);
+            newItem.setStartingPrice(dto.startPrice);
             newItem.setSellerId(sellerId);
             item = itemRepository.save(newItem);
         }
@@ -166,7 +166,7 @@ public class AuctionServiceImpl implements AuctionService {
         auction.setItem(item);
         auction.setStartTime(dto.startTime);
         auction.setEndTime(dto.endTime);
-        auction.setCurrentPrice(item.getStartPrice());
+        auction.setCurrentPrice(item.getStartingPrice());
 
         if (dto.startTime.isAfter(now)) {
             auction.setState(AuctionState.OPEN);

@@ -183,6 +183,6 @@ public class BidServiceImpl implements BidService {
     @Override
     public List<BidTransaction> getBidHistory(UUID auctionId) {
         // Điều chỉnh tên method repository nếu cần
-        return bidRepository.findByAuctionIdOrderByTimestampAsc(auctionId);
+        return bidRepository.findByAuctionIdOrderByCreatedAtAsc(auctionId);
     }
 }
