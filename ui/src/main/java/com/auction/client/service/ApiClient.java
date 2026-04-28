@@ -130,5 +130,9 @@ public class ApiClient {
         if (token != null && !token.isBlank()) {
             builder.header("Authorization", "Bearer " + token);
         }
+
+        if (SessionManager.getUserId() != null) {
+            builder.header("X-Seller-Id", SessionManager.getUserId().toString());
+        }
     }
 }
