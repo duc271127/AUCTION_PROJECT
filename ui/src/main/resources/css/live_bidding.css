@@ -68,3 +68,22 @@
     -fx-padding: 10 12;
     -fx-font-size: 13px;
 }
+.bid-history-item {
+    -fx-padding: 8 4;
+}
+
+.bid-history-bidder {
+    -fx-font-weight: bold;
+    -fx-text-fill: #0f172a;
+}
+
+.bid-history-amount {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1d4ed8;
+}
+
+.bid-history-time {
+    -fx-text-fill: #64748b;
+    -fx-font-size: 12px;
+}

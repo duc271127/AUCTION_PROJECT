@@ -8,6 +8,7 @@ import com.auction.client.navigation.SceneManager;
 import com.auction.client.service.AuctionApiService;
 import com.auction.client.session.SessionManager;
 import com.auction.client.util.MockData;
+import com.auction.client.service.RealtimeAuctionService;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.collections.FXCollections;
@@ -17,11 +18,17 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
 import javafx.util.Duration;
+import javafx.application.Platform;
+import javafx.animation.ScaleTransition;
+import javafx.scene.control.ListCell;
+import javafx.scene.layout.VBox;
+
 
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 public class LiveBiddingController {
 
@@ -36,11 +43,14 @@ public class LiveBiddingController {
     @FXML private ListView<BidRecord> bidHistoryListView;
 
     private final AuctionApiService auctionApiService = new AuctionApiService();
+    private final RealtimeAuctionService realtimeAuctionService = new RealtimeAuctionService();
     private final ObservableList<BidRecord> bidHistory = FXCollections.observableArrayList();
 
     private AuctionItem selectedItem;
     private AuctionListResponse currentAuction;
     private Timeline refreshTimeline;
+    private Timeline countdownTimeline;
+    private boolean isLoadingAuction = false;
 
     @FXML
     public void initialize() {
@@ -49,6 +59,9 @@ public class LiveBiddingController {
         connectionStatusLabel.setText("CONNECTED");
         outbidAlertLabel.setText("");
         bidHistoryListView.setItems(bidHistory);
+        setupBidHistoryListView();
+
+        setupRealtimeService();
 
         if (selectedItem == null || selectedItem.getId() == null || selectedItem.getId().isBlank()) {
             showError("No selected auction.");
@@ -57,27 +70,104 @@ public class LiveBiddingController {
         }
 
         loadAuctionDetail(true);
-        startFakeRefresh();
+        realtimeAuctionService.connect(selectedItem.getId());
+        startPollingRefresh();
+        startCountdownTimer();
+
     }
 
     private void loadAuctionDetail(boolean firstLoad) {
-        try {
+        if (isLoadingAuction) {
+            return;
+        }
+
+        isLoadingAuction = true;
+
+        CompletableFuture
+                .supplyAsync(() -> auctionApiService.getAuctionById(selectedItem.getId()))
+                .thenAccept(latest -> applyAuctionUpdate(latest, firstLoad))
+                .exceptionally(error -> {
+                    showConnectionError();
+                    return null;
+                });
+    }
+    private void applyAuctionUpdate(AuctionListResponse latest, boolean firstLoad) {
+        runOnUiThread(() -> {
             AuctionListResponse previous = currentAuction;
-            AuctionListResponse latest = auctionApiService.getAuctionById(selectedItem.getId());
 
             currentAuction = latest;
             bindAuctionToScreen(latest);
 
             if (!firstLoad && previous != null) {
+                handleAuctionChange(previous, latest);
                 detectOutbid(previous, latest);
             }
-        } catch (Exception e) {
+
+            isLoadingAuction = false;
+        });
+    }
+    private void handleAuctionChange(AuctionListResponse previous, AuctionListResponse latest) {
+        if (latest.getCurrentPrice() <= previous.getCurrentPrice()) {
+            return;
+        }
+
+        playCurrentBidPulse();
+
+        UUID currentUserId = SessionManager.getUserId();
+        boolean iAmLeader = currentUserId != null && currentUserId.equals(latest.getLeaderId());
+
+        if (iAmLeader) {
+            showSuccess("You are leading this auction.");
+        } else {
+            addBidHistory("Other bidder", latest.getCurrentPrice());
+            showInfo("Current bid updated to " + formatMoney(latest.getCurrentPrice()) + ".");
+        }
+    }
+    private void playCurrentBidPulse() {
+        ScaleTransition scaleTransition = new ScaleTransition(Duration.millis(160), currentBidLabel);
+
+        scaleTransition.setFromX(1.0);
+        scaleTransition.setFromY(1.0);
+        scaleTransition.setToX(1.08);
+        scaleTransition.setToY(1.08);
+        scaleTransition.setAutoReverse(true);
+        scaleTransition.setCycleCount(2);
+
+        scaleTransition.play();
+    }
+
+    private void showConnectionError() {
+        runOnUiThread(() -> {
             connectionStatusLabel.setText("DISCONNECTED");
+
             if (currentAuction == null) {
                 showError("Cannot load live auction.");
                 showEmptyState();
             }
+
+            isLoadingAuction = false;
+        });
+    }
+
+    private void runOnUiThread(Runnable task) {
+        if (Platform.isFxApplicationThread()) {
+            task.run();
+        } else {
+            Platform.runLater(task);
         }
+    }
+    private void setupRealtimeService() {
+        realtimeAuctionService.setOnAuctionUpdated(latestAuction -> {
+            applyAuctionUpdate(latestAuction, false);
+        });
+
+        realtimeAuctionService.setOnConnectionStatusChanged(status -> {
+            runOnUiThread(() -> connectionStatusLabel.setText(status));
+        });
+
+        realtimeAuctionService.setOnError(message -> {
+            runOnUiThread(() -> showError(message));
+        });
     }
 
     private void bindAuctionToScreen(AuctionListResponse auction) {
@@ -105,6 +195,35 @@ public class LiveBiddingController {
         if (iWasLeader && !iAmLeader) {
             showError("You have been outbid.");
         }
+    }
+    private void setupBidHistoryListView() {
+        bidHistoryListView.setCellFactory(listView -> new ListCell<>() {
+            @Override
+            protected void updateItem(BidRecord bidRecord, boolean empty) {
+                super.updateItem(bidRecord, empty);
+
+                if (empty || bidRecord == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+
+                Label bidderLabel = new Label(bidRecord.getBidderName());
+                bidderLabel.getStyleClass().add("bid-history-bidder");
+
+                Label amountLabel = new Label(bidRecord.getBidAmount());
+                amountLabel.getStyleClass().add("bid-history-amount");
+
+                Label timeLabel = new Label(bidRecord.getBidTime());
+                timeLabel.getStyleClass().add("bid-history-time");
+
+                VBox box = new VBox(3, bidderLabel, amountLabel, timeLabel);
+                box.getStyleClass().add("bid-history-item");
+
+                setText(null);
+                setGraphic(box);
+            }
+        });
     }
 
     @FXML
@@ -179,13 +298,7 @@ public class LiveBiddingController {
             currentAuction = updatedAuction;
             bindAuctionToScreen(updatedAuction);
 
-            bidHistory.add(0, new BidRecord(
-                    "You",
-                    formatMoney(newBid),
-                    DateTimeFormatter.ofPattern("HH:mm:ss")
-                            .withZone(ZoneId.systemDefault())
-                            .format(Instant.now())
-            ));
+            addBidHistory("You", newBid);
 
             bidInputField.clear();
             showSuccess("Bid placed successfully.");
@@ -196,16 +309,45 @@ public class LiveBiddingController {
         }
     }
 
-    private void startFakeRefresh() {
+    private void startPollingRefresh() {
         refreshTimeline = new Timeline(
                 new KeyFrame(Duration.seconds(5), event -> loadAuctionDetail(false))
         );
         refreshTimeline.setCycleCount(Timeline.INDEFINITE);
         refreshTimeline.play();
     }
+    private void startCountdownTimer() {
+        countdownTimeline = new Timeline(
+                new KeyFrame(Duration.seconds(1), event -> {
+                    if (currentAuction != null) {
+                        countdownLabel.setText(formatCountdown(currentAuction.getEndTime()));
+                    }
+                })
+        );
+
+        countdownTimeline.setCycleCount(Timeline.INDEFINITE);
+        countdownTimeline.play();
+    }
 
     private String formatMoney(double value) {
         return "$" + String.format("%,.0f", value);
+    }
+    private String getCurrentTimeText() {
+        return DateTimeFormatter.ofPattern("HH:mm:ss")
+                .withZone(ZoneId.systemDefault())
+                .format(Instant.now());
+    }
+
+    private void addBidHistory(String bidderName, double amount) {
+        bidHistory.add(0, new BidRecord(
+                bidderName,
+                formatMoney(amount),
+                getCurrentTimeText()
+        ));
+
+        if (bidHistory.size() > 50) {
+            bidHistory.remove(50, bidHistory.size());
+        }
     }
 
     private String formatLeader(UUID leaderId) {
@@ -279,6 +421,10 @@ public class LiveBiddingController {
         outbidAlertLabel.setText(message);
         outbidAlertLabel.setStyle("-fx-text-fill: #16a34a;");
     }
+    private void showInfo(String message) {
+        outbidAlertLabel.setText(message);
+        outbidAlertLabel.setStyle("-fx-text-fill: #2563eb;");
+    }
 
     private void clearAlert() {
         outbidAlertLabel.setText("");
@@ -289,6 +435,10 @@ public class LiveBiddingController {
         if (refreshTimeline != null) {
             refreshTimeline.stop();
         }
+        if (countdownTimeline != null) {
+            countdownTimeline.stop();
+        }
+        realtimeAuctionService.disconnect();
         SceneManager.goToProductDetail();
     }
 }
