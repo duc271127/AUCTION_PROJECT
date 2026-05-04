@@ -1,18 +1,25 @@
 package com.team.backend.concurrent;
 
 import com.team.backend.bidding.BidProcessingResult;
+import com.team.backend.realtime.RealtimeEvent;
+import com.team.backend.realtime.RealtimeEventFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.locks.Lock;
 
 @Service
 public class ConcurrentBidProcessor {
 
     private final AuctionLockManager auctionLockManager;
+    private final RealtimeEventFactory realtimeEventFactory;
 
-    public ConcurrentBidProcessor(AuctionLockManager auctionLockManager) {
+    public ConcurrentBidProcessor(AuctionLockManager auctionLockManager,
+                                  RealtimeEventFactory realtimeEventFactory) {
         this.auctionLockManager = auctionLockManager;
+        this.realtimeEventFactory = realtimeEventFactory;
     }
 
     public BidProcessingResult processBid(AuctionState auction, String bidderName, double bidAmount) {
@@ -31,13 +38,23 @@ public class ConcurrentBidProcessor {
                 return validationResult;
             }
 
+            String oldLeader = auction.getCurrentLeader();
+
             applyBid(auction, bidderName, bidAmount);
+
+            List<RealtimeEvent> events = new ArrayList<>();
+            events.add(realtimeEventFactory.buildBidPlacedEvent(auction));
+
+            if (oldLeader == null || !oldLeader.equals(auction.getCurrentLeader())) {
+                events.add(realtimeEventFactory.buildLeaderChangedEvent(auction));
+            }
 
             return new BidProcessingResult(
                     true,
                     "Bid accepted",
                     auction.getCurrentPrice(),
-                    auction.getCurrentLeader()
+                    auction.getCurrentLeader(),
+                    events
             );
         } finally {
             System.out.printf("[%s] released lock for auction %d%n",
@@ -104,11 +121,15 @@ public class ConcurrentBidProcessor {
             auction.setStatus("CLOSED");
             auction.setWinner(auction.getCurrentLeader());
 
+            List<RealtimeEvent> events = new ArrayList<>();
+            events.add(realtimeEventFactory.buildAuctionFinishedEvent(auction));
+
             return new BidProcessingResult(
                     true,
                     "Auction closed successfully",
                     auction.getCurrentPrice(),
-                    auction.getWinner()
+                    auction.getWinner(),
+                    events
             );
         } finally {
             lock.unlock();

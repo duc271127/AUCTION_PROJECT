@@ -1,7 +1,7 @@
 package com.team.backend.concurrent;
 
 import com.team.backend.bidding.BidProcessingResult;
-
+import com.team.backend.realtime.RealtimeEventFactory;
 import java.time.LocalDateTime;
 
 public class BidLockPrototype {
@@ -16,7 +16,8 @@ public class BidLockPrototype {
                 LocalDateTime.now().plusMinutes(5)
         );
 
-        ConcurrentBidProcessor processor = new ConcurrentBidProcessor(new AuctionLockManager());
+        ConcurrentBidProcessor processor =
+                new ConcurrentBidProcessor(new AuctionLockManager(), new RealtimeEventFactory());
 
         Runnable bidderA = () -> {
             BidProcessingResult result = processor.processBid(auction, "UserA", 120.0);
