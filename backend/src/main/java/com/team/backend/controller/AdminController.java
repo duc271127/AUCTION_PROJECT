@@ -1,6 +1,7 @@
 package com.team.backend.controller;
 
 import com.team.backend.dto.CreateAuctionRequest;
+import com.team.backend.dto.PendingItemDto;
 import com.team.backend.entity.Auction;
 import com.team.backend.entity.Item;
 import com.team.backend.service.AdminService;
@@ -8,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -37,5 +39,12 @@ public class AdminController {
         UUID actor = adminId;
         Auction a = adminService.createAuctionForItem(itemId, req.getStartTime(), req.getEndTime(), actor, req.getStartingPrice(), req.getReservePrice());
         return ResponseEntity.ok(a);
+    }
+
+    @GetMapping("/items/pending")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<PendingItemDto>> listPendingItems() {
+        List<PendingItemDto> dtos = adminService.listPendingItems();
+        return ResponseEntity.ok(dtos);
     }
 }

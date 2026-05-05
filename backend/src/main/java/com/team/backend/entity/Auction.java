@@ -30,7 +30,7 @@ public class Auction {
     private double currentPrice;
 
     @Column(name = "reserve_price")
-    private double reservePrice;
+    private Double reservePrice;
 
     @Column(columnDefinition = "BINARY(16)", nullable = true)
     private UUID leaderId;

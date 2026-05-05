@@ -62,9 +62,9 @@ public class AuctionServiceImpl implements AuctionService {
         Instant now = Instant.now();
         auction.setCurrentPrice(auction.getItem().getStartingPrice());
         if (auction.getStartTime().isAfter(now)) {
-            auction.setState(AuctionState.OPEN);
+            auction.setState(AuctionState.SCHEDULED);
         } else if (!auction.getEndTime().isBefore(now)) {
-            auction.setState(AuctionState.RUNNING);
+            auction.setState(AuctionState.ACTIVE);
         } else {
             throw new BusinessRuleException("endTime must be in the future");
         }
@@ -97,7 +97,7 @@ public class AuctionServiceImpl implements AuctionService {
     @Transactional
     public void closeAuction(UUID auctionId) {
         Auction a = getAuction(auctionId);
-        if (a.getState() == AuctionState.FINISHED || a.getState() == AuctionState.CANCELED) {
+        if (a.getState() == AuctionState.FINISHED || a.getState() == AuctionState.CANCELLED) {
             throw new BusinessRuleException("Auction already finished or canceled");
         }
         a.setState(AuctionState.FINISHED);
@@ -169,9 +169,9 @@ public class AuctionServiceImpl implements AuctionService {
         auction.setCurrentPrice(item.getStartingPrice());
 
         if (dto.startTime.isAfter(now)) {
-            auction.setState(AuctionState.OPEN);
+            auction.setState(AuctionState.SCHEDULED);
         } else if (!dto.endTime.isBefore(now)) {
-            auction.setState(AuctionState.RUNNING);
+            auction.setState(AuctionState.ACTIVE);
         } else {
             throw new BusinessRuleException("endTime must be in the future");
         }
@@ -203,7 +203,7 @@ public class AuctionServiceImpl implements AuctionService {
     @Override
     public void validateAuctionOpenForBidding(UUID auctionId) {
         Auction a = getAuction(auctionId);
-        if (a.getState() != AuctionState.OPEN && a.getState() != AuctionState.RUNNING) {
+        if (a.getState() != AuctionState.SCHEDULED && a.getState() != AuctionState.ACTIVE) {
             throw new BusinessRuleException("Auction is not open for bidding");
         }
         Instant now = Instant.now();
@@ -220,10 +220,10 @@ public class AuctionServiceImpl implements AuctionService {
     @Transactional
     public void startAuction(UUID auctionId) {
         Auction a = getAuction(auctionId);
-        if (a.getState() != AuctionState.OPEN) {
+        if (a.getState() != AuctionState.SCHEDULED) {
             throw new BusinessRuleException("Auction not in OPEN state");
         }
-        a.setState(AuctionState.RUNNING);
+        a.setState(AuctionState.ACTIVE);
         auctionRepository.save(a);
     }
 
@@ -248,14 +248,14 @@ public class AuctionServiceImpl implements AuctionService {
         Instant now = Instant.now();
 
         // 1) OPEN -> RUNNING when startTime <= now
-        List<Auction> toStart = auctionRepository.findByStateAndStartTimeBefore(AuctionState.OPEN, now);
+        List<Auction> toStart = auctionRepository.findByStateAndStartTimeBefore(AuctionState.SCHEDULED, now);
         for (Auction a : toStart) {
-            a.setState(AuctionState.RUNNING);
+            a.setState(AuctionState.ACTIVE);
             auctionRepository.save(a);
         }
 
         // 2) RUNNING -> FINISHED when endTime <= now
-        List<Auction> toFinish = auctionRepository.findByStateAndEndTimeBefore(AuctionState.RUNNING, now);
+        List<Auction> toFinish = auctionRepository.findByStateAndEndTimeBefore(AuctionState.ACTIVE, now);
         for (Auction a : toFinish) {
             a.setState(AuctionState.FINISHED);
             a.setWinnerId(a.getLeaderId()); // leaderId may be null
