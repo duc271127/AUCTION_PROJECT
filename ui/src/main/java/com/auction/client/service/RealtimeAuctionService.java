@@ -1,30 +1,75 @@
 package com.auction.client.service;
 
-import com.auction.client.dto.response.AuctionListResponse;
+import com.auction.client.dto.event.AuctionEventDto;
+import com.auction.client.socket.AuctionSocketClient;
+import com.auction.client.socket.SocketEventListener;
 
 import java.util.function.Consumer;
 
 public class RealtimeAuctionService {
 
-    private Consumer<AuctionListResponse> onAuctionUpdated;
+    private final AuctionSocketClient socketClient = new AuctionSocketClient();
+
+    private Consumer<AuctionEventDto> onAuctionEvent;
     private Consumer<String> onConnectionStatusChanged;
     private Consumer<String> onError;
 
-    public void connect(String auctionId) {
-        notifyConnectionStatus("POLLING MODE");
+    public RealtimeAuctionService() {
+        socketClient.setListener(new SocketEventListener() {
+            @Override
+            public void onBidPlaced(AuctionEventDto event) {
+                notifyAuctionEvent(event);
+            }
 
-        // Hiện tại server chưa có WebSocket.
-        // Sau này nếu server có WebSocket thì code connect sẽ viết ở đây.
+            @Override
+            public void onLeaderChanged(AuctionEventDto event) {
+                notifyAuctionEvent(event);
+            }
+
+            @Override
+            public void onAuctionExtended(AuctionEventDto event) {
+                notifyAuctionEvent(event);
+            }
+
+            @Override
+            public void onAuctionFinished(AuctionEventDto event) {
+                notifyAuctionEvent(event);
+            }
+
+            @Override
+            public void onError(AuctionEventDto event) {
+                String message = event.getMessage() == null
+                        ? "Realtime error."
+                        : event.getMessage();
+
+                notifyError(message);
+            }
+
+            @Override
+            public void onDisconnected(String reason) {
+                notifyConnectionStatus("DISCONNECTED");
+                notifyError(reason);
+            }
+        });
+    }
+
+    public void connect(String auctionId) {
+        socketClient.connect();
+
+        if (socketClient.isConnected()) {
+            notifyConnectionStatus("SOCKET CONNECTED");
+        }
+
+        socketClient.subscribeAuction(auctionId);
+        notifyConnectionStatus("SUBSCRIBED");
     }
 
     public void disconnect() {
-        notifyConnectionStatus("DISCONNECTED");
-
-        // Sau này nếu có WebSocket thì đóng kết nối ở đây.
+        socketClient.disconnect();
     }
 
-    public void setOnAuctionUpdated(Consumer<AuctionListResponse> onAuctionUpdated) {
-        this.onAuctionUpdated = onAuctionUpdated;
+    public void setOnAuctionEvent(Consumer<AuctionEventDto> onAuctionEvent) {
+        this.onAuctionEvent = onAuctionEvent;
     }
 
     public void setOnConnectionStatusChanged(Consumer<String> onConnectionStatusChanged) {
@@ -35,9 +80,13 @@ public class RealtimeAuctionService {
         this.onError = onError;
     }
 
-    public void notifyAuctionUpdated(AuctionListResponse latestAuction) {
-        if (onAuctionUpdated != null) {
-            onAuctionUpdated.accept(latestAuction);
+    public void simulateIncomingMessage(String jsonMessage) {
+        socketClient.onMessage(jsonMessage);
+    }
+
+    private void notifyAuctionEvent(AuctionEventDto event) {
+        if (onAuctionEvent != null) {
+            onAuctionEvent.accept(event);
         }
     }
 
@@ -48,7 +97,7 @@ public class RealtimeAuctionService {
     }
 
     private void notifyError(String message) {
-        if (onError != null) {
+        if (onError != null && message != null && !message.isBlank()) {
             onError.accept(message);
         }
     }

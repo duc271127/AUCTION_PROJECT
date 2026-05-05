@@ -63,7 +63,8 @@
                     <Button text="+5k" styleClass="secondary-button" onAction="#handleAdd5000"/>
                 </HBox>
 
-                <Button text="Place Bid"
+                <Button fx:id="placeBidButton"
+                        text="Place Bid"
                         maxWidth="Infinity"
                         styleClass="primary-button"
                         onAction="#handlePlaceBid"/>
