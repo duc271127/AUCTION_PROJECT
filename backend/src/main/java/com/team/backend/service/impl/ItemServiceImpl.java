@@ -5,6 +5,7 @@ import com.team.backend.dto.ItemCreateRequest;
 import com.team.backend.dto.ItemDto;
 import com.team.backend.dto.ItemResponse;
 import com.team.backend.entity.Item;
+import com.team.backend.entity.ItemStatus;
 import com.team.backend.exception.BusinessRuleException;
 import com.team.backend.repository.ItemRepository;
 import com.team.backend.service.ItemService;
@@ -12,9 +13,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.format.DateTimeFormatter;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -23,13 +25,11 @@ import java.util.stream.Collectors;
  * ItemServiceImpl - mở rộng để hỗ trợ thao tác theo seller:
  * - findBySellerId (legacy returning ItemDto)
  * - createForSeller / updateForSeller / deleteForSeller (legacy ItemDto)
- *
  * Đồng thời bổ sung API trả về ItemResponse (dùng cho frontend):
  * - findResponsesBySellerId
  * - createForSeller(UUID, ItemCreateRequest)
  * - updateForSeller(UUID, UUID, ItemCreateRequest)
  * - deleteForSellerResponse(UUID, UUID)
- .
  */
 @Service
 public class ItemServiceImpl implements ItemService {
@@ -220,9 +220,19 @@ public class ItemServiceImpl implements ItemService {
                 : request.getCategory().trim());
         item.setStartingPrice(request.getStartingPrice());
         item.setReservePrice(request.getReservePrice() == null ? 0.0 : request.getReservePrice());
-        item.setStatus(request.getStatus() == null || request.getStatus().isBlank()
-                ? "Pending"
-                : request.getStatus().trim());
+
+        // status: map từ request nếu có, ngược lại mặc định PENDING (enum)
+        if (request.getStatus() == null || request.getStatus().isBlank()) {
+            item.setStatus(ItemStatus.PENDING);
+        } else {
+            try {
+                item.setStatus(ItemStatus.valueOf(request.getStatus().trim().toUpperCase()));
+            } catch (IllegalArgumentException ex) {
+                // nếu không parse được, ném lỗi rõ ràng
+                throw new BusinessRuleException("Invalid status value: " + request.getStatus());
+            }
+        }
+
         item.setStartTime(parseStartDate(request.getStartDate()));
         item.setEndTime(parseEndDate(request.getEndDate()));
         item.setImagePath(request.getImagePath() == null ? "" : request.getImagePath());
@@ -258,10 +268,10 @@ public class ItemServiceImpl implements ItemService {
             item.setName(request.getProductName().trim());
         }
         if (request.getDescription() != null) {
-            item.setDescription(request.getDescription());
+            item.setDescription(request.getDescription().trim());
         }
         if (request.getCategory() != null) {
-            item.setCategory(request.getCategory());
+            item.setCategory(request.getCategory().trim());
         }
         if (request.getStartingPrice() != null && request.getStartingPrice() > 0) {
             item.setStartingPrice(request.getStartingPrice());
@@ -269,8 +279,12 @@ public class ItemServiceImpl implements ItemService {
         if (request.getReservePrice() != null) {
             item.setReservePrice(request.getReservePrice());
         }
-        if (request.getStatus() != null) {
-            item.setStatus(request.getStatus());
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+            try {
+                item.setStatus(ItemStatus.valueOf(request.getStatus().trim().toUpperCase()));
+            } catch (IllegalArgumentException ex) {
+                throw new BusinessRuleException("Invalid status value: " + request.getStatus());
+            }
         }
         if (request.getStartDate() != null && !request.getStartDate().isBlank()) {
             item.setStartTime(parseStartDate(request.getStartDate()));
@@ -290,6 +304,7 @@ public class ItemServiceImpl implements ItemService {
      * Xóa item cho seller (phiên bản trả về/điều khiển frontend).
      */
     @Transactional
+    @Override
     public void deleteForSellerResponse(UUID itemId, UUID sellerId) {
         // reuse existing delete logic
         deleteForSeller(itemId, sellerId);
@@ -310,15 +325,23 @@ public class ItemServiceImpl implements ItemService {
     }
 
     private ItemResponse toResponse(Item item) {
+        if (item == null) return null;
+
         ItemResponse r = new ItemResponse();
         r.setId(item.getId());
-        r.setSellerId(item.getSellerId());
         r.setProductName(item.getName());
         r.setDescription(item.getDescription());
         r.setCategory(item.getCategory());
         r.setStartingPrice(item.getStartingPrice() == null ? 0.0 : item.getStartingPrice());
         r.setReservePrice(item.getReservePrice());
-        r.setStatus(item.getStatus());
+
+        // Convert enum -> String (safe null check)
+        if (item.getStatus() != null) {
+            r.setStatus(item.getStatus().name());
+        } else {
+            r.setStatus(null);
+        }
+
         r.setImagePath(item.getImagePath());
         r.setStartDate(formatDate(item.getStartTime()));
         r.setEndDate(formatDate(item.getEndTime()));
@@ -329,10 +352,18 @@ public class ItemServiceImpl implements ItemService {
         if (value == null || value.isBlank()) {
             return null;
         }
-
-        return LocalDate.parse(value)
-                .atStartOfDay()
-                .toInstant(ZoneOffset.UTC);
+        try {
+            // nếu frontend gửi ISO-8601 (ví dụ "2026-05-05T23:00:00Z")
+            return Instant.parse(value);
+        } catch (DateTimeParseException ex) {
+            // thử parse dạng yyyy-MM-dd (date-only)
+            try {
+                LocalDate d = LocalDate.parse(value);
+                return d.atStartOfDay().toInstant(ZoneOffset.UTC);
+            } catch (DateTimeParseException ex2) {
+                throw new IllegalArgumentException("Invalid startDate format: " + value, ex2);
+            }
+        }
     }
 
     private Instant parseEndDate(String value) {
@@ -340,16 +371,25 @@ public class ItemServiceImpl implements ItemService {
             return null;
         }
 
-        return LocalDate.parse(value)
-                .atTime(23, 59, 59)
-                .toInstant(ZoneOffset.UTC);
+        // ưu tiên ISO-8601 nếu frontend gửi timestamp
+        try {
+            return Instant.parse(value);
+        } catch (DateTimeParseException ex) {
+            // nếu frontend gửi date-only (yyyy-MM-dd), interpret as end of day UTC
+            try {
+                LocalDate d = LocalDate.parse(value);
+                return d.atTime(23, 59, 59).toInstant(ZoneOffset.UTC);
+            } catch (DateTimeParseException ex2) {
+                throw new IllegalArgumentException("Invalid endDate format: " + value, ex2);
+            }
+        }
     }
 
     private String formatDate(Instant value) {
         if (value == null) {
             return null;
         }
-
+        // trả về yyyy-MM-dd (frontend-friendly)
         return LocalDate.ofInstant(value, ZoneOffset.UTC).toString();
     }
 }

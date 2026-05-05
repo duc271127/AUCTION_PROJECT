@@ -1,5 +1,3 @@
 package com.team.backend.entity;
 
-public enum AuctionState {
-    OPEN, RUNNING, FINISHED, PAID, CANCELED
-}
+public enum AuctionState { DRAFT, SCHEDULED, ACTIVE, FINISHED, CANCELLED }

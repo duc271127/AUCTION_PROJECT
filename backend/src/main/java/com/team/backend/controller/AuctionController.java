@@ -4,24 +4,29 @@ import com.team.backend.dto.AuctionCreateDto;
 import com.team.backend.dto.AuctionDto;
 import com.team.backend.dto.BidRequestDto;
 import com.team.backend.entity.Auction;
-import com.team.backend.entity.BidTransaction;
 import com.team.backend.entity.User;
+import com.team.backend.exception.BusinessRuleException;
+import com.team.backend.exception.ResourceNotFoundException;
 import com.team.backend.service.AuctionService;
 import com.team.backend.service.BidService;
 import com.team.backend.service.UserService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * AuctionController (fixed)
+ * AuctionController - phiên bản tương thích với AuctionService:
+ * - listAuctions() không nhận tham số
+ * - closeAuction(UUID) chỉ nhận 1 tham số
  */
 @RestController
 @RequestMapping("/api/auctions")
@@ -44,34 +49,44 @@ public class AuctionController {
      * Create auction using authenticated user as seller.
      */
     @PostMapping
+    @PreAuthorize("hasRole('SELLER')")
     public ResponseEntity<AuctionDto> createAuction(@Valid @RequestBody AuctionCreateDto dto) {
-        UUID sellerId = resolveSellerIdFromSecurity();
+        UUID sellerId = resolveUserIdFromSecurity();
         Auction created = auctionService.createAuction(dto, sellerId);
-        return ResponseEntity.ok(toDto(created));
+        URI location = URI.create("/api/auctions/" + created.getId());
+        return ResponseEntity.created(location).body(toDto(created));
     }
 
     /**
      * Dev helper: create auction with explicit sellerId in path.
+     * Protected: only ADMIN can use this endpoint.
      */
     @PostMapping("/seller/{sellerId}")
-    public ResponseEntity<AuctionDto> createAuctionWithSeller(@PathVariable("sellerId") UUID sellerId,
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<AuctionDto> createAuctionWithSeller(@PathVariable UUID sellerId,
                                                               @Valid @RequestBody AuctionCreateDto dto) {
         Auction created = auctionService.createAuction(dto, sellerId);
-        return ResponseEntity.ok(toDto(created));
+        URI location = URI.create("/api/auctions/" + created.getId());
+        return ResponseEntity.created(location).body(toDto(created));
     }
 
     /**
      * Place a bid on auction.
+     * Bidder is resolved from authenticated user; request must contain only amount.
      */
     @PostMapping("/{id}/bids")
-    public ResponseEntity<AuctionDto> placeBid(@PathVariable("id") UUID auctionId,
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<AuctionDto> placeBid(@PathVariable UUID id,
                                                @Valid @RequestBody BidRequestDto dto) {
-        // place bid (service will validate)
-        bidService.placeBid(auctionId, dto.bidderId, dto.amount);
-        Auction updated = auctionService.getAuction(auctionId);
+        UUID bidderId = resolveUserIdFromSecurity();
+        bidService.placeBid(id, bidderId, dto.amount);
+        Auction updated = auctionService.getAuction(id);
         return ResponseEntity.ok(toDto(updated));
     }
 
+    /**
+     * List all auctions (service signature: listAuctions()).
+     */
     @GetMapping
     public ResponseEntity<List<AuctionDto>> listAuctions() {
         List<Auction> auctions = auctionService.listAuctions();
@@ -79,29 +94,43 @@ public class AuctionController {
         return ResponseEntity.ok(dtos);
     }
 
+    /**
+     * Get auction detail.
+     */
     @GetMapping("/{id}")
-    public ResponseEntity<AuctionDto> getAuction(@PathVariable("id") UUID id) {
+    public ResponseEntity<AuctionDto> getAuction(@PathVariable UUID id) {
         Auction a = auctionService.getAuction(id);
         return ResponseEntity.ok(toDto(a));
     }
 
+    /**
+     * Close auction (force close).
+     * Service handles authorization/audit if needed.
+     */
     @PostMapping("/{id}/close")
-    public ResponseEntity<Void> closeAuction(@PathVariable("id") UUID id) {
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> closeAuction(@PathVariable UUID id) {
+        // call service with single-arg signature
         auctionService.closeAuction(id);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     // -------------------------
     // Helpers
     // -------------------------
     private AuctionDto toDto(Auction a) {
+        if (a == null) return null;
+
         AuctionDto d = new AuctionDto();
         d.id = a.getId();
         if (a.getItem() != null) {
             d.itemId = a.getItem().getId();
             d.itemName = a.getItem().getName();
         }
+
+        // Auction.getCurrentPrice() is primitive double in this project
         d.currentPrice = a.getCurrentPrice();
+
         d.leaderId = a.getLeaderId();
         d.startTime = a.getStartTime();
         d.endTime = a.getEndTime();
@@ -109,15 +138,15 @@ public class AuctionController {
         return d;
     }
 
-    private UUID resolveSellerIdFromSecurity() {
+    private UUID resolveUserIdFromSecurity() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || auth.getName() == null) {
-            throw new com.team.backend.exception.BusinessRuleException("Unauthenticated: sellerId cannot be resolved");
+            throw new BusinessRuleException("Unauthenticated: user cannot be resolved");
         }
         String username = auth.getName();
         User user = userService.findByUsername(username);
         if (user == null) {
-            throw new com.team.backend.exception.ResourceNotFoundException("Authenticated user not found: " + username);
+            throw new ResourceNotFoundException("Authenticated user not found: " + username);
         }
         return user.getId();
     }

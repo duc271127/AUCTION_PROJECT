@@ -1,5 +1,6 @@
 package com.team.backend.dto;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 

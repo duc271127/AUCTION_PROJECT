@@ -51,7 +51,7 @@ class BidServiceImplTest {
         a.setId(auctionId);
         a.setStartTime(Instant.now().minusSeconds(10));
         a.setEndTime(Instant.now().plusSeconds(60));
-        a.setState(AuctionState.RUNNING);
+        a.setState(AuctionState.ACTIVE);
         a.setCurrentPrice(10.0);
 
         when(auctionRepository.findByIdForUpdate(auctionId)).thenReturn(Optional.of(a));
@@ -75,7 +75,7 @@ class BidServiceImplTest {
         a.setId(auctionId);
         a.setStartTime(Instant.now().minusSeconds(10));
         a.setEndTime(Instant.now().plusSeconds(60));
-        a.setState(AuctionState.RUNNING);
+        a.setState(AuctionState.ACTIVE);
         a.setCurrentPrice(100.0);
 
         when(auctionRepository.findByIdForUpdate(auctionId)).thenReturn(Optional.of(a));

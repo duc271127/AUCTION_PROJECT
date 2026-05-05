@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * BidServiceImpl - phiên bản đã sửa lỗi
+ * BidServiceImpl - phiên bản dùng double cho tiền
  */
 @Service
 public class BidServiceImpl implements BidService {
@@ -63,13 +63,10 @@ public class BidServiceImpl implements BidService {
             throw new InvalidBidException("Số tiền đặt phải lớn hơn 0");
         }
 
-        // retry loop với số lần cố định, không dùng while(true)
         for (int attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-                // Thử dùng DB-level pessimistic lock nếu repository hỗ trợ
                 Auction auction = tryLoadAuctionForUpdate(auctionId);
 
-                // Validate và cập nhật
                 validateAuctionForBid(auction);
 
                 double minAllowed = auction.getCurrentPrice() + minIncrement;
@@ -93,47 +90,32 @@ public class BidServiceImpl implements BidService {
                 if (attempt >= maxRetries) {
                     throw new InvalidBidException("Không thể đặt giá do xung đột đồng thời, vui lòng thử lại");
                 }
-                // backoff ngắn trước khi retry
                 try {
                     Thread.sleep(50L * attempt);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     throw new InvalidBidException("Đặt giá bị gián đoạn");
                 }
-                // tiếp tục vòng retry
             } catch (ResourceNotFoundException | InvalidBidException | AuctionClosedException ex) {
-                // Các lỗi nghiệp vụ ném ngay
                 throw ex;
             } catch (RuntimeException ex) {
-                // Nếu DB lock không khả dụng hoặc lỗi runtime khác -> fallback 1 lần vào in-memory lock
                 log.debug("Lỗi khi dùng DB lock, fallback sang in-memory lock: {}", ex.getMessage());
                 return placeBidWithInMemoryLock(auctionId, bidderId, amount);
             }
         }
 
-        // Không nên tới đây, nhưng để an toàn:
         throw new InvalidBidException("Không thể đặt giá, vui lòng thử lại sau");
     }
 
-    /**
-     * Thử load auction bằng phương thức findByIdForUpdate của repository.
-     * Nếu repository không cung cấp method này, phương thức sẽ ném RuntimeException để caller fallback.
-     */
     private Auction tryLoadAuctionForUpdate(UUID auctionId) {
         try {
-            // AuctionRepository nên định nghĩa Optional<Auction> findByIdForUpdate(UUID id);
             return auctionRepository.findByIdForUpdate(auctionId)
                     .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));
         } catch (UnsupportedOperationException | PessimisticLockingFailureException ex) {
-            // ném để caller biết cần fallback
             throw new RuntimeException("DB lock không khả dụng: " + ex.getMessage(), ex);
         }
     }
 
-    /**
-     * Fallback: dùng in-memory ReentrantLock per-auction.
-     * Lưu ý: không an toàn trong multi-instance; chỉ dùng khi DB lock không khả dụng.
-     */
     @Transactional
     protected BidTransaction placeBidWithInMemoryLock(UUID auctionId, UUID bidderId, double amount) {
         ReentrantLock lock = getLock(auctionId);
@@ -164,7 +146,10 @@ public class BidServiceImpl implements BidService {
     }
 
     private void validateAuctionForBid(Auction auction) {
-        if (auction.getState() == AuctionState.FINISHED || auction.getState() == AuctionState.CANCELED) {
+        if (auction == null) {
+            throw new ResourceNotFoundException("Auction is null");
+        }
+        if (auction.getState() == AuctionState.FINISHED || auction.getState() == AuctionState.CANCELLED) {
             throw new AuctionClosedException("Auction đã đóng");
         }
         Instant now = Instant.now();
@@ -172,7 +157,6 @@ public class BidServiceImpl implements BidService {
             throw new InvalidBidException("Auction chưa bắt đầu");
         }
         if (now.isAfter(auction.getEndTime())) {
-            // đánh dấu finished phòng ngừa và lưu
             auction.setState(AuctionState.FINISHED);
             auction.setWinnerId(auction.getLeaderId());
             auctionRepository.save(auction);
@@ -182,7 +166,6 @@ public class BidServiceImpl implements BidService {
 
     @Override
     public List<BidTransaction> getBidHistory(UUID auctionId) {
-        // Điều chỉnh tên method repository nếu cần
         return bidRepository.findByAuctionIdOrderByCreatedAtAsc(auctionId);
     }
 }

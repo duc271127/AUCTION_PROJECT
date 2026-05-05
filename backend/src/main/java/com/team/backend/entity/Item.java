@@ -31,13 +31,20 @@ public class Item {
     private Double reservePrice;
 
     @Column(name = "status")
-    private String status;
+    @Enumerated(EnumType.STRING)
+    private ItemStatus status = ItemStatus.PENDING;
 
     @Column(name = "start_time")
     private Instant startTime;
 
     @Column(name = "end_time")
     private Instant endTime;
+
+    @Column(name = "approved_by")
+    private UUID approvedBy;
+
+    @Column(name = "approved_at")
+    private Instant approvedAt;
 
     @Column(name = "image_path", length = 1000)
     private String imagePath;
@@ -67,8 +74,8 @@ public class Item {
     public Double getReservePrice() { return reservePrice; }
     public void setReservePrice(Double reservePrice) { this.reservePrice = reservePrice; }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public ItemStatus getStatus() { return status; }
+    public void setStatus(ItemStatus status) { this.status = status; }
 
     public Instant getStartTime() { return startTime; }
     public void setStartTime(Instant startTime) { this.startTime = startTime; }
@@ -81,4 +88,10 @@ public class Item {
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+
+    public UUID getApprovedBy() { return approvedBy; }
+    public void setApprovedBy(UUID approvedBy) { this.approvedBy = approvedBy; }
+
+    public Instant getApprovedAt() { return approvedAt; }
+    public void setApprovedAt(Instant approvedAt) { this.approvedAt = approvedAt; }
 }
