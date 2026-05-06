@@ -1,76 +1,48 @@
 package com.auction.server;
 
-import java.io.*;
-import java.net.*;
-import java.util.*;
-import java.util.concurrent.*;
-
 import com.google.gson.Gson;
+
+import java.io.*;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Server {
 
-    static Auction auction = new Auction();
-    static ExecutorService pool = Executors.newFixedThreadPool(10);
-    static List<PrintWriter> clients = new CopyOnWriteArrayList<>();
-    static Gson gson = new Gson();
+    private static final int PORT = 9000;
+    private static final Auction auction = new Auction();
+    private static final Set<PrintWriter> clients = ConcurrentHashMap.newKeySet();
+    private static final Gson gson = new Gson();
 
     public static void main(String[] args) throws Exception {
-        ServerSocket server = new ServerSocket(9000);
-        System.out.println("Server started on port 9000...");
+        ServerSocket serverSocket = new ServerSocket(PORT);
+        System.out.println("Server started on port " + PORT + "...");
 
         while (true) {
-            Socket socket = server.accept();
-            pool.execute(() -> handleClient(socket));
+            Socket socket = serverSocket.accept();
+            new Thread(() -> handleClient(socket)).start();
         }
     }
 
-    static void handleClient(Socket socket) {
-        try {
-            BufferedReader in = new BufferedReader(
-                    new InputStreamReader(socket.getInputStream()));
-            PrintWriter out = new PrintWriter(
-                    socket.getOutputStream(), true);
-
+    private static void handleClient(Socket socket) {
+        try (
+                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                PrintWriter out = new PrintWriter(socket.getOutputStream(), true)
+        ) {
             clients.add(out);
 
-            String msg;
-
-            while ((msg = in.readLine()) != null) {
+            String line;
+            while ((line = in.readLine()) != null) {
                 try {
-                    String[] parts = msg.trim().split(" ");
+                    BidRequest req = gson.fromJson(line, BidRequest.class);
 
-                    //  thiếu dữ liệu
-                    if (parts.length < 2) {
-                        out.println("[ERROR] Format: <name> <amount>");
-                        continue;
-                    }
+                    String result = auction.placeBid(req.bidder, req.amount);
 
-                    String user = parts[0];
-
-                    int amount;
-                    try {
-                        amount = Integer.parseInt(parts[1]);
-                    } catch (NumberFormatException e) {
-                        out.println("[ERROR] Amount must be number");
-                        continue;
-                    }
-
-                    boolean success = auction.placeBid(user, amount);
-
-                    if (success) {
-                        Message m = new Message(
-                                "NEW_BID",
-                                user,
-                                amount,
-                                "New highest bid"
-                        );
-                        broadcast(gson.toJson(m));
-                    } else {
-                        out.println("[FAIL] Bid too low");
-                    }
+                    broadcast(result);
 
                 } catch (Exception e) {
-                    out.println("[ERROR] Invalid input");
+                    out.println("[ERROR] Invalid JSON format");
                 }
             }
 
@@ -79,7 +51,7 @@ public class Server {
         }
     }
 
-    static void broadcast(String message) {
+    private static void broadcast(String message) {
         for (PrintWriter client : clients) {
             client.println(message);
         }
