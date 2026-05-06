@@ -9,12 +9,14 @@ import jakarta.persistence.Column;
  */
 @Entity
 @DiscriminatorValue("ADMIN")
-public class Admin extends User {
-    @Column(nullable = false)
+public class  Admin extends User {
+    @Column(name = "super_admin", nullable = true)
     private boolean superAdmin = false;
 
     public Admin() { setRole("ADMIN"); }
 
-    public boolean isSuperAdmin() { return superAdmin; }
+    public boolean isSuperAdmin() {
+        return Boolean.TRUE.equals(superAdmin);
+    }
     public void setSuperAdmin(boolean superAdmin) { this.superAdmin = superAdmin; }
 }
