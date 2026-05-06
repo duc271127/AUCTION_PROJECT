@@ -136,12 +136,15 @@ public class AdminServiceImpl implements AdminService {
         PendingItemDto d = new PendingItemDto();
         d.id = item.getId();
         d.sellerId = item.getSellerId();
+        d.productName = item.getName();
         d.description = item.getDescription();
         d.category = item.getCategory();
         d.startingPrice = item.getStartingPrice();
         d.reservePrice = item.getReservePrice();
         d.status = item.getStatus() == null ? null : item.getStatus().name();
         d.imagePath = item.getImagePath();
+        d.startDate = item.getStartTime() == null ? null : item.getStartTime().toString();
+        d.endDate = item.getEndTime() == null ? null : item.getEndTime().toString();
         return d;
     }
 }

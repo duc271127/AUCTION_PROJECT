@@ -9,10 +9,13 @@ import java.util.UUID;
 public class PendingItemDto {
     public UUID id;
     public UUID sellerId;
+    public String productName;
     public String description;
     public String category;
     public double startingPrice;
     public Double reservePrice;
     public String status;
-    public String imagePath;   // optional
+    public String imagePath;    // optional
+    public String startDate;
+    public String endDate;
 }
