@@ -1,6 +1,7 @@
 package com.auction.client.dto.request;
 
 public class RegisterByEmailRequest {
+    private String username;
     private String email;
     private String password;
     private String role;
@@ -8,10 +9,19 @@ public class RegisterByEmailRequest {
     public RegisterByEmailRequest() {
     }
 
-    public RegisterByEmailRequest(String email, String password, String role) {
+    public RegisterByEmailRequest(String username, String email, String password, String role) {
+        this.username = username;
         this.email = email;
         this.password = password;
         this.role = role;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 
     public String getEmail() {

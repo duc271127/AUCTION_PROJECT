@@ -118,18 +118,18 @@ public class AuthController {
         String confirmPassword = registerConfirmPasswordField.getText().trim();
         String role = registerRoleComboBox.getValue();
 
-        if (username.isEmpty() && email.isEmpty()) {
-            showRegisterError("Username or email is required.");
+        if (username.isEmpty()) {
+            showRegisterError("Username is required.");
             return;
         }
 
-        if (!email.isEmpty() && (!email.contains("@") || !email.contains("."))) {
+        if (email.isEmpty()) {
+            showRegisterError("Email is required.");
+            return;
+        }
+
+        if (!email.contains("@") || !email.contains(".")) {
             showRegisterError("Email format is invalid.");
-            return;
-        }
-
-        if (email.isEmpty() && username.isEmpty()) {
-            showRegisterError("Please enter username or email.");
             return;
         }
 

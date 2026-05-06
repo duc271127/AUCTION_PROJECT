@@ -44,6 +44,7 @@ public class AuthApiService {
 
             if (email != null && !email.isBlank()) {
                 RegisterByEmailRequest request = new RegisterByEmailRequest(
+                        username == null ? null : username.trim(),
                         email.trim(),
                         password,
                         role
