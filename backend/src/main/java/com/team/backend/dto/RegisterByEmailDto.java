@@ -8,6 +8,9 @@ import jakarta.validation.constraints.Size;
  * Payload for register by email.
  */
 public class RegisterByEmailDto {
+    @NotBlank
+    public String username;
+
     @Email
     @NotBlank
     public String email;

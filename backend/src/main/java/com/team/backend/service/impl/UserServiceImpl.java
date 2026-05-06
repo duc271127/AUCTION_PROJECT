@@ -80,25 +80,41 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserDto registerByEmail(RegisterByEmailDto dto) {
-        if (dto == null) throw new BusinessRuleException("Register payload is required");
+        if (dto == null) {
+            throw new BusinessRuleException("Register payload is required");
+        }
+
+        String username = dto.username == null ? null : dto.username.trim();
         String email = dto.email == null ? null : dto.email.trim().toLowerCase();
         String password = dto.password;
         String role = dto.role == null ? null : dto.role.trim().toUpperCase();
 
+        if (username == null || username.isEmpty()) {
+            throw new BusinessRuleException("Username is required");
+        }
+
         if (email == null || email.isEmpty()) {
             throw new BusinessRuleException("Email is required");
         }
+
         if (password == null || password.length() < 6) {
             throw new BusinessRuleException("Password must be at least 6 characters");
         }
-        if (!( "BIDDER".equals(role) || "SELLER".equals(role) || "ADMIN".equals(role) )) {
+
+        if (!("BIDDER".equals(role) || "SELLER".equals(role) || "ADMIN".equals(role))) {
             throw new BusinessRuleException("Invalid role. Must be BIDDER, SELLER or ADMIN");
         }
+
+        if (userRepository.findByUsername(username).isPresent()) {
+            throw new BusinessRuleException("Username already exists: " + username);
+        }
+
         if (userRepository.findByEmail(email).isPresent()) {
             throw new BusinessRuleException("Email already registered: " + email);
         }
 
         User user;
+
         switch (role) {
             case "BIDDER":
                 user = new Bidder();
@@ -113,6 +129,7 @@ public class UserServiceImpl implements UserService {
                 break;
         }
 
+        user.setUsername(username);
         user.setEmail(email);
         user.setPasswordHash(passwordEncoder.encode(password));
         user.setRole(role);
@@ -120,6 +137,7 @@ public class UserServiceImpl implements UserService {
         User saved = userRepository.save(user);
         return toDto(saved);
     }
+
 
     @Override
     public UserDto authenticateByEmail(LoginByEmailDto dto) {
