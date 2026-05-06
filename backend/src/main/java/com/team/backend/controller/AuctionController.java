@@ -3,6 +3,7 @@ package com.team.backend.controller;
 import com.team.backend.dto.AuctionCreateDto;
 import com.team.backend.dto.AuctionDto;
 import com.team.backend.dto.BidRequestDto;
+import com.team.backend.entity.BidTransaction;
 import com.team.backend.entity.Auction;
 import com.team.backend.entity.User;
 import com.team.backend.exception.BusinessRuleException;
@@ -74,12 +75,32 @@ public class AuctionController {
      * Place a bid on auction.
      * Bidder is resolved from authenticated user; request must contain only amount.
      */
+    /*
     @PostMapping("/{id}/bids")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<AuctionDto> placeBid(@PathVariable UUID id,
                                                @Valid @RequestBody BidRequestDto dto) {
         UUID bidderId = resolveUserIdFromSecurity();
         bidService.placeBid(id, bidderId, dto.amount);
+        Auction updated = auctionService.getAuction(id);
+        return ResponseEntity.ok(toDto(updated));
+    }
+
+     */
+    @PostMapping("/{id}/bids")
+    public ResponseEntity<AuctionDto> placeBid(
+            @PathVariable UUID id,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @Valid @RequestBody BidRequestDto dto) {
+
+        UUID bidderId = userId != null ? userId : dto.bidderId;
+
+        if (bidderId == null) {
+            throw new BusinessRuleException("bidderId is required");
+        }
+
+        bidService.placeBid(id, bidderId, dto.amount);
+
         Auction updated = auctionService.getAuction(id);
         return ResponseEntity.ok(toDto(updated));
     }
@@ -113,6 +134,11 @@ public class AuctionController {
         // call service with single-arg signature
         auctionService.closeAuction(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/bids")
+    public ResponseEntity<List<BidTransaction>> getBidHistory(@PathVariable UUID id) {
+        return ResponseEntity.ok(bidService.getBidHistory(id));
     }
 
     // -------------------------

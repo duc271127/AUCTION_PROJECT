@@ -15,6 +15,7 @@ public class BidController {
 
     public BidController(BidService bidService) { this.bidService = bidService; }
 
+    /*
     @PostMapping
     public ResponseEntity<BidTransaction> placeBid(@PathVariable UUID auctionId,
                                                    @RequestHeader("X-User-Id") UUID userId,
@@ -22,6 +23,7 @@ public class BidController {
         BidTransaction b = bidService.placeBid(auctionId, userId, req.amount);
         return ResponseEntity.ok(b);
     }
+     */
 
     public static class PlaceBidRequest { public double amount; }
 }
