@@ -12,9 +12,10 @@ public class Auction {
     private UUID id = UUID.randomUUID();
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "item_id", nullable = false)
     private Item item;
 
-    @Column(name = "item_id", nullable = false, columnDefinition = "BINARY(16)")
+    @Column(name = "item_id", insertable = false, updatable = false, columnDefinition = "BINARY(16)")
     private UUID itemId;
 
     @Column(name = "start_time", nullable = false)
@@ -56,7 +57,10 @@ public class Auction {
     public void setId(UUID id) { this.id = id; }
 
     public Item getItem() { return item; }
-    public void setItem(Item item) { this.item = item; }
+    public void setItem(Item item) {
+        this.item = item;
+        this.itemId = item == null ? null : item.getId();
+    }
 
     public UUID getItemId() { return itemId; }
     public void setItemId(UUID itemId) { this.itemId = itemId; }

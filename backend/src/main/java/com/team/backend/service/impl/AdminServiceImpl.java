@@ -109,7 +109,7 @@ public class AdminServiceImpl implements AdminService {
         }
 
         Auction auction = new Auction();
-        auction.setItemId(itemId);
+        auction.setItem(item);
         auction.setStartTime(start == null ? Instant.now() : start);
         auction.setEndTime(end == null ? Instant.now().plusSeconds(3600) : end);
         auction.setCreatedBy(adminId);
