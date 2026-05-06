@@ -69,11 +69,4 @@ public class MockData {
         );
     }
 
-    public static ObservableList<AdminApprovalItem> getMockAdminApprovalItems() {
-        return FXCollections.observableArrayList(
-                new AdminApprovalItem("Vintage Rolex Submariner", "Seller Alpha", "Luxury Watch", "2026-04-10", "Pending"),
-                new AdminApprovalItem("Rare Pokémon Card Set", "Seller Beta", "Collectibles", "2026-04-11", "Pending"),
-                new AdminApprovalItem("Signed Football Jersey", "Seller Gamma", "Sports Memorabilia", "2026-04-12", "Pending")
-        );
-    }
 }

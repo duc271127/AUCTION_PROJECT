@@ -78,9 +78,8 @@
                             <TableView fx:id="approvalTable" VBox.vgrow="ALWAYS">
                                 <columns>
                                     <TableColumn fx:id="productNameColumn" text="Product" prefWidth="190.0"/>
-                                    <TableColumn fx:id="sellerNameColumn" text="Seller" prefWidth="150.0"/>
                                     <TableColumn fx:id="categoryColumn" text="Category" prefWidth="150.0"/>
-                                    <TableColumn fx:id="submittedDateColumn" text="Submitted" prefWidth="130.0"/>
+                                    <TableColumn fx:id="submittedDateColumn" text="Start Date" prefWidth="130.0"/>
                                     <TableColumn fx:id="statusColumn" text="Status" prefWidth="130.0"/>
                                 </columns>
                             </TableView>

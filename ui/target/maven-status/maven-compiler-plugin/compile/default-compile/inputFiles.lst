@@ -12,6 +12,7 @@ H:\PROJECTS\AUCTION_PROJECT\ui\src\main\java\com\auction\client\controller\Produ
 H:\PROJECTS\AUCTION_PROJECT\ui\src\main\java\com\auction\client\controller\LiveBiddingController.java
 H:\PROJECTS\AUCTION_PROJECT\ui\src\main\java\com\auction\client\navigation\SceneManager.java
 H:\PROJECTS\AUCTION_PROJECT\ui\src\main\java\com\auction\client\dto\request\UpdateItemRequest.java
+H:\PROJECTS\AUCTION_PROJECT\ui\src\main\java\com\auction\client\service\AdminApiService.java
 H:\PROJECTS\AUCTION_PROJECT\ui\src\main\java\com\auction\client\controller\HomeController.java
 H:\PROJECTS\AUCTION_PROJECT\ui\src\main\java\com\auction\client\dto\request\RegisterByEmailRequest.java
 H:\PROJECTS\AUCTION_PROJECT\ui\src\main\java\com\auction\client\service\AuthApiService.java
@@ -35,3 +36,4 @@ H:\PROJECTS\AUCTION_PROJECT\ui\src\main\java\com\auction\client\controller\Selle
 H:\PROJECTS\AUCTION_PROJECT\ui\src\main\java\com\auction\client\dto\response\BidResponse.java
 H:\PROJECTS\AUCTION_PROJECT\ui\src\main\java\com\auction\client\MainApp.java
 H:\PROJECTS\AUCTION_PROJECT\ui\src\main\java\com\auction\client\dto\response\AuctionListResponse.java
+H:\PROJECTS\AUCTION_PROJECT\ui\src\main\java\com\auction\client\dto\request\CreateAuctionRequest.java

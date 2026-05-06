@@ -132,7 +132,16 @@ public class ApiClient {
         }
 
         if (SessionManager.getUserId() != null) {
-            builder.header("X-Seller-Id", SessionManager.getUserId().toString());
+            String userId = SessionManager.getUserId().toString();
+
+            // Seller endpoints dùng header này
+            builder.header("X-Seller-Id", userId);
+
+            // Admin endpoints dùng header này
+            builder.header("X-Admin-Id", userId);
+
+            // Một số bid endpoints/backend test có thể dùng header này
+            builder.header("X-User-Id", userId);
         }
     }
 }
