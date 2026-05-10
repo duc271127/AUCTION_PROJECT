@@ -10,22 +10,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: auction_db
-          MYSQL_USER: testuser
-          MYSQL_PASSWORD: testpass
-        options: >-
-          --health-cmd="mysqladmin ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-        ports:
-          - 3306:3306
-
     steps:
       - uses: actions/checkout@v3
 
@@ -36,24 +20,5 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Wait for MySQL to be ready
-        run: |
-          for i in {1..30}; do
-            if nc -z localhost 3306; then
-              echo "MySQL is ready!"
-              exit 0
-            fi
-            echo "Waiting for MySQL... attempt $i"
-            sleep 2
-          done
-          echo "MySQL failed to start"
-          exit 1
-
       - name: Run Maven tests
-        run: |
-          cd backend
-          mvn clean test \
-            -Dspring.datasource.url=jdbc:mysql://localhost:3306/auction_db \
-            -Dspring.datasource.username=testuser \
-            -Dspring.datasource.password=testpass \
-            -Dspring.jpa.hibernate.ddl-auto=create-drop
+        run: cd backend && mvn clean test
