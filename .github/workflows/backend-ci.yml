@@ -21,4 +21,4 @@ jobs:
           cache: maven
 
       - name: Run Maven tests
-        run: cd backend && mvn clean test
+        run: cd backend && mvn clean test -Dsurefire.useFile=false
