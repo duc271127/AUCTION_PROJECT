@@ -18,7 +18,8 @@ public class AdminAccountInitializer implements ApplicationRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public AdminAccountInitializer(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public AdminAccountInitializer(UserRepository userRepository,
+                                   PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
@@ -26,23 +27,46 @@ public class AdminAccountInitializer implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        createAdminIfNotExists("admin1@example.com", "Admin@123", "Admin One");
-        createAdminIfNotExists("admin2@example.com", "Admin@456", "Admin Two");
+
+        createAdminIfNotExists(
+                "admin1",
+                "admin1@example.com",
+                "Admin@123",
+                "Admin One"
+        );
+
+        createAdminIfNotExists(
+                "admin2",
+                "admin2@example.com",
+                "Admin@456",
+                "Admin Two"
+        );
     }
 
-    private void createAdminIfNotExists(String email, String rawPassword, String displayName) {
+    private void createAdminIfNotExists(
+            String username,
+            String email,
+            String rawPassword,
+            String displayName
+    ) {
+
         Optional<User> existing = userRepository.findByEmail(email);
-        if (existing.isPresent()) return;
+
+        if (existing.isPresent()) {
+            return;
+        }
 
         Admin u = new Admin();
+
+        u.setUsername(username);
         u.setEmail(email);
-        // dùng setter đúng tên (passwordHash) hoặc helper
         u.setPasswordHash(passwordEncoder.encode(rawPassword));
-        u.setRole("ADMIN"); // hoặc "ROLE_ADMIN" tùy convention project
+        u.setRole("ADMIN");
         u.setDisplayName(displayName);
         u.setCreatedAt(Instant.now());
 
         userRepository.save(u);
+
         System.out.println("Created admin account: " + email);
     }
 }

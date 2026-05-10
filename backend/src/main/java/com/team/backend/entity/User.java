@@ -3,6 +3,7 @@ package com.team.backend.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
+
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
@@ -21,7 +22,6 @@ import java.util.UUID;
 public abstract class User {
 
     @Id
-    @Column(columnDefinition = "BINARY(16)")
     private UUID id;
 
     @Column(nullable = true, unique = true, length = 100)
@@ -45,20 +45,26 @@ public abstract class User {
 
     @Column(name = "display_name", length = 255)
     private String displayName;
-    
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     @Column(name = "last_login")
     private Instant lastLogin;
 
-    protected User() { }
+    protected User() {
+    }
 
     /**
      * Convenience constructor for creating a new user instance.
      * Note: passwordHash should already be encoded (BCrypt) before calling this constructor.
      */
-    public User(String username, String email, String passwordHash, String role, String displayName) {
+    public User(String username,
+                String email,
+                String passwordHash,
+                String role,
+                String displayName) {
+
         this.id = UUID.randomUUID();
         this.username = username;
         this.email = email;
@@ -70,35 +76,79 @@ public abstract class User {
 
     @PrePersist
     protected void prePersist() {
-        if (this.id == null) this.id = UUID.randomUUID();
-        if (this.createdAt == null) this.createdAt = Instant.now();
+
+        if (this.id == null) {
+            this.id = UUID.randomUUID();
+        }
+
+        if (this.createdAt == null) {
+            this.createdAt = Instant.now();
+        }
     }
 
     // -----------------------
     // Getters / Setters
     // -----------------------
-    public UUID getId() { return id; }
 
-    public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
+    public UUID getId() {
+        return id;
+    }
 
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    public String getUsername() {
+        return username;
+    }
 
-    public String getPasswordHash() { return passwordHash; }
-    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+    public void setUsername(String username) {
+        this.username = username;
+    }
 
-    public String getRole() { return role; }
-    public void setRole(String role) { this.role = role; }
+    public String getEmail() {
+        return email;
+    }
 
-    public String getDisplayName() { return displayName; }
-    public void setDisplayName(String displayName) { this.displayName = displayName; }
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public String getPasswordHash() {
+        return passwordHash;
+    }
 
-    public Instant getLastLogin() { return lastLogin; }
-    public void setLastLogin(Instant lastLogin) { this.lastLogin = lastLogin; }
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Instant getLastLogin() {
+        return lastLogin;
+    }
+
+    public void setLastLogin(Instant lastLogin) {
+        this.lastLogin = lastLogin;
+    }
 
     // -----------------------
     // Helper methods
@@ -106,35 +156,57 @@ public abstract class User {
 
     /**
      * Convenience helper to set password hash from raw password using provided encoder.
-     * Call from service layer where PasswordEncoder bean is available.
-     *
-     * Example:
-     *   user.setPasswordHashFromRaw(passwordEncoder, "MySecret123");
      */
-    public void setPasswordHashFromRaw(org.springframework.security.crypto.password.PasswordEncoder encoder, String rawPassword) {
-        if (encoder == null) throw new IllegalArgumentException("PasswordEncoder is required");
-        if (rawPassword == null) throw new IllegalArgumentException("rawPassword is required");
+    public void setPasswordHashFromRaw(
+            org.springframework.security.crypto.password.PasswordEncoder encoder,
+            String rawPassword
+    ) {
+
+        if (encoder == null) {
+            throw new IllegalArgumentException("PasswordEncoder is required");
+        }
+
+        if (rawPassword == null) {
+            throw new IllegalArgumentException("rawPassword is required");
+        }
+
         this.passwordHash = encoder.encode(rawPassword);
     }
 
     /**
      * Check raw password against stored hash.
-     * Use service layer to perform authentication normally.
      */
-    public boolean matchesPassword(org.springframework.security.crypto.password.PasswordEncoder encoder, String rawPassword) {
-        if (encoder == null) throw new IllegalArgumentException("PasswordEncoder is required");
-        if (this.passwordHash == null) return false;
+    public boolean matchesPassword(
+            org.springframework.security.crypto.password.PasswordEncoder encoder,
+            String rawPassword
+    ) {
+
+        if (encoder == null) {
+            throw new IllegalArgumentException("PasswordEncoder is required");
+        }
+
+        if (this.passwordHash == null) {
+            return false;
+        }
+
         return encoder.matches(rawPassword, this.passwordHash);
     }
 
     // -----------------------
-    // equals / hashCode (based on id)
+    // equals / hashCode
     // -----------------------
+
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof User)) return false;
-        User other = (User) o;
+
+        if (this == o) {
+            return true;
+        }
+
+        if (!(o instanceof User other)) {
+            return false;
+        }
+
         return Objects.equals(id, other.id);
     }
 
@@ -144,10 +216,12 @@ public abstract class User {
     }
 
     // -----------------------
-    // toString (avoid printing password)
+    // toString
     // -----------------------
+
     @Override
     public String toString() {
+
         return "User{" +
                 "id=" + id +
                 ", username='" + username + '\'' +

@@ -8,14 +8,13 @@ import java.util.UUID;
 @Table(name = "auctions")
 public class Auction {
     @Id
-    @Column(columnDefinition = "BINARY(16)")
     private UUID id = UUID.randomUUID();
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "item_id", nullable = false)
     private Item item;
 
-    @Column(name = "item_id", insertable = false, updatable = false, columnDefinition = "BINARY(16)")
+    @Column(name = "item_id", insertable = false, updatable = false)
     private UUID itemId;
 
     @Column(name = "start_time", nullable = false)
@@ -33,16 +32,16 @@ public class Auction {
     @Column(name = "reserve_price")
     private Double reservePrice;
 
-    @Column(columnDefinition = "BINARY(16)", nullable = true)
+    @Column( nullable = true)
     private UUID leaderId;
 
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
 
-    @Column(name = "created_by", columnDefinition = "BINARY(16)")
+    @Column(name = "created_by")
     private UUID createdBy;
 
-    @Column(columnDefinition = "BINARY(16)")
+
     private UUID winnerId;
 
     @Version

@@ -13,17 +13,30 @@ public class BidController {
 
     private final BidService bidService;
 
-    public BidController(BidService bidService) { this.bidService = bidService; }
-
-    /*
-    @PostMapping
-    public ResponseEntity<BidTransaction> placeBid(@PathVariable UUID auctionId,
-                                                   @RequestHeader("X-User-Id") UUID userId,
-                                                   @RequestBody PlaceBidRequest req) {
-        BidTransaction b = bidService.placeBid(auctionId, userId, req.amount);
-        return ResponseEntity.ok(b);
+    public BidController(BidService bidService) {
+        this.bidService = bidService;
     }
-     */
 
-    public static class PlaceBidRequest { public double amount; }
+//    @PostMapping
+//    public ResponseEntity<BidTransaction> placeBid(
+//            @PathVariable UUID auctionId,
+//            @RequestHeader("X-User-Id") UUID userId,
+//            @RequestBody PlaceBidRequest req
+//    ) {
+//
+//        BidTransaction b =
+//                bidService.placeBid(
+//                        auctionId,
+//                        userId,
+//                        req.amount
+//                );
+//
+//        return ResponseEntity.ok(b);
+//    }
+//
+//    public static class PlaceBidRequest {
+//
+//        public double amount;
+//
+//    }
 }

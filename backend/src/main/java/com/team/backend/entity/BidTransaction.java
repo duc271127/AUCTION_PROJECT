@@ -20,13 +20,12 @@ import java.util.UUID;
 public class BidTransaction {
 
     @Id
-    @Column(columnDefinition = "BINARY(16)")
     private UUID id;
 
-    @Column(name = "auction_id", columnDefinition = "BINARY(16)", nullable = false)
+    @Column(name = "auction_id", nullable = false)
     private UUID auctionId;
 
-    @Column(name = "bidder_id", columnDefinition = "BINARY(16)", nullable = false)
+    @Column(name = "bidder_id",  nullable = false)
     private UUID bidderId;
 
     @Column(nullable = false)
