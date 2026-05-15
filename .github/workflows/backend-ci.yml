@@ -1,24 +1,41 @@
 name: Backend CI - JUnit Test
 
-on:
-  push:
-    branches: [ main, develop, 'feature/**' ]
-  pull_request:
-    branches: [ main, develop ]
+on: [push, pull_request]
 
 jobs:
   test:
     runs-on: ubuntu-latest
-
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: auction_db
+          MYSQL_USER: testuser
+          MYSQL_PASSWORD: testpass
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+        ports:
+          - 3306:3306
+    
     steps:
       - uses: actions/checkout@v3
-
-      - name: Set up JDK 17
+      
+      - name: Set up JDK
         uses: actions/setup-java@v3
         with:
-          java-version: '17'
+          java-version: '17'  # adjust to your Java version
           distribution: 'temurin'
-          cache: maven
-
+      
       - name: Run Maven tests
-        run: cd backend && mvn clean test -Dsurefire.useFile=false
+        run: |
+          cd backend
+          mvn test -DskipTests=false \
+            -Dspring.datasource.url=jdbc:mysql://localhost:3306/auction_db \
+            -Dspring.datasource.username=testuser \
+            -Dspring.datasource.password=testpass \
+            -Dspring.jpa.hibernate.ddl-auto=create-drop
