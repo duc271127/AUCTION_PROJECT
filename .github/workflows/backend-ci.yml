@@ -5,7 +5,7 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     services:
       mysql:
         image: mysql:8.0
@@ -21,16 +21,16 @@ jobs:
           --health-retries=3
         ports:
           - 3306:3306
-    
+
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
           java-version: '17'  # adjust to your Java version
           distribution: 'temurin'
-      
+
       - name: Run Maven tests
         run: |
           cd backend
@@ -38,4 +38,7 @@ jobs:
             -Dspring.datasource.url=jdbc:mysql://localhost:3306/auction_db \
             -Dspring.datasource.username=testuser \
             -Dspring.datasource.password=testpass \
+            -Dspring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver \
+            -Dspring.jpa.database-platform=org.hibernate.dialect.MySQL8Dialect \
+            -Dspring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect \
             -Dspring.jpa.hibernate.ddl-auto=create-drop
