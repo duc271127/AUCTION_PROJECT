@@ -2,16 +2,7 @@ name: UI CI
 
 on:
   push:
-    branches:
-      - final
-      - feature/ui
-    paths:
-      - "ui/**"
-      - ".github/workflows/ui-ci.yml"
   pull_request:
-    paths:
-      - "ui/**"
-      - ".github/workflows/ui-ci.yml"
 
 jobs:
   build-ui:
@@ -25,6 +16,7 @@ jobs:
         run: |
           pwd
           ls -la
+          find . -maxdepth 3 -name pom.xml -print
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -34,5 +26,15 @@ jobs:
           cache: maven
 
       - name: Build UI
-        working-directory: ./ui
-        run: mvn -B clean package
+        run: |
+          if [ -f "ui/pom.xml" ]; then
+            cd ui
+          elif [ -f "AUCTION_PROJECT-feature-ui/ui/pom.xml" ]; then
+            cd AUCTION_PROJECT-feature-ui/ui
+          else
+            echo "Cannot find UI pom.xml"
+            find . -maxdepth 4 -name pom.xml -print
+            exit 1
+          fi
+
+          mvn -B clean package
