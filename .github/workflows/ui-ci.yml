@@ -1,0 +1,37 @@
+name: UI CI
+
+on:
+  push:
+    paths:
+      - "ui/**"
+      - ".github/workflows/ui-ci.yml"
+  pull_request:
+    paths:
+      - "ui/**"
+      - ".github/workflows/ui-ci.yml"
+
+jobs:
+  build-ui:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Build UI
+        run: |
+          cd ui
+          mvn -B clean package
+
+      - name: Upload UI build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: auction-ui-build
+          path: ui/target/*.jar
