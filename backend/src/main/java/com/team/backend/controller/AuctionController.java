@@ -1,8 +1,12 @@
 package com.team.backend.controller;
 
+import com.team.backend.realtime.RealtimeEventFactory;
 import com.team.backend.dto.AuctionCreateDto;
 import com.team.backend.dto.AuctionDto;
 import com.team.backend.dto.BidRequestDto;
+import com.team.backend.dto.AutoBidRequestDto;
+import com.team.backend.entity.AutoBid;
+import com.team.backend.service.AutoBidService;
 import com.team.backend.entity.BidTransaction;
 import com.team.backend.entity.Auction;
 import com.team.backend.entity.User;
@@ -17,6 +21,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import com.team.backend.realtime.RealtimeEvent;
+import com.team.backend.realtime.RealtimeEventType;
+import com.team.backend.realtime.RealtimeNotifier;
 
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -37,13 +44,19 @@ public class AuctionController {
     private final AuctionService auctionService;
     private final BidService bidService;
     private final UserService userService;
+    private final RealtimeNotifier realtimeNotifier;
+    private final AutoBidService autoBidService;
 
     public AuctionController(AuctionService auctionService,
                              BidService bidService,
-                             UserService userService) {
+                             UserService userService,
+                             RealtimeNotifier realtimeNotifier,
+                             AutoBidService autoBidService) {
         this.auctionService = auctionService;
         this.bidService = bidService;
         this.userService = userService;
+        this.realtimeNotifier = realtimeNotifier;
+        this.autoBidService = autoBidService;
     }
 
     /**
@@ -99,10 +112,48 @@ public class AuctionController {
             throw new BusinessRuleException("bidderId is required");
         }
 
+        Auction beforeBid = auctionService.getAuction(id);
+        var oldEndTime = beforeBid.getEndTime();
+
         bidService.placeBid(id, bidderId, dto.amount);
 
         Auction updated = auctionService.getAuction(id);
+
+        RealtimeEvent bidEvent = RealtimeEventFactory.bidPlaced(
+                id,
+                bidderId,
+                updated.getCurrentPrice(),
+                updated.getEndTime()
+        );
+        realtimeNotifier.broadcastToAuction(id, bidEvent);
+
+        if (oldEndTime != null && updated.getEndTime() != null
+                && updated.getEndTime().isAfter(oldEndTime)) {
+            RealtimeEvent extendedEvent = RealtimeEventFactory.auctionExtended(
+                    id,
+                    bidderId,
+                    updated.getCurrentPrice(),
+                    updated.getEndTime()
+            );
+            realtimeNotifier.broadcastToAuction(id, extendedEvent);
+        }
+
         return ResponseEntity.ok(toDto(updated));
+    }
+    @PostMapping("/{id}/auto-bid")
+    public ResponseEntity<AutoBid> setAutoBid(
+            @PathVariable UUID id,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @Valid @RequestBody AutoBidRequestDto dto) {
+
+        UUID bidderId = userId != null ? userId : dto.bidderId;
+
+        if (bidderId == null) {
+            throw new BusinessRuleException("bidderId is required");
+        }
+
+        AutoBid autoBid = autoBidService.setAutoBid(id, bidderId, dto.maxAmount);
+        return ResponseEntity.ok(autoBid);
     }
 
     /**

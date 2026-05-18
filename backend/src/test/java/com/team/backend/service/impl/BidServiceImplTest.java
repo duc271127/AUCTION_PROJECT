@@ -1,5 +1,12 @@
 package com.team.backend.service.impl;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
 import com.team.backend.entity.Auction;
 import com.team.backend.entity.AuctionState;
 import com.team.backend.entity.BidTransaction;
@@ -20,6 +27,8 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.team.backend.repository.AutoBidRepository;
+
 /**
  * Unit tests for BidServiceImpl (basic scenarios).
  */
@@ -29,17 +38,24 @@ class BidServiceImplTest {
     private AuctionRepository auctionRepository;
     private BidRepository bidRepository;
     private BidServiceImpl bidService;
+    private AutoBidRepository autoBidRepository;
+
 
     @BeforeEach
     void setUp() {
-        // tạo mock repositories
         auctionRepository = mock(AuctionRepository.class);
         bidRepository = mock(BidRepository.class);
+        autoBidRepository = mock(AutoBidRepository.class);
 
-        // khởi tạo service với 4 tham số: auctionRepo, bidRepo, minIncrement, maxRetries
         double minIncrement = 1.0;
-        int maxRetries = 3;
-        bidService = new BidServiceImpl(auctionRepository, bidRepository, minIncrement, maxRetries);
+        bidService = new BidServiceImpl(
+                auctionRepository,
+                bidRepository,
+                autoBidRepository,
+                minIncrement,
+                30,
+                60
+        );
     }
 
     @Test
@@ -94,4 +110,93 @@ class BidServiceImplTest {
         assertThrows(ResourceNotFoundException.class, () -> bidService.placeBid(auctionId, bidderId, 50.0));
         verify(bidRepository, never()).save(any());
     }
+    @Test
+    void placeBid_concurrentBids_highestBidWins() throws Exception {
+        UUID auctionId = UUID.randomUUID();
+
+        Auction auction = new Auction();
+        auction.setId(auctionId);
+        auction.setStartTime(Instant.now().minusSeconds(10));
+        auction.setEndTime(Instant.now().plusSeconds(60));
+        auction.setState(AuctionState.ACTIVE);
+        auction.setCurrentPrice(10.0);
+
+        Object auctionMonitor = new Object();
+
+        when(auctionRepository.findByIdForUpdate(auctionId)).thenAnswer(invocation -> {
+            synchronized (auctionMonitor) {
+                return Optional.of(auction);
+            }
+        });
+
+        when(auctionRepository.save(any(Auction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        when(bidRepository.save(any(BidTransaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        int threadCount = 3;
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch ready = new CountDownLatch(threadCount);
+        CountDownLatch start = new CountDownLatch(1);
+
+        List<Exception> errors = new ArrayList<>();
+
+        double[] bids = {11.0, 12.0, 13.0};
+
+        for (double bidAmount : bids) {
+            executor.submit(() -> {
+                ready.countDown();
+                start.await();
+
+                try {
+                    bidService.placeBid(auctionId, UUID.randomUUID(), bidAmount);
+                } catch (Exception e) {
+                    synchronized (errors) {
+                        errors.add(e);
+                    }
+                }
+
+                return null;
+            });
+        }
+
+        ready.await(3, TimeUnit.SECONDS);
+        start.countDown();
+
+        executor.shutdown();
+        boolean finished = executor.awaitTermination(5, TimeUnit.SECONDS);
+
+        assertTrue(finished);
+        assertEquals(13.0, auction.getCurrentPrice());
+        assertNotNull(auction.getLeaderId());
+        assertTrue(errors.size() <= 2);
+        verify(bidRepository, atLeastOnce()).save(any(BidTransaction.class));
+    }
+    @Test
+    void placeBid_nearEndTime_extendsAuction() {
+        UUID auctionId = UUID.randomUUID();
+        UUID bidderId = UUID.randomUUID();
+
+        Instant originalEndTime = Instant.now().plusSeconds(10);
+
+        Auction auction = new Auction();
+        auction.setId(auctionId);
+        auction.setStartTime(Instant.now().minusSeconds(10));
+        auction.setEndTime(originalEndTime);
+        auction.setState(AuctionState.ACTIVE);
+        auction.setCurrentPrice(10.0);
+
+        when(auctionRepository.findByIdForUpdate(auctionId)).thenReturn(Optional.of(auction));
+        when(auctionRepository.save(any(Auction.class))).thenAnswer(i -> i.getArgument(0));
+        when(bidRepository.save(any(BidTransaction.class))).thenAnswer(i -> i.getArgument(0));
+
+        bidService.placeBid(auctionId, bidderId, 12.0);
+
+        assertTrue(auction.getEndTime().isAfter(originalEndTime));
+        assertEquals(12.0, auction.getCurrentPrice());
+        assertEquals(bidderId, auction.getLeaderId());
+    }
+
+
 }
+
+
