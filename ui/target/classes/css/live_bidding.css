@@ -87,3 +87,14 @@
     -fx-text-fill: #64748b;
     -fx-font-size: 12px;
 }
+.auto-bid-box {
+    -fx-background-color: #eef2ff;
+    -fx-background-radius: 14;
+    -fx-padding: 14;
+}
+
+.auto-bid-status {
+    -fx-text-fill: #334155;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
