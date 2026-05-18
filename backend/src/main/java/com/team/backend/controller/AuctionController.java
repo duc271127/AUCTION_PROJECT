@@ -1,5 +1,6 @@
 package com.team.backend.controller;
 
+import com.team.backend.realtime.RealtimeEventFactory;
 import com.team.backend.dto.AuctionCreateDto;
 import com.team.backend.dto.AuctionDto;
 import com.team.backend.dto.BidRequestDto;
@@ -17,6 +18,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import com.team.backend.realtime.RealtimeEvent;
+import com.team.backend.realtime.RealtimeEventType;
+import com.team.backend.realtime.RealtimeNotifier;
 
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -37,13 +41,15 @@ public class AuctionController {
     private final AuctionService auctionService;
     private final BidService bidService;
     private final UserService userService;
+    private final RealtimeNotifier realtimeNotifier;
 
     public AuctionController(AuctionService auctionService,
                              BidService bidService,
-                             UserService userService) {
+                             UserService userService,RealtimeNotifier realtimeNotifier) {
         this.auctionService = auctionService;
         this.bidService = bidService;
         this.userService = userService;
+        this.realtimeNotifier =realtimeNotifier;
     }
 
     /**
@@ -102,6 +108,14 @@ public class AuctionController {
         bidService.placeBid(id, bidderId, dto.amount);
 
         Auction updated = auctionService.getAuction(id);
+        RealtimeEvent event = RealtimeEventFactory.bidPlaced(
+                id,
+                bidderId,
+                updated.getCurrentPrice(),
+                updated.getEndTime()
+        );
+
+        realtimeNotifier.broadcastToAuction(id, event);
         return ResponseEntity.ok(toDto(updated));
     }
 

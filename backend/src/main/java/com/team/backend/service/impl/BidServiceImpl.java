@@ -37,16 +37,13 @@ public class BidServiceImpl implements BidService {
     private final ConcurrentHashMap<UUID, ReentrantLock> lockMap = new ConcurrentHashMap<>();
 
     private final double minIncrement;
-    private final int maxRetries;
 
     public BidServiceImpl(AuctionRepository auctionRepository,
                           BidRepository bidRepository,
-                          @Value("${auction.bid.min-increment:1.0}") double minIncrement,
-                          @Value("${auction.bid.lock-retries:3}") int maxRetries) {
+                          @Value("${auction.bid.min-increment:1.0}") double minIncrement) {
         this.auctionRepository = auctionRepository;
         this.bidRepository = bidRepository;
         this.minIncrement = minIncrement;
-        this.maxRetries = Math.max(1, maxRetries);
     }
 
     private ReentrantLock getLock(UUID auctionId) {
@@ -59,52 +56,39 @@ public class BidServiceImpl implements BidService {
         if (auctionId == null || bidderId == null) {
             throw new InvalidBidException("auctionId và bidderId là bắt buộc");
         }
+
         if (amount <= 0) {
             throw new InvalidBidException("Số tiền đặt phải lớn hơn 0");
         }
 
-        for (int attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                Auction auction = tryLoadAuctionForUpdate(auctionId);
+        ReentrantLock lock = getLock(auctionId);
+        lock.lock();
 
-                validateAuctionForBid(auction);
+        try {
+            Auction auction = auctionRepository.findByIdForUpdate(auctionId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));
 
-                double minAllowed = auction.getCurrentPrice() + minIncrement;
-                if (amount < minAllowed) {
-                    throw new InvalidBidException("Giá đặt phải lớn hơn hoặc bằng " + minAllowed);
-                }
+            validateAuctionForBid(auction);
 
-                auction.setCurrentPrice(amount);
-                auction.setLeaderId(bidderId);
-                auctionRepository.save(auction);
-
-                BidTransaction tx = new BidTransaction(auctionId, bidderId, amount, Instant.now());
-                BidTransaction saved = bidRepository.save(tx);
-
-                log.debug("Đặt giá thành công (DB lock): auction={}, bidder={}, amount={}, attempt={}",
-                        auctionId, bidderId, amount, attempt);
-                return saved;
-
-            } catch (ObjectOptimisticLockingFailureException | PessimisticLockingFailureException lockEx) {
-                log.warn("Xung đột khóa khi đặt giá (attempt {}): {}", attempt, lockEx.getMessage());
-                if (attempt >= maxRetries) {
-                    throw new InvalidBidException("Không thể đặt giá do xung đột đồng thời, vui lòng thử lại");
-                }
-                try {
-                    Thread.sleep(50L * attempt);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new InvalidBidException("Đặt giá bị gián đoạn");
-                }
-            } catch (ResourceNotFoundException | InvalidBidException | AuctionClosedException ex) {
-                throw ex;
-            } catch (RuntimeException ex) {
-                log.debug("Lỗi khi dùng DB lock, fallback sang in-memory lock: {}", ex.getMessage());
-                return placeBidWithInMemoryLock(auctionId, bidderId, amount);
+            double minAllowed = auction.getCurrentPrice() + minIncrement;
+            if (amount < minAllowed) {
+                throw new InvalidBidException("Giá đặt phải lớn hơn hoặc bằng " + minAllowed);
             }
-        }
 
-        throw new InvalidBidException("Không thể đặt giá, vui lòng thử lại sau");
+            auction.setCurrentPrice(amount);
+            auction.setLeaderId(bidderId);
+            auctionRepository.save(auction);
+
+            BidTransaction tx = new BidTransaction(auctionId, bidderId, amount, Instant.now());
+            BidTransaction saved = bidRepository.save(tx);
+
+            log.debug("Đặt giá thành công: auction={}, bidder={}, amount={}",
+                    auctionId, bidderId, amount);
+
+            return saved;
+        } finally {
+            lock.unlock();
+        }
     }
 
     private Auction tryLoadAuctionForUpdate(UUID auctionId) {

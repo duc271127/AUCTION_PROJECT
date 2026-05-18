@@ -13,8 +13,8 @@ public class BidRequest {
     public UUID getBidderId() {
         return bidderId;
     }
-    public void setBid(UUID bid) {
-        this.bidderId = bid;
+    public void setBidderId(UUID bidderId) {
+        this.bidderId = bidderId;
     }
     public double getAmount() {
         return amount;

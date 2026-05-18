@@ -1,49 +1,56 @@
 package com.team.backend.realtime;
 
-import com.team.backend.concurrent.AuctionState;
-import org.springframework.stereotype.Component;
+import java.time.Instant;
+import java.util.UUID;
 
-import java.time.LocalDateTime;
+public final class RealtimeEventFactory {
 
-@Component
-public class RealtimeEventFactory {
+    private RealtimeEventFactory() {
+    }
 
-    public RealtimeEvent buildBidPlacedEvent(AuctionState auction) {
-        return new RealtimeEvent(
+    public static RealtimeEvent bidPlaced(UUID auctionId,
+                                          UUID bidderId,
+                                          double currentPrice,
+                                          Instant endTime) {
+        RealtimeEvent event = new RealtimeEvent(
                 RealtimeEventType.BID_PLACED,
-                auction.getAuctionId(),
-                auction.getCurrentPrice(),
-                auction.getCurrentLeader(),
-                auction.getWinner(),
-                auction.getStatus(),
-                "New bid accepted",
-                LocalDateTime.now()
+                auctionId,
+                bidderId,
+                currentPrice,
+                endTime
         );
+        event.setMessage("Bid placed successfully");
+        return event;
     }
 
-    public RealtimeEvent buildLeaderChangedEvent(AuctionState auction) {
-        return new RealtimeEvent(
-                RealtimeEventType.LEADER_CHANGED,
-                auction.getAuctionId(),
-                auction.getCurrentPrice(),
-                auction.getCurrentLeader(),
-                auction.getWinner(),
-                auction.getStatus(),
-                "Leader changed",
-                LocalDateTime.now()
+    public static RealtimeEvent auctionClosed(UUID auctionId,
+                                              UUID winnerId,
+                                              double finalPrice,
+                                              Instant endTime) {
+        RealtimeEvent event = new RealtimeEvent(
+                RealtimeEventType.AUCTION_CLOSED,
+                auctionId,
+                winnerId,
+                finalPrice,
+                endTime
         );
+        event.setWinner(winnerId == null ? null : winnerId.toString());
+        event.setMessage("Auction closed");
+        return event;
     }
 
-    public RealtimeEvent buildAuctionFinishedEvent(AuctionState auction) {
-        return new RealtimeEvent(
-                RealtimeEventType.AUCTION_FINISHED,
-                auction.getAuctionId(),
-                auction.getCurrentPrice(),
-                auction.getCurrentLeader(),
-                auction.getWinner(),
-                auction.getStatus(),
-                "Auction finished",
-                LocalDateTime.now()
+    public static RealtimeEvent auctionExtended(UUID auctionId,
+                                                UUID bidderId,
+                                                double currentPrice,
+                                                Instant newEndTime) {
+        RealtimeEvent event = new RealtimeEvent(
+                RealtimeEventType.AUCTION_EXTENDED,
+                auctionId,
+                bidderId,
+                currentPrice,
+                newEndTime
         );
+        event.setMessage("Auction extended");
+        return event;
     }
 }

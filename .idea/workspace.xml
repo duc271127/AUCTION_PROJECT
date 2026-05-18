@@ -4,11 +4,32 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f291a5c5-fe55-44cf-ba77-e29086ac143f" name="Changes" comment="" />
+    <list default="true" id="f291a5c5-fe55-44cf-ba77-e29086ac143f" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/bidding/BidProcessingResult.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/bidding/BidRequest.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/concurrent/AuctionLockManager.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/concurrent/AuctionRegistry.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/concurrent/AuctionState.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/concurrent/BidLockPrototype.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/concurrent/BidRecord.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/concurrent/ConcurrentBidProcessor.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/controller/AuctionController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/controller/AuctionController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/realtime/RealtimeEvent.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/realtime/RealtimeEvent.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/realtime/RealtimeEventFactory.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/realtime/RealtimeEventFactory.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/realtime/RealtimeEventType.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/realtime/RealtimeEventType.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/realtime/RealtimeNotifier.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/realtime/RealtimeNotifier.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/service/impl/BidServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/service/impl/BidServiceImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/test/java/com/team/backend/service/impl/BidServiceImplTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/test/java/com/team/backend/service/impl/BidServiceImplTest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/src/main/java/com/auction/client/dto/request/BidRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/ui/src/main/java/com/auction/client/dto/request/BidRequest.java" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="EmbeddingIndexingInfo">
+    <option name="cachedIndexableFilesCount" value="152" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -31,9 +52,9 @@
     <commands />
     <urls />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 6
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 6
+}</component>
   <component name="ProjectId" id="3C4L5MhXQYbwbuk9wAsyCmnUEE9" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -44,7 +65,7 @@
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.MCP Project settings loaded": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "feature/hardcore",
+    "git-widget-placeholder": "final-hardcore",
     "ignore.virus.scanning.warn.message": "true",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "E:/HOC UET/BAI_TAP_LON_LTNC/AUCTION_PROJECT"
@@ -66,5 +87,16 @@
       <updated>1775639716524</updated>
     </task>
     <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
 </project>

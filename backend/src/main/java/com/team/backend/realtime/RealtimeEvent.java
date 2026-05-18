@@ -1,37 +1,37 @@
 package com.team.backend.realtime;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.util.UUID;
 
 public class RealtimeEvent {
 
     private RealtimeEventType eventType;
-    private Long auctionId;
+    private UUID auctionId;
+    private UUID bidderId;
     private Double currentPrice;
     private String currentLeader;
     private String winner;
     private String status;
     private String message;
-    private LocalDateTime timestamp;
+    private Instant endTime;
+    private Instant timestamp;
 
     public RealtimeEvent() {
     }
 
     public RealtimeEvent(RealtimeEventType eventType,
-                         Long auctionId,
+                         UUID auctionId,
+                         UUID bidderId,
                          Double currentPrice,
-                         String currentLeader,
-                         String winner,
-                         String status,
-                         String message,
-                         LocalDateTime timestamp) {
+                         Instant endTime) {
         this.eventType = eventType;
         this.auctionId = auctionId;
+        this.bidderId = bidderId;
         this.currentPrice = currentPrice;
-        this.currentLeader = currentLeader;
-        this.winner = winner;
-        this.status = status;
-        this.message = message;
-        this.timestamp = timestamp;
+        this.endTime = endTime;
+        this.timestamp = Instant.now();
+        this.status = eventType == null ? null : eventType.name();
+        this.message = "Bid placed successfully";
     }
 
     public RealtimeEventType getEventType() {
@@ -42,12 +42,20 @@ public class RealtimeEvent {
         this.eventType = eventType;
     }
 
-    public Long getAuctionId() {
+    public UUID getAuctionId() {
         return auctionId;
     }
 
-    public void setAuctionId(Long auctionId) {
+    public void setAuctionId(UUID auctionId) {
         this.auctionId = auctionId;
+    }
+
+    public UUID getBidderId() {
+        return bidderId;
+    }
+
+    public void setBidderId(UUID bidderId) {
+        this.bidderId = bidderId;
     }
 
     public Double getCurrentPrice() {
@@ -90,11 +98,19 @@ public class RealtimeEvent {
         this.message = message;
     }
 
-    public LocalDateTime getTimestamp() {
+    public Instant getEndTime() {
+        return endTime;
+    }
+
+    public void setEndTime(Instant endTime) {
+        this.endTime = endTime;
+    }
+
+    public Instant getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(LocalDateTime timestamp) {
+    public void setTimestamp(Instant timestamp) {
         this.timestamp = timestamp;
     }
 }
