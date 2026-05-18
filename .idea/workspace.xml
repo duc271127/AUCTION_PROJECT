@@ -5,23 +5,15 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f291a5c5-fe55-44cf-ba77-e29086ac143f" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/dto/AutoBidRequestDto.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/entity/AutoBid.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/repository/AutoBidRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/service/AutoBidService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/service/impl/AutoBidServiceImpl.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/bidding/BidProcessingResult.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/bidding/BidRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/concurrent/AuctionLockManager.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/concurrent/AuctionRegistry.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/concurrent/AuctionState.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/concurrent/BidLockPrototype.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/concurrent/BidRecord.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/concurrent/ConcurrentBidProcessor.java" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/controller/AuctionController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/controller/AuctionController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/realtime/RealtimeEvent.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/realtime/RealtimeEvent.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/realtime/RealtimeEventFactory.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/realtime/RealtimeEventFactory.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/realtime/RealtimeEventType.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/realtime/RealtimeEventType.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/realtime/RealtimeNotifier.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/realtime/RealtimeNotifier.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/service/impl/BidServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/team/backend/service/impl/BidServiceImpl.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/src/test/java/com/team/backend/service/impl/BidServiceImplTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/test/java/com/team/backend/service/impl/BidServiceImplTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ui/src/main/java/com/auction/client/dto/request/BidRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/ui/src/main/java/com/auction/client/dto/request/BidRequest.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -34,6 +26,7 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
+        <option value="Interface" />
         <option value="Class" />
       </list>
     </option>

@@ -23,6 +23,13 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
+// auto-bid
+import com.team.backend.entity.AutoBid;
+import com.team.backend.repository.AutoBidRepository;
+
+// anti- sniping
+import java.time.Duration;
+
 /**
  * BidServiceImpl - phiên bản dùng double cho tiền
  */
@@ -30,20 +37,26 @@ import java.util.concurrent.locks.ReentrantLock;
 public class BidServiceImpl implements BidService {
 
     private static final Logger log = LoggerFactory.getLogger(BidServiceImpl.class);
-
     private final AuctionRepository auctionRepository;
     private final BidRepository bidRepository;
-
     private final ConcurrentHashMap<UUID, ReentrantLock> lockMap = new ConcurrentHashMap<>();
-
     private final double minIncrement;
+    private final AutoBidRepository autoBidRepository;
+    private final long antiSnipingThresholdSeconds;
+    private final long antiSnipingExtendSeconds;
 
     public BidServiceImpl(AuctionRepository auctionRepository,
                           BidRepository bidRepository,
-                          @Value("${auction.bid.min-increment:1.0}") double minIncrement) {
+                          AutoBidRepository autoBidRepository,
+                          @Value("${auction.bid.min-increment:1.0}") double minIncrement,
+                          @Value("${auction.anti-sniping.threshold-seconds:30}") long antiSnipingThresholdSeconds,
+                          @Value("${auction.anti-sniping.extend-seconds:60}") long antiSnipingExtendSeconds) {
         this.auctionRepository = auctionRepository;
         this.bidRepository = bidRepository;
+        this.autoBidRepository = autoBidRepository;
         this.minIncrement = minIncrement;
+        this.antiSnipingThresholdSeconds = antiSnipingThresholdSeconds;
+        this.antiSnipingExtendSeconds = antiSnipingExtendSeconds;
     }
 
     private ReentrantLock getLock(UUID auctionId) {
@@ -75,6 +88,8 @@ public class BidServiceImpl implements BidService {
                 throw new InvalidBidException("Giá đặt phải lớn hơn hoặc bằng " + minAllowed);
             }
 
+            extendAuctionIfNeeded(auction);
+
             auction.setCurrentPrice(amount);
             auction.setLeaderId(bidderId);
             auctionRepository.save(auction);
@@ -82,12 +97,77 @@ public class BidServiceImpl implements BidService {
             BidTransaction tx = new BidTransaction(auctionId, bidderId, amount, Instant.now());
             BidTransaction saved = bidRepository.save(tx);
 
+            applyAutoBidIfNeeded(auction, bidderId);
+
             log.debug("Đặt giá thành công: auction={}, bidder={}, amount={}",
                     auctionId, bidderId, amount);
 
             return saved;
         } finally {
             lock.unlock();
+        }
+    }
+    //auto-bid
+    private void applyAutoBidIfNeeded(Auction auction, UUID triggeringBidderId) {
+        List<AutoBid> autoBids = autoBidRepository
+                .findByAuctionIdAndActiveTrueOrderByMaxAmountDescCreatedAtAsc(auction.getId());
+
+        AutoBid best = null;
+        double secondBestLimit = auction.getCurrentPrice();
+
+        for (AutoBid autoBid : autoBids) {
+            if (autoBid.getBidderId().equals(triggeringBidderId)) {
+                continue;
+            }
+
+            if (autoBid.getMaxAmount() < auction.getCurrentPrice() + minIncrement) {
+                continue;
+            }
+
+            if (best == null) {
+                best = autoBid;
+            } else {
+                secondBestLimit = Math.max(secondBestLimit, autoBid.getMaxAmount());
+                break;
+            }
+        }
+
+        if (best == null) {
+            return;
+        }
+
+        double autoAmount = Math.min(best.getMaxAmount(), secondBestLimit + minIncrement);
+
+        if (autoAmount <= auction.getCurrentPrice()) {
+            return;
+        }
+
+        auction.setCurrentPrice(autoAmount);
+        auction.setLeaderId(best.getBidderId());
+        auctionRepository.save(auction);
+
+        BidTransaction autoTx = new BidTransaction(
+                auction.getId(),
+                best.getBidderId(),
+                autoAmount,
+                Instant.now()
+        );
+
+        bidRepository.save(autoTx);
+    }
+
+    // anti-sniping
+    private void extendAuctionIfNeeded(Auction auction) {
+        Instant now = Instant.now();
+
+        if (auction.getEndTime() == null || !auction.getEndTime().isAfter(now)) {
+            return;
+        }
+
+        long secondsLeft = Duration.between(now, auction.getEndTime()).getSeconds();
+
+        if (secondsLeft <= antiSnipingThresholdSeconds) {
+            auction.setEndTime(auction.getEndTime().plusSeconds(antiSnipingExtendSeconds));
         }
     }
 

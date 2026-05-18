@@ -27,6 +27,8 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.team.backend.repository.AutoBidRepository;
+
 /**
  * Unit tests for BidServiceImpl (basic scenarios).
  */
@@ -36,17 +38,24 @@ class BidServiceImplTest {
     private AuctionRepository auctionRepository;
     private BidRepository bidRepository;
     private BidServiceImpl bidService;
+    private AutoBidRepository autoBidRepository;
+
 
     @BeforeEach
     void setUp() {
-        // tạo mock repositories
         auctionRepository = mock(AuctionRepository.class);
         bidRepository = mock(BidRepository.class);
+        autoBidRepository = mock(AutoBidRepository.class);
 
-        // khởi tạo service với 4 tham số: auctionRepo, bidRepo, minIncrement, maxRetries
         double minIncrement = 1.0;
-        int maxRetries = 3;
-        bidService = new BidServiceImpl(auctionRepository, bidRepository, minIncrement);
+        bidService = new BidServiceImpl(
+                auctionRepository,
+                bidRepository,
+                autoBidRepository,
+                minIncrement,
+                30,
+                60
+        );
     }
 
     @Test
@@ -162,5 +171,32 @@ class BidServiceImplTest {
         assertTrue(errors.size() <= 2);
         verify(bidRepository, atLeastOnce()).save(any(BidTransaction.class));
     }
+    @Test
+    void placeBid_nearEndTime_extendsAuction() {
+        UUID auctionId = UUID.randomUUID();
+        UUID bidderId = UUID.randomUUID();
+
+        Instant originalEndTime = Instant.now().plusSeconds(10);
+
+        Auction auction = new Auction();
+        auction.setId(auctionId);
+        auction.setStartTime(Instant.now().minusSeconds(10));
+        auction.setEndTime(originalEndTime);
+        auction.setState(AuctionState.ACTIVE);
+        auction.setCurrentPrice(10.0);
+
+        when(auctionRepository.findByIdForUpdate(auctionId)).thenReturn(Optional.of(auction));
+        when(auctionRepository.save(any(Auction.class))).thenAnswer(i -> i.getArgument(0));
+        when(bidRepository.save(any(BidTransaction.class))).thenAnswer(i -> i.getArgument(0));
+
+        bidService.placeBid(auctionId, bidderId, 12.0);
+
+        assertTrue(auction.getEndTime().isAfter(originalEndTime));
+        assertEquals(12.0, auction.getCurrentPrice());
+        assertEquals(bidderId, auction.getLeaderId());
+    }
+
+
 }
+
 
