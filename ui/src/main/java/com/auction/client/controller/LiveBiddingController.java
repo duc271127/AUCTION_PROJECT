@@ -10,6 +10,8 @@ import com.auction.client.session.SessionManager;
 import com.auction.client.util.MockData;
 import com.auction.client.service.RealtimeAuctionService;
 import com.auction.client.dto.event.AuctionEventDto;
+import com.auction.client.dto.request.AutoBidRequest;
+import com.auction.client.dto.response.BidResponse;
 
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -22,6 +24,9 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Button;
 import javafx.scene.control.ListCell;
 import javafx.scene.layout.VBox;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.XYChart;
+
 import javafx.util.Duration;
 import javafx.application.Platform;
 import javafx.animation.ScaleTransition;
@@ -35,6 +40,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.List;
 
 public class LiveBiddingController {
 
@@ -45,13 +51,20 @@ public class LiveBiddingController {
     @FXML private Label countdownLabel;
     @FXML private Label outbidAlertLabel;
     @FXML private Button placeBidButton;
+    @FXML private Button autoBidButton;
 
     @FXML private TextField bidInputField;
+    @FXML private TextField autoBidMaxInput;
+
+    @FXML private Label autoBidStatusLabel;
+
     @FXML private ListView<BidRecord> bidHistoryListView;
+    @FXML private LineChart<Number, Number> bidChart;
 
     private final AuctionApiService auctionApiService = new AuctionApiService();
     private final RealtimeAuctionService realtimeAuctionService = new RealtimeAuctionService();
     private final ObservableList<BidRecord> bidHistory = FXCollections.observableArrayList();
+    private final XYChart.Series<Number, Number> bidChartSeries = new XYChart.Series<>();
 
     private AuctionItem selectedItem;
     private AuctionListResponse currentAuction;
@@ -60,6 +73,7 @@ public class LiveBiddingController {
     private boolean isLoadingAuction = false;
     private Long realtimeRemainingSeconds;
     private final Set<String> handledEventIds = new HashSet<>();
+
 
     @FXML
     public void initialize() {
@@ -75,6 +89,7 @@ public class LiveBiddingController {
 
         // setup realtime service
         setupRealtimeService();
+        setupBidChart();
 
         if (selectedItem == null
                 || selectedItem.getId() == null
@@ -87,9 +102,9 @@ public class LiveBiddingController {
 
         // load auction lần đầu
         loadAuctionDetail(true);
+        loadBidHistory();
 
-        // TẮT WEBSOCKET TẠM THỜI
-        // realtimeAuctionService.connect(selectedItem.getId());
+        realtimeAuctionService.connect(selectedItem.getId());
 
         // polling refresh mỗi 5 giây
         startPollingRefresh();
@@ -217,7 +232,7 @@ public class LiveBiddingController {
             case "BID_PLACED" -> handleBidPlacedEvent(event);
             case "LEADER_CHANGED" -> handleLeaderChangedEvent(event);
             case "AUCTION_EXTENDED" -> handleAuctionExtendedEvent(event);
-            case "AUCTION_FINISHED" -> handleAuctionFinishedEvent(event);
+            case "AUCTION_CLOSED" -> handleAuctionFinishedEvent(event);
             case "ERROR" -> showError(
                     event.getMessage() == null ? "Realtime error." : event.getMessage()
             );
@@ -382,6 +397,61 @@ public class LiveBiddingController {
         });
     }
 
+    private void setupBidChart() {
+        if (bidChart == null) {
+            return;
+        }
+
+        bidChart.setLegendVisible(false);
+        bidChart.setAnimated(false);
+        bidChart.getData().clear();
+        bidChart.getData().add(bidChartSeries);
+    }
+
+    private void loadBidHistory() {
+        if (selectedItem == null || selectedItem.getId() == null) {
+            return;
+        }
+
+        CompletableFuture
+                .supplyAsync(() -> auctionApiService.getBidHistory(selectedItem.getId()))
+                .thenAccept(this::applyBidHistory)
+                .exceptionally(error -> null);
+    }
+
+    private void applyBidHistory(List<BidResponse> history) {
+        runOnUiThread(() -> {
+            bidHistory.clear();
+            bidChartSeries.getData().clear();
+
+            if (history == null || history.isEmpty()) {
+                return;
+            }
+
+            int chartIndex = 1;
+
+            for (BidResponse bid : history) {
+                String bidder = bid.getBidderId() == null
+                        ? "Bidder"
+                        : shortId(bid.getBidderId());
+
+                String time = bid.getCreatedAt() == null
+                        ? ""
+                        : formatHistoryTime(bid.getCreatedAt());
+
+                bidHistory.add(0, new BidRecord(
+                        bidder,
+                        formatMoney(bid.getAmount()),
+                        time
+                ));
+
+                bidChartSeries.getData().add(
+                        new XYChart.Data<>(chartIndex++, bid.getAmount())
+                );
+            }
+        });
+    }
+
     @FXML
     private void handleAdd500() {
         increaseBidBy(500);
@@ -465,6 +535,58 @@ public class LiveBiddingController {
         }
     }
 
+    @FXML
+    private void handleEnableAutoBid() {
+        clearAlert();
+
+        if (selectedItem == null || selectedItem.getId() == null) {
+            showError("No auction selected.");
+            return;
+        }
+
+        if (SessionManager.getUserId() == null) {
+            showError("Please login again before enabling auto-bid.");
+            return;
+        }
+
+        String input = autoBidMaxInput.getText().trim();
+
+        if (input.isEmpty()) {
+            showError("Please enter your auto-bid max amount.");
+            return;
+        }
+
+        double maxAmount;
+
+        try {
+            maxAmount = Double.parseDouble(input.replaceAll("[^0-9.]", ""));
+        } catch (NumberFormatException e) {
+            showError("Auto-bid max amount must be a valid number.");
+            return;
+        }
+
+        if (currentAuction != null && maxAmount <= currentAuction.getCurrentPrice()) {
+            showError("Auto-bid max must be higher than current price.");
+            return;
+        }
+
+        try {
+            auctionApiService.setAutoBid(
+                    selectedItem.getId(),
+                    new AutoBidRequest(SessionManager.getUserId(), maxAmount)
+            );
+
+            if (autoBidStatusLabel != null) {
+                autoBidStatusLabel.setText("Auto-bid enabled up to " + formatMoney(maxAmount));
+            }
+
+            showSuccess("Auto-bid enabled.");
+
+        } catch (Exception e) {
+            showError(extractFriendlyMessage(e.getMessage()));
+        }
+    }
+
     private void startPollingRefresh() {
         refreshTimeline = new Timeline(
                 new KeyFrame(Duration.seconds(5), event -> loadAuctionDetail(false))
@@ -494,6 +616,28 @@ public class LiveBiddingController {
                 .format(Instant.now());
     }
 
+    private String shortId(String id) {
+        if (id == null || id.isBlank()) {
+            return "Unknown";
+        }
+
+        return id.length() > 8 ? id.substring(0, 8) + "..." : id;
+    }
+
+    private String formatHistoryTime(String rawTime) {
+        if (rawTime == null || rawTime.isBlank()) {
+            return "";
+        }
+
+        try {
+            return DateTimeFormatter.ofPattern("HH:mm:ss")
+                    .withZone(ZoneId.systemDefault())
+                    .format(Instant.parse(rawTime));
+        } catch (Exception e) {
+            return rawTime;
+        }
+    }
+
     private void addBidHistory(String bidderName, double amount) {
         bidHistory.add(0, new BidRecord(
                 bidderName,
@@ -503,6 +647,21 @@ public class LiveBiddingController {
 
         if (bidHistory.size() > 50) {
             bidHistory.remove(50, bidHistory.size());
+        }
+
+        appendBidChartPoint(amount);
+    }
+
+    private void appendBidChartPoint(double amount) {
+        if (bidChartSeries == null) {
+            return;
+        }
+
+        int nextIndex = bidChartSeries.getData().size() + 1;
+        bidChartSeries.getData().add(new XYChart.Data<>(nextIndex, amount));
+
+        if (bidChartSeries.getData().size() > 50) {
+            bidChartSeries.getData().remove(0);
         }
     }
 
@@ -606,8 +765,7 @@ public class LiveBiddingController {
             countdownTimeline.stop();
         }
 
-        // TẮT WEBSOCKET
-        // realtimeAuctionService.disconnect();
+        realtimeAuctionService.disconnect();
 
         SceneManager.goToProductDetail();
     }

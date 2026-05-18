@@ -70,6 +70,20 @@
                     <Button text="+5k" styleClass="secondary-button" onAction="#handleAdd5000"/>
                 </HBox>
 
+                <VBox spacing="8.0" styleClass="auto-bid-box">
+                    <Label text="Auto Bid" styleClass="section-label"/>
+                    <TextField fx:id="autoBidMaxInput" promptText="Enter max auto-bid amount"/>
+                    <Button fx:id="autoBidButton"
+                            text="Enable Auto-bid"
+                            maxWidth="Infinity"
+                            styleClass="secondary-button"
+                            onAction="#handleEnableAutoBid"/>
+                    <Label fx:id="autoBidStatusLabel"
+                           text="Auto-bid is off"
+                           wrapText="true"
+                           styleClass="auto-bid-status"/>
+                </VBox>
+
                 <Button fx:id="placeBidButton"
                         text="Place Bid"
                         maxWidth="Infinity"
