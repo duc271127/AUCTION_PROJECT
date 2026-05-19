@@ -50,8 +50,8 @@ public class AdminController {
     }
 
     @GetMapping("/items/pending")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<PendingItemDto>> listPendingItems() {
-        List<PendingItemDto> dtos = adminService.listPendingItems();
-        return ResponseEntity.ok(dtos);
+        return ResponseEntity.ok(adminService.listPendingItems());
     }
 }

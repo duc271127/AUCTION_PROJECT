@@ -7,15 +7,17 @@ import java.util.UUID;
 @Entity
 @Table(name = "auctions")
 public class Auction {
+
     @Id
+    @Column(columnDefinition = "uuid")
     private UUID id = UUID.randomUUID();
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "item_id", nullable = false)
-    private Item item;
-
-    @Column(name = "item_id", insertable = false, updatable = false)
+    @Column(name = "item_id", columnDefinition = "uuid", nullable = false)
     private UUID itemId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "item_id", insertable = false, updatable = false)
+    private Item item;
 
     @Column(name = "start_time", nullable = false)
     private Instant startTime;
@@ -24,45 +26,41 @@ public class Auction {
     private Instant endTime;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private AuctionState state = AuctionState.DRAFT;
 
     @Column(name = "current_price", nullable = false)
-    private double currentPrice;
+    private double currentPrice = 0.0;
 
     @Column(name = "reserve_price")
-    private Double reservePrice;
+    private Double reservePrice = 0.0;
 
-    @Column( nullable = true)
+    @Column(name = "leader_id", columnDefinition = "uuid")
     private UUID leaderId;
 
-    @Column(nullable = false)
+    @Column(name = "winner_id", columnDefinition = "uuid")
+    private UUID winnerId;
+
+    @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
-    @Column(name = "created_by")
+    @Column(name = "created_by", columnDefinition = "uuid")
     private UUID createdBy;
-
-
-    private UUID winnerId;
 
     @Version
     private Long version;
 
-    public Auction() {
-        this.id = UUID.randomUUID();
-    }
+    public Auction() {this.id = UUID.randomUUID();}
 
-    // getters / setters
+    // Getters and setters
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
 
-    public Item getItem() { return item; }
-    public void setItem(Item item) {
-        this.item = item;
-        this.itemId = item == null ? null : item.getId();
-    }
-
     public UUID getItemId() { return itemId; }
     public void setItemId(UUID itemId) { this.itemId = itemId; }
+
+    public Item getItem() { return item; }
+    public void setItem(Item item) { this.item = item; }
 
     public Instant getStartTime() { return startTime; }
     public void setStartTime(Instant startTime) { this.startTime = startTime; }
@@ -76,8 +74,8 @@ public class Auction {
     public double getCurrentPrice() { return currentPrice; }
     public void setCurrentPrice(double currentPrice) { this.currentPrice = currentPrice; }
 
-    public double getReservePrice() { return reservePrice; }
-    public void setReservePrice(double reservePrice) { this.reservePrice = reservePrice; }
+    public Double getReservePrice() { return reservePrice; }
+    public void setReservePrice(Double reservePrice) { this.reservePrice = reservePrice; }
 
     public UUID getLeaderId() { return leaderId; }
     public void setLeaderId(UUID leaderId) { this.leaderId = leaderId; }
