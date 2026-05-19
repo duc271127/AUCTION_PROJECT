@@ -53,4 +53,8 @@ public final class RealtimeEventFactory {
         event.setMessage("Auction extended");
         return event;
     }
+
+    public static RealtimeEvent auctionFinished(UUID auctionId) {
+        return new RealtimeEvent(RealtimeEventType.AUCTION_CLOSED, auctionId, null, 0.0, null);
+    }
 }

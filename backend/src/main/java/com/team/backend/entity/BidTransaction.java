@@ -5,13 +5,6 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-/**
- * BidTransaction entity (extended).
- * - Uses a single timestamp field (createdAt) for clarity; keeps backward-compatible
- *   column name "timestamp" if your DB already uses it.
- * - Adds @PrePersist to ensure timestamp is set when saving.
- * - Adds equals/hashCode/toString for easier testing and logging.
- */
 @Entity
 @Table(name = "bid_transactions", indexes = {
         @Index(name = "idx_bid_tx_auction", columnList = "auction_id"),
@@ -20,22 +13,19 @@ import java.util.UUID;
 public class BidTransaction {
 
     @Id
+    @Column(columnDefinition = "uuid")
     private UUID id;
 
-    @Column(name = "auction_id", nullable = false)
+    @Column(name = "auction_id", nullable = false, columnDefinition = "uuid")
     private UUID auctionId;
 
-    @Column(name = "bidder_id",  nullable = false)
+    @Column(name = "bidder_id",  nullable = false, columnDefinition = "uuid")
     private UUID bidderId;
 
     @Column(nullable = false)
     private double amount;
 
-    /**
-     * Persisted column name kept as "timestamp" for compatibility.
-     * Use createdAt in code for clearer semantics.
-     */
-    @Column(name = "timestamp", nullable = false)
+    @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
     public BidTransaction() {
