@@ -12,6 +12,7 @@ import com.team.backend.repository.BidRepository;
 import com.team.backend.repository.AutoBidRepository;
 import com.team.backend.service.BidService;
 import com.team.backend.service.EventPublisher;
+import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -61,7 +62,7 @@ public class BidServiceImpl implements BidService {
                           @Value("${auction.anti-sniping.threshold-seconds:30}") long antiSnipingThresholdSeconds,
                           @Value("${auction.anti-sniping.extend-seconds:60}") long antiSnipingExtendSeconds,
                           @Value("${auction.bid.max-retries:3}") int maxRetries,
-                          Optional<EventPublisher> eventPublisherOptional) {
+                          EventPublisher eventPublisher) {
         this.auctionRepository = auctionRepository;
         this.bidRepository = bidRepository;
         this.autoBidRepository = autoBidRepository;
@@ -70,7 +71,7 @@ public class BidServiceImpl implements BidService {
         this.antiSnipingThresholdSeconds = antiSnipingThresholdSeconds;
         this.antiSnipingExtendSeconds = antiSnipingExtendSeconds;
         this.maxRetries = Math.max(1, maxRetries);
-        this.eventPublisher = eventPublisherOptional.orElse(null);
+        this.eventPublisher = eventPublisher;
     }
 
     private ReentrantLock getLock(UUID auctionId) {
