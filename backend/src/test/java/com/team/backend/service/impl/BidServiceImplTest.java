@@ -50,16 +50,20 @@ class BidServiceImplTest {
     auctionRepository = mock(AuctionRepository.class);
     bidRepository = mock(BidRepository.class);
     autoBidRepository = mock(AutoBidRepository.class);
-    bidTransactionalService = mock(BidTransactionalService.class);
     eventPublisher = mock(EventPublisher.class);
 
-    double minIncrement = 1.0;
+    bidTransactionalService = new BidTransactionalService(
+            auctionRepository,
+            bidRepository,
+            autoBidRepository
+    );
+
     bidService = new BidServiceImpl(
             auctionRepository,
             bidRepository,
             autoBidRepository,
             bidTransactionalService,
-            minIncrement,
+            1.0,
             30,
             60,
             3,
