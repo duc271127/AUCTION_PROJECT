@@ -210,10 +210,7 @@ public class LiveBiddingController {
         });
 
         realtimeAuctionService.setOnError(message -> {
-            runOnUiThread(() -> {
-                updateConnectionStatus("DISCONNECTED");
-                showError(message);
-            });
+            runOnUiThread(() -> showError(message));
         });
     }
 
