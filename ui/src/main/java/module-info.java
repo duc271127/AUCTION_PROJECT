@@ -5,6 +5,8 @@ module com.auction.client {
     requires java.net.http;
     requires com.fasterxml.jackson.databind;
     requires com.google.gson;
+    requires spring.websocket;
+    requires spring.messaging;
 
     opens com.auction.client to javafx.fxml;
     opens com.auction.client.controller to javafx.fxml;
