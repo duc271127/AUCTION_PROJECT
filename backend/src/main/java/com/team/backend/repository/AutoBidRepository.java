@@ -9,7 +9,7 @@ import java.util.UUID;
 
 public interface AutoBidRepository extends JpaRepository<AutoBid, UUID> {
 
-    Optional<AutoBid> findByAuctionIdAndBidderId(UUID auctionId, UUID bidderId);
+    List<AutoBid> findByAuctionIdAndBidderId(UUID auctionId, UUID bidderId);
 
     List<AutoBid> findByAuctionIdAndActiveTrueOrderByMaxAmountDescCreatedAtAsc(UUID auctionId);
 }
