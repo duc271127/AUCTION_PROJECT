@@ -13,7 +13,6 @@ import com.team.backend.repository.BidRepository;
 import com.team.backend.service.EventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -23,6 +22,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * BidTransactionalService - core transactional logic.
+ * - findByIdForUpdate phải thực hiện lock (pessimistic) hoặc tương đương.
+ * - Áp dụng anti-sniping, lưu bid, xử lý auto-bid nhiều vòng, đăng ký event afterCommit.
+ */
 @Service
 public class BidTransactionalService {
 
@@ -34,7 +38,6 @@ public class BidTransactionalService {
 
     private static final int MAX_AUTO_BID_ROUNDS = 10;
 
-    @Autowired
     public BidTransactionalService(AuctionRepository auctionRepository,
                                    BidRepository bidRepository,
                                    AutoBidRepository autoBidRepository) {
@@ -54,6 +57,7 @@ public class BidTransactionalService {
         Auction auction = auctionRepository.findByIdForUpdate(auctionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction không tồn tại: " + auctionId));
 
+        // Validate trạng thái auction
         if (auction.getState() == AuctionState.FINISHED || auction.getState() == AuctionState.CANCELLED) {
             throw new AuctionClosedException("Auction đã đóng");
         }
@@ -75,7 +79,7 @@ public class BidTransactionalService {
             throw new InvalidBidException("Giá đặt phải lớn hơn hoặc bằng " + minAllowed);
         }
 
-        // Anti-sniping
+        // Anti-sniping: nếu bid sát giờ đóng, extend endTime
         boolean extendedByAntiSniping = false;
         if (auction.getEndTime() != null) {
             long secondsLeft = java.time.Duration.between(now, auction.getEndTime()).getSeconds();
@@ -89,14 +93,14 @@ public class BidTransactionalService {
 
         UUID previousLeader = auction.getLeaderId();
 
-        // Apply manual bid
+        // Áp dụng bid thủ công
         auction.setCurrentPrice(amount);
         auction.setLeaderId(bidderId);
         auctionRepository.save(auction);
 
         BidTransaction savedTx = bidRepository.save(new BidTransaction(auctionId, bidderId, amount, Instant.now()));
 
-        // Auto-bid rounds until stable
+        // Xử lý auto-bid: lặp nhiều vòng cho đến khi ổn định hoặc đạt giới hạn
         boolean changed;
         int round = 0;
         do {
@@ -108,7 +112,7 @@ public class BidTransactionalService {
             log.warn("Auto-bid có thể chưa ổn định sau {} vòng (giới hạn {}) cho auction {}", round, MAX_AUTO_BID_ROUNDS, auction.getId());
         }
 
-        // Register afterCommit events: manual bid and possible extension
+        // Đăng ký publish event sau commit: bid thủ công và extension nếu có
         if (eventPublisher != null && TransactionSynchronizationManager.isSynchronizationActive()) {
             final UUID aId = auctionId;
             final UUID bId = bidderId;
@@ -139,7 +143,7 @@ public class BidTransactionalService {
     }
 
     /**
-     * Một vòng auto-bid. Nếu có auto-bid được áp dụng, sẽ lưu bid và (tuỳ chọn) đăng ký event publish.
+     * Thực hiện một vòng auto-bid. Nếu có auto-bid được áp dụng, sẽ lưu bid và đăng ký event publish.
      * Trả về true nếu có thay đổi (cần lặp tiếp).
      */
     private boolean applyOneRoundAutoBid(Auction auction, double minIncrement, EventPublisher eventPublisher) {

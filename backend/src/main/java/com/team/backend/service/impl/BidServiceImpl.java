@@ -11,9 +11,9 @@ import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.BidRepository;
 import com.team.backend.repository.AutoBidRepository;
 import com.team.backend.service.BidService;
+import com.team.backend.service.EventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -30,6 +31,8 @@ import java.util.concurrent.locks.ReentrantLock;
  * - retry loop for optimistic/pessimistic conflicts
  * - fallback to in-memory lock if DB locking fails
  * - delegates transactional core to BidTransactionalService
+ *
+ * Lưu ý: EventPublisher là tùy chọn; nếu không có bean, sẽ hoạt động bình thường.
  */
 @Service
 public class BidServiceImpl implements BidService {
@@ -47,16 +50,9 @@ public class BidServiceImpl implements BidService {
     private final long antiSnipingExtendSeconds;
     private final int maxRetries;
 
-    /**
-     * Optional event publisher interface. If you want events, implement and register a bean.
-     */
-    public interface EventPublisher {
-        void publishBidPlaced(UUID auctionId, UUID bidderId, double amount, UUID previousLeader, Instant timestamp);
-    }
+    // EventPublisher là tùy chọn; nếu không có bean, sẽ là null
+    private final EventPublisher eventPublisher;
 
-    private final EventPublisher eventPublisher; // may be null
-
-    @Autowired
     public BidServiceImpl(AuctionRepository auctionRepository,
                           BidRepository bidRepository,
                           AutoBidRepository autoBidRepository,
@@ -65,7 +61,7 @@ public class BidServiceImpl implements BidService {
                           @Value("${auction.anti-sniping.threshold-seconds:30}") long antiSnipingThresholdSeconds,
                           @Value("${auction.anti-sniping.extend-seconds:60}") long antiSnipingExtendSeconds,
                           @Value("${auction.bid.max-retries:3}") int maxRetries,
-                          @Autowired(required = false) EventPublisher eventPublisher) {
+                          Optional<EventPublisher> eventPublisherOptional) {
         this.auctionRepository = auctionRepository;
         this.bidRepository = bidRepository;
         this.autoBidRepository = autoBidRepository;
@@ -74,7 +70,7 @@ public class BidServiceImpl implements BidService {
         this.antiSnipingThresholdSeconds = antiSnipingThresholdSeconds;
         this.antiSnipingExtendSeconds = antiSnipingExtendSeconds;
         this.maxRetries = Math.max(1, maxRetries);
-        this.eventPublisher = eventPublisher;
+        this.eventPublisher = eventPublisherOptional.orElse(null);
     }
 
     private ReentrantLock getLock(UUID auctionId) {
