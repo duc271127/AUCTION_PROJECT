@@ -24,6 +24,8 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.team.backend.service.EventPublisher;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -39,22 +41,29 @@ class BidServiceImplTest {
     private BidRepository bidRepository;
     private BidServiceImpl bidService;
     private AutoBidRepository autoBidRepository;
+    private BidTransactionalService bidTransactionalService;
+    private EventPublisher eventPublisher;
 
 
     @BeforeEach
     void setUp() {
-        auctionRepository = mock(AuctionRepository.class);
-        bidRepository = mock(BidRepository.class);
-        autoBidRepository = mock(AutoBidRepository.class);
+    auctionRepository = mock(AuctionRepository.class);
+    bidRepository = mock(BidRepository.class);
+    autoBidRepository = mock(AutoBidRepository.class);
+    bidTransactionalService = mock(BidTransactionalService.class);
+    eventPublisher = mock(EventPublisher.class);
 
-        double minIncrement = 1.0;
-        bidService = new BidServiceImpl(
-                auctionRepository,
-                bidRepository,
-                autoBidRepository,
-                minIncrement,
-                30,
-                60
+    double minIncrement = 1.0;
+    bidService = new BidServiceImpl(
+            auctionRepository,
+            bidRepository,
+            autoBidRepository,
+            bidTransactionalService,
+            minIncrement,
+            30,
+            60,
+            3,
+            eventPublisher
         );
     }
 
