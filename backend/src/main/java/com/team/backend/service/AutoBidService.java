@@ -6,4 +6,5 @@ import java.util.UUID;
 
 public interface AutoBidService {
     AutoBid setAutoBid(UUID auctionId, UUID bidderId, double maxAmount);
+    void cancelAutoBid(UUID auctionId, UUID bidderId);
 }
