@@ -16,8 +16,8 @@ import com.team.backend.realtime.RealtimeEventFactory;
 import com.team.backend.realtime.RealtimeNotifier;
 
 import com.team.backend.service.AuctionService;
-import com.team.backend.service.BidService;
 import com.team.backend.service.AutoBidService;
+import com.team.backend.service.BidService;
 
 import jakarta.validation.Valid;
 
@@ -153,8 +153,7 @@ public class AuctionController {
             @Valid @RequestBody AutoBidRequestDto dto
     ) {
 
-        UUID bidderId =
-                userId != null ? userId : dto.bidderId;
+        UUID bidderId = userId;
 
         if (bidderId == null) {
             throw new BusinessRuleException("bidderId is required");
@@ -164,7 +163,7 @@ public class AuctionController {
                 autoBidService.setAutoBid(
                         id,
                         bidderId,
-                        dto.maxAmount
+                        dto.getMaxAmount()
                 );
 
         return ResponseEntity.ok(autoBid);
@@ -226,14 +225,6 @@ public class AuctionController {
     ) {
 
         auctionService.closeAuction(id);
-
-        RealtimeEvent finished =
-                RealtimeEventFactory.auctionFinished(id);
-
-        realtimeNotifier.broadcastToAuction(
-                id,
-                finished
-        );
 
         return ResponseEntity.noContent().build();
     }
