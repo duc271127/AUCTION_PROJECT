@@ -87,6 +87,7 @@
     -fx-text-fill: #64748b;
     -fx-font-size: 12px;
 }
+
 .auto-bid-box {
     -fx-background-color: #eef2ff;
     -fx-background-radius: 14;
@@ -97,4 +98,23 @@
     -fx-text-fill: #334155;
     -fx-font-size: 12px;
     -fx-font-weight: bold;
+}
+
+.chart {
+    -fx-background-color: #f8fafc;
+    -fx-background-radius: 12;
+    -fx-padding: 8;
+}
+
+.chart-plot-background {
+    -fx-background-color: transparent;
+}
+
+.axis-label {
+    -fx-text-fill: #64748b;
+    -fx-font-size: 11px;
+}
+
+.chart-series-line {
+    -fx-stroke-width: 3px;
 }

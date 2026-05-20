@@ -51,7 +51,7 @@ public class LiveBiddingController {
     @FXML private Label countdownLabel;
     @FXML private Label outbidAlertLabel;
     @FXML private Button placeBidButton;
-    @FXML private Button autoBidButton;
+        @FXML private Button autoBidButton;
 
     @FXML private TextField bidInputField;
     @FXML private TextField autoBidMaxInput;
@@ -326,10 +326,7 @@ public class LiveBiddingController {
         addBidHistory(bidderName, event.getCurrentPrice());
         playCurrentBidPulse();
 
-        if (event.getRemainingSeconds() != null) {
-            realtimeRemainingSeconds = Math.max(0, event.getRemainingSeconds());
-            countdownLabel.setText(formatSeconds(realtimeRemainingSeconds));
-        }
+        applyRealtimeCountdown(event);
 
         showInfo(event.getMessage() == null
                 ? bidderName + " placed a new bid."
@@ -362,10 +359,7 @@ public class LiveBiddingController {
         leaderLabel.setText("Leader: " + leaderName);
 
         playCurrentBidPulse();
-        if (event.getRemainingSeconds() != null) {
-            realtimeRemainingSeconds = Math.max(0, event.getRemainingSeconds());
-            countdownLabel.setText(formatSeconds(realtimeRemainingSeconds));
-        }
+        applyRealtimeCountdown(event);
 
         showInfo(event.getMessage() == null
                 ? "Current bid updated to " + formatMoney(event.getCurrentPrice()) + "."
@@ -373,10 +367,7 @@ public class LiveBiddingController {
     }
 
     private void handleAuctionExtendedEvent(AuctionEventDto event) {
-        if (event.getRemainingSeconds() != null) {
-            realtimeRemainingSeconds = Math.max(0, event.getRemainingSeconds());
-            countdownLabel.setText(formatSeconds(realtimeRemainingSeconds));
-        }
+        applyRealtimeCountdown(event);
 
         showInfo(event.getMessage() == null
                 ? "Auction time extended."
@@ -672,21 +663,36 @@ public class LiveBiddingController {
             return;
         }
 
-        try {
-            auctionApiService.setAutoBid(
-                    selectedItem.getId(),
-                    new AutoBidRequest(SessionManager.getUserId(), maxAmount)
-            );
-
-            if (autoBidStatusLabel != null) {
-                autoBidStatusLabel.setText("Auto-bid enabled up to " + formatMoney(maxAmount));
-            }
-
-            showSuccess("Auto-bid enabled.");
-
-        } catch (Exception e) {
-            showError(extractFriendlyMessage(e.getMessage()));
+        if (autoBidButton != null) {
+            autoBidButton.setDisable(true);
         }
+
+        CompletableFuture
+                .runAsync(() -> auctionApiService.setAutoBid(
+                        selectedItem.getId(),
+                        new AutoBidRequest(SessionManager.getUserId(), maxAmount)
+                ))
+                .thenRun(() -> runOnUiThread(() -> {
+                    if (autoBidStatusLabel != null) {
+                        autoBidStatusLabel.setText("Auto-bid enabled up to " + formatMoney(maxAmount));
+                    }
+
+                    showSuccess("Auto-bid enabled.");
+
+                    if (autoBidButton != null) {
+                        autoBidButton.setDisable(false);
+                    }
+                }))
+                .exceptionally(error -> {
+                    runOnUiThread(() -> {
+                        showError(extractFriendlyMessage(error.getMessage()));
+
+                        if (autoBidButton != null) {
+                            autoBidButton.setDisable(false);
+                        }
+                    });
+                    return null;
+                });
     }
 
     private void startPollingRefresh() {
@@ -759,6 +765,18 @@ public class LiveBiddingController {
         }
 
         appendBidChartPoint(amount);
+    }
+
+    private void applyRealtimeCountdown(AuctionEventDto event) {
+        if (event.getRemainingSeconds() != null) {
+            realtimeRemainingSeconds = Math.max(0, event.getRemainingSeconds());
+            countdownLabel.setText(formatSeconds(realtimeRemainingSeconds));
+            return;
+        }
+
+        if (event.getEndTime() != null && !event.getEndTime().isBlank()) {
+            countdownLabel.setText(formatCountdown(event.getEndTime()));
+        }
     }
 
     private void appendBidChartPoint(double amount) {
