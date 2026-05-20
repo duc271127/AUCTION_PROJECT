@@ -10,12 +10,14 @@ import javafx.fxml.FXML;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TextField;
 
 public class AuthController {
 
     @FXML private Label loginErrorLabel;
     @FXML private Label registerErrorLabel;
+    @FXML private TabPane authTabPane;
 
     @FXML private TextField loginUsernameField;
     @FXML private PasswordField loginPasswordField;
@@ -106,6 +108,30 @@ public class AuthController {
         } catch (Exception e) {
             showLoginError(e.getMessage());
         }
+    }
+
+    @FXML
+    private void showLoginForm() {
+        authTabPane.getSelectionModel().select(0);
+        hideLoginError();
+        hideRegisterError();
+    }
+
+    @FXML
+    private void showRegisterForm() {
+        authTabPane.getSelectionModel().select(1);
+        hideLoginError();
+        hideRegisterError();
+    }
+
+    @FXML
+    private void handleGoHome() {
+        SceneManager.goToHome();
+    }
+
+    @FXML
+    private void handleGoToShowroom() {
+        SceneManager.goToShowroom();
     }
 
     @FXML

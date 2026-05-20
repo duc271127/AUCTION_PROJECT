@@ -1,123 +1,214 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
 
 <AnchorPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.auction.client.controller.AuthController"
             prefWidth="1200" prefHeight="800"
-            styleClass="root-pane">
+            styleClass="auth-root">
 
     <children>
-        <HBox AnchorPane.topAnchor="0.0"
-              AnchorPane.bottomAnchor="0.0"
-              AnchorPane.leftAnchor="0.0"
-              AnchorPane.rightAnchor="0.0">
+        <StackPane AnchorPane.topAnchor="0.0"
+                   AnchorPane.bottomAnchor="0.0"
+                   AnchorPane.leftAnchor="0.0"
+                   AnchorPane.rightAnchor="0.0"
+                   styleClass="auth-stage">
+            <children>
+                <BorderPane styleClass="auth-home-backdrop">
+                    <top>
+                        <HBox alignment="CENTER_LEFT" spacing="16.0" styleClass="auth-home-top-nav">
+                            <padding>
+                                <Insets top="18" right="32" bottom="18" left="32"/>
+                            </padding>
 
-            <VBox prefWidth="560.0" alignment="CENTER_LEFT" spacing="20.0" styleClass="auth-left-panel">
-                <padding>
-                    <Insets top="60" right="60" bottom="60" left="60"/>
-                </padding>
+                            <Label text="BidWave" styleClass="auth-home-brand"/>
 
-                <Label text="BidWave" styleClass="brand-label"/>
-                <Label text="Experience the&#10;kinetic art of the&#10;bid"
-                       styleClass="hero-title"/>
-                <Label text="Join the world’s most sophisticated digital auction platform."
-                       wrapText="true"
-                       styleClass="hero-subtitle"/>
-            </VBox>
+                            <Region HBox.hgrow="ALWAYS"/>
 
-            <StackPane HBox.hgrow="ALWAYS" styleClass="auth-right-wrapper">
-                <children>
-                    <ScrollPane fitToWidth="true"
-                                hbarPolicy="NEVER"
-                                vbarPolicy="AS_NEEDED"
-                                pannable="true"
-                                maxWidth="520.0"
-                                StackPane.alignment="CENTER"
-                                style="-fx-background-color: transparent; -fx-background: transparent;">
+                            <Button text="Login / Register"
+                                    focusTraversable="false"
+                                    styleClass="secondary-button"
+                                    onAction="#showLoginForm"/>
+                        </HBox>
+                    </top>
 
-                        <content>
-                            <VBox prefWidth="420.0" maxWidth="420.0" spacing="20.0" styleClass="auth-card">
-                                <padding>
-                                    <Insets top="32" right="32" bottom="32" left="32"/>
-                                </padding>
+                    <center>
+                        <VBox spacing="32.0" styleClass="auth-home-content">
+                            <padding>
+                                <Insets top="36" right="36" bottom="36" left="36"/>
+                            </padding>
 
-                                <TabPane fx:id="authTabPane" tabClosingPolicy="UNAVAILABLE" styleClass="auth-tabs">
-                                    <tabs>
-                                        <Tab text="Login">
-                                            <VBox spacing="14.0" styleClass="form-box">
-                                                <padding>
-                                                    <Insets top="20" right="10" bottom="10" left="10"/>
-                                                </padding>
+                            <VBox spacing="16.0" styleClass="auth-home-hero">
+                                <Label text="Bid smarter. Win faster.&#10;Experience premium online auctions."
+                                       styleClass="auth-home-hero-title"/>
+                                <Label text="BidWave brings curated listings, real-time bidding, and trusted seller experiences into one elegant platform."
+                                       wrapText="true"
+                                       styleClass="auth-home-hero-subtitle"/>
 
-                                                <Label text="Welcome back" styleClass="form-title"/>
-                                                <Label text="Access your dashboard and active bids." styleClass="form-subtitle"/>
-
-                                                <Label fx:id="loginErrorLabel" text="" styleClass="error-label"/>
-
-                                                <Label text="Username or Email" styleClass="field-label"/>
-                                                <TextField fx:id="loginUsernameField" promptText="Enter username or email"/>
-
-                                                <Label text="Password" styleClass="field-label"/>
-                                                <PasswordField fx:id="loginPasswordField" promptText="Enter password"/>
-
-                                                <Label text="Role" styleClass="field-label"/>
-                                                <ComboBox fx:id="loginRoleComboBox" promptText="Select role"/>
-
-                                                <Button text="Login"
-                                                        styleClass="primary-button"
-                                                        maxWidth="Infinity"
-                                                        onAction="#handleLogin"/>
-                                            </VBox>
-                                        </Tab>
-
-                                        <Tab text="Register">
-                                            <VBox spacing="14.0" styleClass="form-box">
-                                                <padding>
-                                                    <Insets top="20" right="10" bottom="10" left="10"/>
-                                                </padding>
-
-                                                <Label text="Create account" styleClass="form-title"/>
-                                                <Label text="Register as a bidder or seller." styleClass="form-subtitle"/>
-
-                                                <Label fx:id="registerErrorLabel"
-                                                       text=""
-                                                       wrapText="true"
-                                                       minHeight="40.0"
-                                                       prefHeight="40.0"
-                                                       maxWidth="Infinity"
-                                                       styleClass="error-label"/>
-
-                                                <Label text="Username" styleClass="field-label"/>
-                                                <TextField fx:id="registerUsernameField" promptText="Choose username"/>
-
-                                                <Label text="Email" styleClass="field-label"/>
-                                                <TextField fx:id="registerEmailField" promptText="Enter email"/>
-
-                                                <Label text="Password" styleClass="field-label"/>
-                                                <PasswordField fx:id="registerPasswordField" promptText="Create password"/>
-
-                                                <Label text="Confirm Password" styleClass="field-label"/>
-                                                <PasswordField fx:id="registerConfirmPasswordField" promptText="Confirm password"/>
-
-                                                <Label text="Role" styleClass="field-label"/>
-                                                <ComboBox fx:id="registerRoleComboBox" promptText="Select role"/>
-
-                                                <Button text="Create Account"
-                                                        styleClass="primary-button"
-                                                        maxWidth="Infinity"
-                                                        onAction="#handleRegister"/>
-                                            </VBox>
-                                        </Tab>
-                                    </tabs>
-                                </TabPane>
+                                <HBox spacing="14.0">
+                                    <Button text="Explore Auctions"
+                                            focusTraversable="false"
+                                            styleClass="primary-button"
+                                            onAction="#handleGoToShowroom"/>
+                                    <Button text="Get Started"
+                                            focusTraversable="false"
+                                            styleClass="secondary-button"
+                                            onAction="#showRegisterForm"/>
+                                </HBox>
                             </VBox>
-                        </content>
-                    </ScrollPane>
-                </children>
-            </StackPane>
-        </HBox>
+
+                            <HBox spacing="20.0">
+                                <VBox spacing="10.0" styleClass="auth-home-card" HBox.hgrow="ALWAYS">
+                                    <Label text="Real-time Bidding" styleClass="auth-home-card-title"/>
+                                    <Label text="Jump into live auctions with instant bid updates and responsive navigation."
+                                           wrapText="true"
+                                           styleClass="auth-home-card-text"/>
+                                </VBox>
+
+                                <VBox spacing="10.0" styleClass="auth-home-card" HBox.hgrow="ALWAYS">
+                                    <Label text="Trusted Sellers" styleClass="auth-home-card-title"/>
+                                    <Label text="Browse verified listings and structured seller dashboards built for clarity."
+                                           wrapText="true"
+                                           styleClass="auth-home-card-text"/>
+                                </VBox>
+
+                                <VBox spacing="10.0" styleClass="auth-home-card" HBox.hgrow="ALWAYS">
+                                    <Label text="Curated Auctions" styleClass="auth-home-card-title"/>
+                                    <Label text="Discover premium watches, collectibles, luxury goods, and exclusive lots."
+                                           wrapText="true"
+                                           styleClass="auth-home-card-text"/>
+                                </VBox>
+                            </HBox>
+                        </VBox>
+                    </center>
+                </BorderPane>
+
+                <Region styleClass="auth-dim-overlay"/>
+
+                <VBox prefWidth="330.0"
+                      maxWidth="330.0"
+                      minHeight="390.0"
+                      spacing="0.0"
+                      styleClass="auth-sheet">
+
+                    <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="auth-sheet-header">
+                        <Label text="Sign in or create an account" styleClass="auth-header-title"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button text="X"
+                                focusTraversable="false"
+                                styleClass="auth-close-button"
+                                onAction="#handleGoHome"/>
+                    </HBox>
+
+                    <TabPane fx:id="authTabPane" tabClosingPolicy="UNAVAILABLE" styleClass="auth-tab-pane">
+                        <tabs>
+                            <Tab text="Sign in">
+                                <VBox spacing="14.0" styleClass="auth-form">
+                                    <HBox alignment="CENTER_LEFT" spacing="12.0">
+                                        <Label text="Welcome back!" styleClass="auth-title"/>
+                                        <Region HBox.hgrow="ALWAYS"/>
+                                        <Hyperlink text="Create account"
+                                                   focusTraversable="false"
+                                                   onAction="#showRegisterForm"
+                                                   styleClass="auth-link"/>
+                                    </HBox>
+
+                                    <Label fx:id="loginErrorLabel" text="" wrapText="true" styleClass="auth-message"/>
+
+                                    <TextField fx:id="loginUsernameField"
+                                               promptText="Email address or username"
+                                               styleClass="auth-input"/>
+
+                                    <PasswordField fx:id="loginPasswordField"
+                                                   promptText="Password"
+                                                   styleClass="auth-input"/>
+
+                                    <ComboBox fx:id="loginRoleComboBox"
+                                              promptText="Account type"
+                                              maxWidth="Infinity"
+                                              styleClass="auth-input"/>
+
+                                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                        <CheckBox text="Remember me" focusTraversable="false" styleClass="auth-checkbox"/>
+                                        <Region HBox.hgrow="ALWAYS"/>
+                                        <Hyperlink text="Forgotten your password?"
+                                                   focusTraversable="false"
+                                                   styleClass="auth-link"/>
+                                    </HBox>
+
+                                    <Button text="Sign in"
+                                            maxWidth="Infinity"
+                                            styleClass="auth-primary-button"
+                                            onAction="#handleLogin"/>
+                                </VBox>
+                            </Tab>
+
+                            <Tab text="Create account">
+                                <VBox spacing="12.0" styleClass="auth-form">
+                                    <HBox alignment="CENTER_LEFT" spacing="12.0">
+                                        <Label text="Create account" styleClass="auth-title"/>
+                                        <Region HBox.hgrow="ALWAYS"/>
+                                        <Hyperlink text="Sign in"
+                                                   focusTraversable="false"
+                                                   onAction="#showLoginForm"
+                                                   styleClass="auth-link"/>
+                                    </HBox>
+
+                                    <Label fx:id="registerErrorLabel" text="" wrapText="true" styleClass="auth-message"/>
+
+                                    <TextField fx:id="registerUsernameField"
+                                               promptText="Username"
+                                               styleClass="auth-input"/>
+
+                                    <TextField fx:id="registerEmailField"
+                                               promptText="Email address"
+                                               styleClass="auth-input"/>
+
+                                    <PasswordField fx:id="registerPasswordField"
+                                                   promptText="Password"
+                                                   styleClass="auth-input"/>
+
+                                    <PasswordField fx:id="registerConfirmPasswordField"
+                                                   promptText="Confirm password"
+                                                   styleClass="auth-input"/>
+
+                                    <ComboBox fx:id="registerRoleComboBox"
+                                              promptText="Account type"
+                                              maxWidth="Infinity"
+                                              styleClass="auth-input"/>
+
+                                    <VBox spacing="4.0" styleClass="password-rules">
+                                        <Label text="Password requirements:" styleClass="password-rules-title"/>
+                                        <Label text="- Min 6 characters" styleClass="password-rule"/>
+                                        <Label text="- Use a valid email address" styleClass="password-rule"/>
+                                        <Label text="- Confirm password must match" styleClass="password-rule"/>
+                                    </VBox>
+
+                                    <Button text="Agree and continue"
+                                            maxWidth="Infinity"
+                                            styleClass="auth-primary-button"
+                                            onAction="#handleRegister"/>
+                                </VBox>
+                            </Tab>
+                        </tabs>
+                    </TabPane>
+                </VBox>
+            </children>
+        </StackPane>
     </children>
 </AnchorPane>
