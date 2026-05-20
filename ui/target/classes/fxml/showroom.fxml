@@ -11,6 +11,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Priority?>
 <?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
 <AnchorPane xmlns:fx="http://javafx.com/fxml"
@@ -25,18 +26,44 @@
                     AnchorPane.rightAnchor="0.0">
 
             <top>
-                <HBox alignment="CENTER_LEFT" spacing="16.0" styleClass="top-nav">
+                <HBox alignment="CENTER_LEFT" spacing="16.0" styleClass="market-top-nav">
                     <padding>
                         <Insets top="18" right="36" bottom="18" left="36"/>
                     </padding>
 
-                    <Label text="BidWave" styleClass="nav-brand"/>
+                    <Label text="Auctions" styleClass="market-brand"/>
 
-                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button text="Categories ▾"
+                            focusTraversable="false"
+                            styleClass="market-nav-link"/>
 
-                    <Button text="Logout"
-                            styleClass="secondary-button"
-                            onAction="#handleLogout"/>
+                    <Button text="For you"
+                            focusTraversable="false"
+                            styleClass="market-nav-link"
+                            onAction="#handleGoToForYou"/>
+
+                    <Button text="Trending"
+                            focusTraversable="false"
+                            styleClass="market-nav-link"/>
+
+                    <TextField promptText="Tìm kiếm trang sức, đồ dùng ..."
+                               styleClass="market-search"
+                               HBox.hgrow="ALWAYS"/>
+
+                    <Button text="▣"
+                            styleClass="market-icon-button"/>
+
+                    <Button fx:id="wishlistButton"
+                            text="♡"
+                            styleClass="market-icon-button"
+                            onAction="#handleOpenWishlist"/>
+
+                    <Label text="♟"
+                           styleClass="market-user-icon"/>
+
+                    <Label fx:id="usernameLabel"
+                           text="Username"
+                           styleClass="market-username"/>
                 </HBox>
             </top>
 
@@ -62,7 +89,13 @@
                     <HBox spacing="20.0">
                         <VBox spacing="12.0" styleClass="item-card" HBox.hgrow="ALWAYS">
                             <ImageView fx:id="item1ImageView" fitWidth="280" fitHeight="180" preserveRatio="true"/>
-                            <Label fx:id="item1NameLabel" text="Item Name" styleClass="item-title"/>
+                            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                <Label fx:id="item1NameLabel" text="Item Name" styleClass="item-title" HBox.hgrow="ALWAYS"/>
+                                <Button fx:id="item1FavoriteButton"
+                                        text="♡"
+                                        styleClass="favorite-button"
+                                        onAction="#handleToggleFavorite1"/>
+                            </HBox>
                             <Label fx:id="item1BidLabel" text="Current Bid" styleClass="item-meta"/>
                             <Label fx:id="item1TimeLabel" text="Time Left" styleClass="item-meta"/>
                             <Label fx:id="item1StatusLabel" text="LIVE" styleClass="item-status"/>
@@ -74,7 +107,13 @@
 
                         <VBox spacing="12.0" styleClass="item-card" HBox.hgrow="ALWAYS">
                             <ImageView fx:id="item2ImageView" fitWidth="280" fitHeight="180" preserveRatio="true"/>
-                            <Label fx:id="item2NameLabel" text="Item Name" styleClass="item-title"/>
+                            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                <Label fx:id="item2NameLabel" text="Item Name" styleClass="item-title" HBox.hgrow="ALWAYS"/>
+                                <Button fx:id="item2FavoriteButton"
+                                        text="♡"
+                                        styleClass="favorite-button"
+                                        onAction="#handleToggleFavorite2"/>
+                            </HBox>
                             <Label fx:id="item2BidLabel" text="Current Bid" styleClass="item-meta"/>
                             <Label fx:id="item2TimeLabel" text="Time Left" styleClass="item-meta"/>
                             <Label fx:id="item2StatusLabel" text="LIVE" styleClass="item-status"/>
@@ -86,7 +125,13 @@
 
                         <VBox spacing="12.0" styleClass="item-card" HBox.hgrow="ALWAYS">
                             <ImageView fx:id="item3ImageView" fitWidth="280" fitHeight="180" preserveRatio="true"/>
-                            <Label fx:id="item3NameLabel" text="Item Name" styleClass="item-title"/>
+                            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                <Label fx:id="item3NameLabel" text="Item Name" styleClass="item-title" HBox.hgrow="ALWAYS"/>
+                                <Button fx:id="item3FavoriteButton"
+                                        text="♡"
+                                        styleClass="favorite-button"
+                                        onAction="#handleToggleFavorite3"/>
+                            </HBox>
                             <Label fx:id="item3BidLabel" text="Current Bid" styleClass="item-meta"/>
                             <Label fx:id="item3TimeLabel" text="Time Left" styleClass="item-meta"/>
                             <Label fx:id="item3StatusLabel" text="LIVE" styleClass="item-status"/>
@@ -99,5 +144,35 @@
                 </VBox>
             </center>
         </BorderPane>
+
+        <StackPane fx:id="wishlistOverlay"
+                   visible="false"
+                   managed="false"
+                   styleClass="wishlist-overlay"
+                   AnchorPane.topAnchor="0.0"
+                   AnchorPane.bottomAnchor="0.0"
+                   AnchorPane.leftAnchor="0.0"
+                   AnchorPane.rightAnchor="0.0">
+            <children>
+                <VBox maxWidth="760.0"
+                      prefWidth="760.0"
+                      minHeight="260.0"
+                      styleClass="wishlist-dialog">
+                    <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="wishlist-header">
+                        <Label fx:id="wishlistTitleLabel"
+                               text="My Wishlist (0)"
+                               styleClass="wishlist-title"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button text="X"
+                                styleClass="wishlist-close-button"
+                                onAction="#handleCloseWishlist"/>
+                    </HBox>
+
+                    <VBox fx:id="wishlistContentBox"
+                          spacing="0.0"
+                          styleClass="wishlist-content"/>
+                </VBox>
+            </children>
+        </StackPane>
     </children>
 </AnchorPane>

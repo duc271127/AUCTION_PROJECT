@@ -1,104 +1,31 @@
 .auth-root {
-    -fx-background-color: #1f1f1f;
+    -fx-background-color: #f5f7fb;
 }
 
 .auth-stage {
-    -fx-background-color: linear-gradient(to bottom right, #f8fafc, #e2e8f0);
-    -fx-padding: 0;
-}
-
-.auth-home-backdrop {
-    -fx-background-color: linear-gradient(to bottom right, #f8fafc, #e2e8f0);
-}
-
-.auth-dim-overlay {
-    -fx-background-color: rgba(15, 23, 42, 0.58);
-}
-
-.auth-home-top-nav {
-    -fx-background-color: linear-gradient(to right, #15305d, #1e4ea7);
-}
-
-.auth-home-brand {
-    -fx-text-fill: white;
-    -fx-font-size: 24px;
-    -fx-font-weight: 700;
-}
-
-.auth-home-content {
-    -fx-opacity: 0.92;
-}
-
-.auth-home-hero {
-    -fx-background-color: linear-gradient(to right, #15305d, #1d4ed8);
-    -fx-background-radius: 20;
-    -fx-padding: 30;
-}
-
-.auth-home-hero-title {
-    -fx-text-fill: white;
-    -fx-font-size: 40px;
-    -fx-font-weight: 800;
-    -fx-line-spacing: 6px;
-}
-
-.auth-home-hero-subtitle {
-    -fx-text-fill: #dbeafe;
-    -fx-font-size: 16px;
-    -fx-max-width: 700px;
-}
-
-.auth-home-card {
-    -fx-background-color: rgba(255,255,255,0.88);
-    -fx-background-radius: 16;
-    -fx-padding: 22;
-    -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.08), 16, 0.12, 0, 6);
-}
-
-.auth-home-card-title {
-    -fx-text-fill: #0f172a;
-    -fx-font-size: 18px;
-    -fx-font-weight: 700;
-}
-
-.auth-home-card-text {
-    -fx-text-fill: #475569;
-    -fx-font-size: 14px;
+    -fx-background-color: #f5f7fb;
+    -fx-padding: 24;
 }
 
 .auth-sheet {
     -fx-background-color: #ffffff;
-    -fx-background-radius: 22;
-    -fx-border-color: transparent;
-    -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.22), 30, 0.18, 0, 10);
+    -fx-background-radius: 18;
+    -fx-border-color: #e5e7eb;
+    -fx-border-radius: 18;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.12), 22, 0.12, 0, 8);
 }
 
 .auth-sheet-header {
-    -fx-padding: 14 18 6 18;
-    -fx-border-color: transparent;
+    -fx-padding: 18 20 8 20;
+    -fx-border-color: transparent transparent #eeeeee transparent;
+    -fx-border-width: 0 0 1 0;
 }
 
 .auth-header-title {
     -fx-text-fill: #202124;
     -fx-font-size: 15px;
     -fx-font-weight: 700;
-}
-
-.auth-close-button {
-    -fx-background-color: #f4f4f4;
-    -fx-text-fill: #111111;
-    -fx-font-size: 18px;
-    -fx-background-radius: 999;
-    -fx-min-width: 36px;
-    -fx-min-height: 36px;
-    -fx-pref-width: 36px;
-    -fx-pref-height: 36px;
-    -fx-padding: 0;
-    -fx-cursor: hand;
-}
-
-.auth-close-button:hover {
-    -fx-background-color: #f3f3f3;
 }
 
 .auth-tab-pane {
@@ -119,12 +46,12 @@
 }
 
 .auth-form {
-    -fx-padding: 8 18 14 18;
+    -fx-padding: 12 20 20 20;
 }
 
 .auth-title {
     -fx-text-fill: #222222;
-    -fx-font-size: 21px;
+    -fx-font-size: 20px;
     -fx-font-weight: 800;
 }
 
@@ -142,8 +69,8 @@
 .auth-message {
     -fx-text-fill: #dc2626;
     -fx-font-size: 12px;
-    -fx-min-height: 18px;
-    -fx-pref-height: 18px;
+    -fx-min-height: 16px;
+    -fx-pref-height: 16px;
 }
 
 .auth-input {
@@ -155,8 +82,8 @@
     -fx-font-size: 13px;
     -fx-text-fill: #202124;
     -fx-prompt-text-fill: #9b9b9b;
-    -fx-min-height: 38px;
-    -fx-pref-height: 38px;
+    -fx-min-height: 34px;
+    -fx-pref-height: 34px;
 }
 
 .auth-input:focused {
@@ -167,8 +94,8 @@
 
 .combo-box.auth-input {
     -fx-padding: 0;
-    -fx-min-height: 40px;
-    -fx-pref-height: 40px;
+    -fx-min-height: 36px;
+    -fx-pref-height: 36px;
 }
 
 .combo-box.auth-input > .list-cell {
@@ -176,8 +103,8 @@
     -fx-alignment: CENTER_LEFT;
     -fx-text-fill: #202124;
     -fx-font-size: 13px;
-    -fx-min-height: 40px;
-    -fx-pref-height: 40px;
+    -fx-min-height: 36px;
+    -fx-pref-height: 36px;
 }
 
 .auth-checkbox {
@@ -195,7 +122,7 @@
 }
 
 .password-rules {
-    -fx-padding: 0 0 8 2;
+    -fx-padding: 0 0 4 2;
 }
 
 .password-rules-title {
@@ -209,18 +136,17 @@
 }
 
 .auth-primary-button {
-    -fx-background-color: #f2f2f2;
+    -fx-background-color: #0a66c2;
     -fx-background-radius: 7;
     -fx-border-color: transparent;
-    -fx-text-fill: #8a8a8a;
+    -fx-text-fill: #ffffff;
     -fx-font-size: 13px;
     -fx-font-weight: 700;
-    -fx-min-height: 40px;
-    -fx-pref-height: 40px;
+    -fx-min-height: 36px;
+    -fx-pref-height: 36px;
     -fx-cursor: hand;
 }
 
 .auth-primary-button:hover {
-    -fx-background-color: #e8e8e8;
-    -fx-text-fill: #5f5f5f;
+    -fx-background-color: #004f9f;
 }
