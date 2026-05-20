@@ -3,6 +3,7 @@ package com.team.backend.controller;
 import com.team.backend.realtime.RealtimeEventFactory;
 import com.team.backend.dto.AuctionCreateDto;
 import com.team.backend.dto.AuctionDto;
+<<<<<<< Updated upstream
 import com.team.backend.dto.BidRequestDto;
 import com.team.backend.dto.AutoBidRequestDto;
 import com.team.backend.entity.AutoBid;
@@ -15,10 +16,19 @@ import com.team.backend.exception.ResourceNotFoundException;
 import com.team.backend.service.AuctionService;
 import com.team.backend.service.BidService;
 import com.team.backend.service.UserService;
+=======
+import com.team.backend.dto.BidHistoryDto;
+import com.team.backend.entity.Auction;
+import com.team.backend.realtime.RealtimeEvent;
+import com.team.backend.realtime.RealtimeEventFactory;
+import com.team.backend.realtime.RealtimeNotifier;
+import com.team.backend.service.AuctionService;
+import com.team.backend.service.BidService;
+import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+>>>>>>> Stashed changes
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import com.team.backend.realtime.RealtimeEvent;
@@ -31,34 +41,41 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+<<<<<<< Updated upstream
 /**
  * AuctionController - phiên bản tương thích với AuctionService:
  * - listAuctions() không nhận tham số
  * - closeAuction(UUID) chỉ nhận 1 tham số
  */
+=======
+>>>>>>> Stashed changes
 @RestController
 @RequestMapping("/api/auctions")
 @Validated
 public class AuctionController {
 
+<<<<<<< Updated upstream
+=======
+    private static final Logger log =
+            LoggerFactory.getLogger(AuctionController.class);
+
+>>>>>>> Stashed changes
     private final AuctionService auctionService;
     private final BidService bidService;
-    private final UserService userService;
     private final RealtimeNotifier realtimeNotifier;
-    private final AutoBidService autoBidService;
 
-    public AuctionController(AuctionService auctionService,
-                             BidService bidService,
-                             UserService userService,
-                             RealtimeNotifier realtimeNotifier,
-                             AutoBidService autoBidService) {
+    public AuctionController(
+            AuctionService auctionService,
+            BidService bidService,
+            RealtimeNotifier realtimeNotifier
+    ) {
+
         this.auctionService = auctionService;
         this.bidService = bidService;
-        this.userService = userService;
         this.realtimeNotifier = realtimeNotifier;
-        this.autoBidService = autoBidService;
     }
 
+<<<<<<< Updated upstream
     /**
      * Create auction using authenticated user as seller.
      */
@@ -70,12 +87,18 @@ public class AuctionController {
         URI location = URI.create("/api/auctions/" + created.getId());
         return ResponseEntity.created(location).body(toDto(created));
     }
+=======
+    // =========================
+    // CREATE AUCTION
+    // =========================
+>>>>>>> Stashed changes
 
     /**
      * Dev helper: create auction with explicit sellerId in path.
      * Protected: only ADMIN can use this endpoint.
      */
     @PostMapping("/seller/{sellerId}")
+<<<<<<< Updated upstream
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AuctionDto> createAuctionWithSeller(@PathVariable UUID sellerId,
                                                               @Valid @RequestBody AuctionCreateDto dto) {
@@ -124,9 +147,26 @@ public class AuctionController {
                 bidderId,
                 updated.getCurrentPrice(),
                 updated.getEndTime()
-        );
-        realtimeNotifier.broadcastToAuction(id, bidEvent);
+=======
+    public ResponseEntity<AuctionDto> createAuction(
+            @PathVariable UUID sellerId,
+            @Valid @RequestBody AuctionCreateDto dto
+    ) {
 
+        Auction created =
+                auctionService.createAuction(dto, sellerId);
+
+        URI location =
+                URI.create("/api/auctions/" + created.getId());
+
+        log.info(
+                "Auction created for seller {} : {}",
+                sellerId,
+                created.getId()
+>>>>>>> Stashed changes
+        );
+
+<<<<<<< Updated upstream
         if (oldEndTime != null && updated.getEndTime() != null
                 && updated.getEndTime().isAfter(oldEndTime)) {
             RealtimeEvent extendedEvent = RealtimeEventFactory.auctionExtended(
@@ -159,22 +199,52 @@ public class AuctionController {
     /**
      * List all auctions (service signature: listAuctions()).
      */
-    @GetMapping
-    public ResponseEntity<List<AuctionDto>> listAuctions() {
-        List<Auction> auctions = auctionService.listAuctions();
-        List<AuctionDto> dtos = auctions.stream().map(this::toDto).collect(Collectors.toList());
-        return ResponseEntity.ok(dtos);
+=======
+        return ResponseEntity
+                .created(location)
+                .body(toDto(created));
     }
 
+    // =========================
+    // GET ALL AUCTIONS
+    // =========================
+
+>>>>>>> Stashed changes
+    @GetMapping
+    public ResponseEntity<List<AuctionDto>> listAuctions() {
+
+        List<AuctionDto> result =
+                auctionService.listAuctions()
+                        .stream()
+                        .map(this::toDto)
+                        .collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
+    }
+
+<<<<<<< Updated upstream
     /**
      * Get auction detail.
      */
+=======
+    // =========================
+    // GET AUCTION
+    // =========================
+
+>>>>>>> Stashed changes
     @GetMapping("/{id}")
-    public ResponseEntity<AuctionDto> getAuction(@PathVariable UUID id) {
-        Auction a = auctionService.getAuction(id);
-        return ResponseEntity.ok(toDto(a));
+    public ResponseEntity<AuctionDto> getAuction(
+            @PathVariable UUID id
+    ) {
+
+        return ResponseEntity.ok(
+                toDto(
+                        auctionService.getAuction(id)
+                )
+        );
     }
 
+<<<<<<< Updated upstream
     /**
      * Close auction (force close).
      * Service handles authorization/audit if needed.
@@ -186,25 +256,74 @@ public class AuctionController {
         auctionService.closeAuction(id);
         return ResponseEntity.noContent().build();
     }
+=======
+    // =========================
+    // BID HISTORY
+    // =========================
+>>>>>>> Stashed changes
 
     @GetMapping("/{id}/bids")
-    public ResponseEntity<List<BidTransaction>> getBidHistory(@PathVariable UUID id) {
-        return ResponseEntity.ok(bidService.getBidHistory(id));
+    public ResponseEntity<List<BidHistoryDto>> getBidHistory(
+            @PathVariable UUID id
+    ) {
+
+        return ResponseEntity.ok(
+                bidService.getBidHistory(id)
+        );
     }
 
+<<<<<<< Updated upstream
     // -------------------------
     // Helpers
     // -------------------------
-    private AuctionDto toDto(Auction a) {
-        if (a == null) return null;
+=======
+    // =========================
+    // CLOSE AUCTION
+    // =========================
 
-        AuctionDto d = new AuctionDto();
-        d.id = a.getId();
-        if (a.getItem() != null) {
-            d.itemId = a.getItem().getId();
-            d.itemName = a.getItem().getName();
+    @PostMapping("/{id}/close")
+    public ResponseEntity<Void> closeAuction(
+            @PathVariable UUID id
+    ) {
+
+        auctionService.closeAuction(id);
+
+        RealtimeEvent finished =
+                RealtimeEventFactory.auctionFinished(id);
+
+        realtimeNotifier.broadcastToAuction(
+                id,
+                finished
+        );
+
+        return ResponseEntity.noContent().build();
+    }
+
+    // =========================
+    // DTO MAPPER
+    // =========================
+
+>>>>>>> Stashed changes
+    private AuctionDto toDto(Auction a) {
+
+        if (a == null) {
+            return null;
         }
 
+        AuctionDto d = new AuctionDto();
+
+        d.id = a.getId();
+
+        if (a.getItem() != null) {
+
+            d.itemId =
+                    a.getItem().getId();
+
+            d.itemName =
+                    a.getItem().getName();
+        }
+
+<<<<<<< Updated upstream
         // Auction.getCurrentPrice() is primitive double in this project
         d.currentPrice = a.getCurrentPrice();
 
@@ -212,19 +331,25 @@ public class AuctionController {
         d.startTime = a.getStartTime();
         d.endTime = a.getEndTime();
         d.state = a.getState() == null ? null : a.getState().name();
-        return d;
-    }
+=======
+        d.currentPrice =
+                a.getCurrentPrice();
 
-    private UUID resolveUserIdFromSecurity() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || auth.getName() == null) {
-            throw new BusinessRuleException("Unauthenticated: user cannot be resolved");
-        }
-        String username = auth.getName();
-        User user = userService.findByUsername(username);
-        if (user == null) {
-            throw new ResourceNotFoundException("Authenticated user not found: " + username);
-        }
-        return user.getId();
+        d.leaderId =
+                a.getLeaderId();
+
+        d.startTime =
+                a.getStartTime();
+
+        d.endTime =
+                a.getEndTime();
+
+        d.state =
+                a.getState() == null
+                        ? null
+                        : a.getState().name();
+
+>>>>>>> Stashed changes
+        return d;
     }
 }
