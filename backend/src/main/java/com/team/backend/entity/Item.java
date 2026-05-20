@@ -9,10 +9,10 @@ import java.util.UUID;
 public class Item {
 
     @Id
-    @GeneratedValue
-    private UUID id;
+    @Column(columnDefinition = "uuid")
+    private UUID id = UUID.randomUUID();
 
-    @Column(name = "seller_id", nullable = false)
+    @Column(name = "seller_id", nullable = false, columnDefinition = "uuid")
     private UUID sellerId;
 
     @Column(name = "name", nullable = false)

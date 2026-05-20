@@ -24,6 +24,8 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.team.backend.service.EventPublisher;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -39,22 +41,33 @@ class BidServiceImplTest {
     private BidRepository bidRepository;
     private BidServiceImpl bidService;
     private AutoBidRepository autoBidRepository;
+    private BidTransactionalService bidTransactionalService;
+    private EventPublisher eventPublisher;
 
 
     @BeforeEach
     void setUp() {
-        auctionRepository = mock(AuctionRepository.class);
-        bidRepository = mock(BidRepository.class);
-        autoBidRepository = mock(AutoBidRepository.class);
+    auctionRepository = mock(AuctionRepository.class);
+    bidRepository = mock(BidRepository.class);
+    autoBidRepository = mock(AutoBidRepository.class);
+    eventPublisher = mock(EventPublisher.class);
 
-        double minIncrement = 1.0;
-        bidService = new BidServiceImpl(
-                auctionRepository,
-                bidRepository,
-                autoBidRepository,
-                minIncrement,
-                30,
-                60
+    bidTransactionalService = new BidTransactionalService(
+            auctionRepository,
+            bidRepository,
+            autoBidRepository
+    );
+
+    bidService = new BidServiceImpl(
+            auctionRepository,
+            bidRepository,
+            autoBidRepository,
+            bidTransactionalService,
+            1.0,
+            30,
+            60,
+            3,
+            eventPublisher
         );
     }
 
@@ -73,6 +86,8 @@ class BidServiceImplTest {
         when(auctionRepository.findByIdForUpdate(auctionId)).thenReturn(Optional.of(a));
         when(auctionRepository.save(any(Auction.class))).thenAnswer(i -> i.getArgument(0));
         when(bidRepository.save(any(BidTransaction.class))).thenAnswer(i -> i.getArgument(0));
+        when(autoBidRepository.findByAuctionIdAndActiveTrueOrderByMaxAmountDescCreatedAtAsc(auctionId))
+                .thenReturn(List.of());
 
         BidTransaction tx = bidService.placeBid(auctionId, bidderId, 12.0);
 
@@ -132,6 +147,8 @@ class BidServiceImplTest {
         when(auctionRepository.save(any(Auction.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         when(bidRepository.save(any(BidTransaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(autoBidRepository.findByAuctionIdAndActiveTrueOrderByMaxAmountDescCreatedAtAsc(auctionId))
+                .thenReturn(List.of());
 
         int threadCount = 3;
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
@@ -188,6 +205,8 @@ class BidServiceImplTest {
         when(auctionRepository.findByIdForUpdate(auctionId)).thenReturn(Optional.of(auction));
         when(auctionRepository.save(any(Auction.class))).thenAnswer(i -> i.getArgument(0));
         when(bidRepository.save(any(BidTransaction.class))).thenAnswer(i -> i.getArgument(0));
+        when(autoBidRepository.findByAuctionIdAndActiveTrueOrderByMaxAmountDescCreatedAtAsc(auctionId))
+                .thenReturn(List.of());
 
         bidService.placeBid(auctionId, bidderId, 12.0);
 
