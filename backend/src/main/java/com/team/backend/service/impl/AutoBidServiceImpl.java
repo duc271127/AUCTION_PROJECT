@@ -1,4 +1,5 @@
 package com.team.backend.service.impl;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.team.backend.entity.Auction;
 import com.team.backend.entity.AutoBid;
