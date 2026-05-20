@@ -13,13 +13,13 @@ import java.util.UUID;
 public class BidTransaction {
 
     @Id
-    @Column(columnDefinition = "uuid")
+    @Column(nullable = false)
     private UUID id;
 
-    @Column(name = "auction_id", nullable = false, columnDefinition = "uuid")
+    @Column(name = "auction_id", nullable = false)
     private UUID auctionId;
 
-    @Column(name = "bidder_id",  nullable = false, columnDefinition = "uuid")
+    @Column(name = "bidder_id", nullable = false)
     private UUID bidderId;
 
     @Column(nullable = false)
@@ -50,83 +50,33 @@ public class BidTransaction {
         }
     }
 
-    // Getters / Setters
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
 
-    public UUID getId() {
-        return id;
-    }
+    public UUID getAuctionId() { return auctionId; }
+    public void setAuctionId(UUID auctionId) { this.auctionId = auctionId; }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
+    public UUID getBidderId() { return bidderId; }
+    public void setBidderId(UUID bidderId) { this.bidderId = bidderId; }
 
-    public UUID getAuctionId() {
-        return auctionId;
-    }
+    public double getAmount() { return amount; }
+    public void setAmount(double amount) { this.amount = amount; }
 
-    public void setAuctionId(UUID auctionId) {
-        this.auctionId = auctionId;
-    }
+    public Instant getTimestamp() { return createdAt; }
+    public void setTimestamp(Instant timestamp) { this.createdAt = timestamp; }
 
-    public UUID getBidderId() {
-        return bidderId;
-    }
-
-    public void setBidderId(UUID bidderId) {
-        this.bidderId = bidderId;
-    }
-
-    public double getAmount() {
-        return amount;
-    }
-
-    public void setAmount(double amount) {
-        this.amount = amount;
-    }
-
-    /**
-     * Alias getter/setter names: keep getTimestamp/setTimestamp for compatibility
-     * with existing code that referenced "timestamp", and also provide getCreatedAt/setCreatedAt.
-     */
-    public Instant getTimestamp() {
-        return createdAt;
-    }
-
-    public void setTimestamp(Instant timestamp) {
-        this.createdAt = timestamp;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    // equals / hashCode / toString
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof BidTransaction)) return false;
-        BidTransaction that = (BidTransaction) o;
+        if (!(o instanceof BidTransaction that)) return false;
         return Objects.equals(id, that.id);
     }
 
     @Override
     public int hashCode() {
         return Objects.hashCode(id);
-    }
-
-    @Override
-    public String toString() {
-        return "BidTransaction{" +
-                "id=" + id +
-                ", auctionId=" + auctionId +
-                ", bidderId=" + bidderId +
-                ", amount=" + amount +
-                ", createdAt=" + createdAt +
-                '}';
     }
 }

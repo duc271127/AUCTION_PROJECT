@@ -9,13 +9,13 @@ import java.util.UUID;
 public class OutboxEvent {
 
     @Id
-    @Column(columnDefinition = "uuid")
+    @Column(nullable = false)
     private UUID id = UUID.randomUUID();
 
     @Column(name = "aggregate_type")
     private String aggregateType;
 
-    @Column(name = "aggregate_id", columnDefinition = "uuid")
+    @Column(name = "aggregate_id")
     private UUID aggregateId;
 
     @Column(name = "event_type")
@@ -30,7 +30,8 @@ public class OutboxEvent {
     @Column(name = "dispatched")
     private boolean dispatched = false;
 
-    public OutboxEvent() {}
+    public OutboxEvent() {
+    }
 
     public OutboxEvent(String aggregateType, UUID aggregateId, String eventType, String payload) {
         this.id = UUID.randomUUID();
@@ -41,7 +42,6 @@ public class OutboxEvent {
         this.createdAt = Instant.now();
     }
 
-    // getters/setters
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
 

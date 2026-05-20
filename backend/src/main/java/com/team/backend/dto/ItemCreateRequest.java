@@ -14,8 +14,16 @@ public class ItemCreateRequest {
     private String startDate; // frontend có thể gửi ISO string -> map thành Instant
     private String endDate;
     private String imagePath;
+    private String sku;
+    private Integer quantity;
 
     // getters / setters
+    public String getSku() { return sku; }
+    public void setSku(String sku) { this.sku = sku; }
+
+    public Integer getQuantity() { return quantity; }
+    public void setQuantity(Integer quantity) { this.quantity = quantity; }
+
     public UUID getSellerId() { return sellerId; }
     public void setSellerId(UUID sellerId) { this.sellerId = sellerId; }
 

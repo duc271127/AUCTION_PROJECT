@@ -1,0 +1,69 @@
+package com.team.backend.controller;
+
+import com.team.backend.dto.WalletAmountRequest;
+import com.team.backend.dto.WalletBalanceDto;
+import com.team.backend.dto.WalletTransactionDto;
+import com.team.backend.entity.User;
+import com.team.backend.exception.BusinessRuleException;
+import com.team.backend.service.UserService;
+import com.team.backend.service.WalletService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/wallet")
+public class WalletController {
+
+    private final WalletService walletService;
+    private final UserService userService;
+
+    public WalletController(WalletService walletService, UserService userService) {
+        this.walletService = walletService;
+        this.userService = userService;
+    }
+
+    @GetMapping("/balance")
+    public ResponseEntity<WalletBalanceDto> getBalance() {
+        UUID userId = resolveCurrentUserId();
+        return ResponseEntity.ok(walletService.getBalance(userId));
+    }
+
+    @PostMapping("/deposit")
+    public ResponseEntity<WalletBalanceDto> deposit(@RequestBody WalletAmountRequest request) {
+        UUID userId = resolveCurrentUserId();
+        return ResponseEntity.ok(walletService.deposit(userId, request.getAmount()));
+    }
+
+    @PostMapping("/withdraw")
+    public ResponseEntity<WalletBalanceDto> withdraw(@RequestBody WalletAmountRequest request) {
+        UUID userId = resolveCurrentUserId();
+        return ResponseEntity.ok(walletService.withdraw(userId, request.getAmount()));
+    }
+
+    @GetMapping("/history")
+    public ResponseEntity<List<WalletTransactionDto>> getHistory() {
+        UUID userId = resolveCurrentUserId();
+        return ResponseEntity.ok(walletService.getHistory(userId));
+    }
+
+    private UUID resolveCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        if (auth == null || auth.getName() == null) {
+            throw new BusinessRuleException("Authenticated user is required");
+        }
+
+        User user = userService.findByUsername(auth.getName());
+
+        if (user == null) {
+            throw new BusinessRuleException("Authenticated user not found: " + auth.getName());
+        }
+
+        return user.getId();
+    }
+}
