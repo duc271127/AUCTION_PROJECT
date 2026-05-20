@@ -47,23 +47,52 @@ class BidServiceImplTest {
 
     @BeforeEach
     void setUp() {
-    auctionRepository = mock(AuctionRepository.class);
-    bidRepository = mock(BidRepository.class);
-    autoBidRepository = mock(AutoBidRepository.class);
-    bidTransactionalService = mock(BidTransactionalService.class);
-    eventPublisher = mock(EventPublisher.class);
+        auctionRepository = mock(AuctionRepository.class);
+        bidRepository = mock(BidRepository.class);
+        autoBidRepository = mock(AutoBidRepository.class);
+        eventPublisher = mock(EventPublisher.class);
 
-    double minIncrement = 1.0;
-    bidService = new BidServiceImpl(
-            auctionRepository,
-            bidRepository,
-            autoBidRepository,
-            bidTransactionalService,
-            minIncrement,
-            30,
-            60,
-            3,
-            eventPublisher
+        BidTransactionalService realTransactionalService = new BidTransactionalService(
+                auctionRepository,
+                bidRepository,
+                autoBidRepository
+        );
+
+        Object transactionalLock = new Object();
+        bidTransactionalService = mock(BidTransactionalService.class);
+        when(bidTransactionalService.placeBidTransactionalAttempt(
+                any(UUID.class),
+                any(UUID.class),
+                anyDouble(),
+                anyDouble(),
+                anyLong(),
+                anyLong(),
+                any()
+        )).thenAnswer(invocation -> {
+            synchronized (transactionalLock) {
+                return realTransactionalService.placeBidTransactionalAttempt(
+                        invocation.getArgument(0, UUID.class),
+                        invocation.getArgument(1, UUID.class),
+                        invocation.getArgument(2, Double.class),
+                        invocation.getArgument(3, Double.class),
+                        invocation.getArgument(4, Long.class),
+                        invocation.getArgument(5, Long.class),
+                        invocation.getArgument(6, EventPublisher.class)
+                );
+            }
+        });
+
+        double minIncrement = 1.0;
+        bidService = new BidServiceImpl(
+                auctionRepository,
+                bidRepository,
+                autoBidRepository,
+                bidTransactionalService,
+                minIncrement,
+                30,
+                60,
+                3,
+                eventPublisher
         );
     }
 
