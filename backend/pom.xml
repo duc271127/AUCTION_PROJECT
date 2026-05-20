@@ -53,7 +53,7 @@
 			<artifactId>spring-boot-starter-websocket</artifactId>
 		</dependency>
 
-<<<<<<< Updated upstream
+
 		<!-- MySQL -->
 		<dependency>
 			<groupId>com.mysql</groupId>
@@ -62,7 +62,7 @@
 		</dependency>
 
 		<!-- Lombok -->
-=======
+
 		<!-- POSTGRESQL -->
 		<dependency>
 			<groupId>org.postgresql</groupId>
@@ -71,17 +71,17 @@
 		</dependency>
 
 		<!-- LOMBOK -->
->>>>>>> Stashed changes
+
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
-<<<<<<< Updated upstream
+
 
 		<!-- ====== TEST DEPENDENCIES ====== -->
-=======
->>>>>>> Stashed changes
+
+
 
 		<!-- SPRING TEST -->
 		<dependency>
