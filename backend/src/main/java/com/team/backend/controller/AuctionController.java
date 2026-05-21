@@ -250,7 +250,7 @@ public class AuctionController {
             );
         } else {
             return ResponseEntity.ok(
-                    bidService.getBidHistory(id)
+                    bidService.getBidHistory(id, limit)
             );
         }
     }
