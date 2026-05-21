@@ -67,7 +67,14 @@ public class ProductDetailController {
     private void loadAuctionDetail() {
         try {
             AuctionListResponse response = auctionApiService.getAuctionById(selectedItem.getId());
+
+            try {
+                auctionApiService.trackView(selectedItem.getId());
+            } catch (Exception ignored) {
+            }
+
             bindDetailFromApi(response);
+
         } catch (Exception e) {
             bindFallbackFromSelectedItem();
             showBidMessage("Cannot load full detail from server. Showing fallback data.");

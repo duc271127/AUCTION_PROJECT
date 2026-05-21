@@ -14,6 +14,9 @@ public class AuctionDto {
     public UUID sellerId;
     public String sellerName;
     public double currentPrice;
+    public long viewCount;
+    public long favoriteCount;
+    public double trendingScore;
     public int bidCount;
     public double minNextBid;
     public UUID leaderId;

@@ -45,6 +45,9 @@ public class Auction {
     @Column(name = "current_price", nullable = false)
     private double currentPrice = 0.0;
 
+    @Column(name = "view_count", nullable = false)
+    private long viewCount = 0L;
+
     @Column(name = "reserve_price")
     private Double reservePrice = 0.0;
 
@@ -77,6 +80,12 @@ public class Auction {
 
     @Transient
     private String sellerName;
+
+    @Transient
+    private Long favoriteCount;
+
+    @Transient
+    private Double trendingScore;
 
     public Auction() {
         this.id = UUID.randomUUID();
@@ -148,6 +157,9 @@ public class Auction {
     public double getCurrentPrice() { return currentPrice; }
     public void setCurrentPrice(double currentPrice) { this.currentPrice = currentPrice; }
 
+    public long getViewCount() { return viewCount; }
+    public void setViewCount(long viewCount) { this.viewCount = viewCount; }
+
     public Double getReservePrice() { return reservePrice; }
     public void setReservePrice(Double reservePrice) { this.reservePrice = reservePrice; }
 
@@ -179,6 +191,12 @@ public class Auction {
 
     public String getSellerName() { return sellerName; }
     public void setSellerName(String sellerName) { this.sellerName = sellerName; }
+
+    public Long getFavoriteCount() { return favoriteCount; }
+    public void setFavoriteCount(Long favoriteCount) { this.favoriteCount = favoriteCount; }
+
+    public Double getTrendingScore() { return trendingScore; }
+    public void setTrendingScore(Double trendingScore) { this.trendingScore = trendingScore; }
 
     // Helper: compute default minNextBid if not set (business rule: +1.0)
     public double computeMinNextBid(double increment) {

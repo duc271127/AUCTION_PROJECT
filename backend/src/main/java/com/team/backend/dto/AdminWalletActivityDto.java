@@ -9,6 +9,7 @@ import java.util.UUID;
 public class AdminWalletActivityDto {
     private UUID id;
     private UUID userId;
+    private String userDisplayName;
     private WalletTransactionType type;
     private BigDecimal amount;
     private BigDecimal balanceAfter;
@@ -19,6 +20,9 @@ public class AdminWalletActivityDto {
 
     public UUID getUserId() { return userId; }
     public void setUserId(UUID userId) { this.userId = userId; }
+
+    public String getUserDisplayName() { return userDisplayName; }
+    public void setUserDisplayName(String userDisplayName) { this.userDisplayName = userDisplayName; }
 
     public WalletTransactionType getType() { return type; }
     public void setType(WalletTransactionType type) { this.type = type; }

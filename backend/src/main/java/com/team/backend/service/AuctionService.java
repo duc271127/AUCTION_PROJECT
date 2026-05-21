@@ -13,6 +13,7 @@ import java.util.UUID;
 public interface AuctionService {
     Auction createAuction(Auction auction);
     Auction createAuction(AuctionCreateDto dto, UUID sellerId);
+    Auction createAuction(AuctionCreateDto dto, UUID sellerId, UUID actorId);
     Auction getAuction(UUID auctionId);
     List<Auction> listAuctions();
     List<Auction> listAuctionsByState(AuctionState state);
@@ -22,5 +23,9 @@ public interface AuctionService {
     void refreshStates();
     void validateAuctionOpenForBidding(UUID auctionId);
     AuctionDetailResponse getDetail(UUID auctionId);
+    AuctionDetailResponse getDetail(UUID auctionId, boolean incrementView);
     Page<Auction> searchCatalog(String category, String q, AuctionState state, Pageable pageable);
+    Page<Auction> searchTrendingCatalog(String category, String q, AuctionState state, Pageable pageable);
+    Page<Auction> searchPersonalizedCatalog(UUID userId, String category, String q, AuctionState state, Pageable pageable);
+    void incrementView(UUID auctionId);
 }
