@@ -14,8 +14,16 @@ public class ItemResponse {
     private String startDate; // ISO-8601 string
     private String endDate;   // ISO-8601 string
     private String imagePath;
+    private String sku;
+    private Integer quantity;
 
     // getters / setters
+    public String getSku() { return sku; }
+    public void setSku(String sku) { this.sku = sku; }
+
+    public Integer getQuantity() { return quantity; }
+    public void setQuantity(Integer quantity) { this.quantity = quantity; }
+
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
 

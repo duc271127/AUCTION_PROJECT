@@ -33,4 +33,9 @@ public interface AuctionRepository extends JpaRepository<Auction, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Auction a where a.id = :id")
     Optional<Auction> findByIdForUpdate(@Param("id") UUID id);
+
+    @Query("select count(a) from Auction a where a.item.sellerId = :sellerId and a.state = :state")
+    long countBySellerIdAndState(@Param("sellerId") UUID sellerId, @Param("state") AuctionState state);
+
+    boolean existsByItemId(UUID itemId);
 }

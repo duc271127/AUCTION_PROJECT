@@ -9,10 +9,10 @@ import java.util.UUID;
 public class Auction {
 
     @Id
-    @Column(columnDefinition = "uuid")
+    @Column(nullable = false)
     private UUID id = UUID.randomUUID();
 
-    @Column(name = "item_id", columnDefinition = "uuid", nullable = false)
+    @Column(name = "item_id", nullable = false)
     private UUID itemId;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -35,24 +35,25 @@ public class Auction {
     @Column(name = "reserve_price")
     private Double reservePrice = 0.0;
 
-    @Column(name = "leader_id", columnDefinition = "uuid")
+    @Column(name = "leader_id")
     private UUID leaderId;
 
-    @Column(name = "winner_id", columnDefinition = "uuid")
+    @Column(name = "winner_id")
     private UUID winnerId;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
-    @Column(name = "created_by", columnDefinition = "uuid")
+    @Column(name = "created_by")
     private UUID createdBy;
 
     @Version
     private Long version;
 
-    public Auction() {this.id = UUID.randomUUID();}
+    public Auction() {
+        this.id = UUID.randomUUID();
+    }
 
-    // Getters and setters
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
 
