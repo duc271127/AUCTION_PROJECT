@@ -1,6 +1,8 @@
 package com.team.backend.entity;
 
 import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -55,6 +57,12 @@ public class Item {
     @Column(name = "image_path", length = 1000)
     private String imagePath;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "item_images", joinColumns = @JoinColumn(name = "item_id"))
+    @OrderColumn(name = "sort_order")
+    @Column(name = "image_url", nullable = false, length = 1000)
+    private List<String> imageUrls = new ArrayList<>();
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -102,6 +110,9 @@ public class Item {
 
     public String getImagePath() { return imagePath; }
     public void setImagePath(String imagePath) { this.imagePath = imagePath; }
+
+    public List<String> getImageUrls() { return imageUrls; }
+    public void setImageUrls(List<String> imageUrls) { this.imageUrls = imageUrls; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

@@ -156,3 +156,40 @@
 .table-row-cell:selected .text {
     -fx-fill: #0f172a;
 }
+
+.seller-listing-card {
+    -fx-pref-width: 190;
+    -fx-min-width: 190;
+    -fx-max-width: 190;
+    -fx-background-color: #f8fafc;
+    -fx-background-radius: 8;
+    -fx-border-color: #d8dde8;
+    -fx-border-radius: 8;
+    -fx-padding: 10;
+}
+
+.seller-listing-image {
+    -fx-background-radius: 8;
+}
+
+.seller-listing-name {
+    -fx-text-fill: #111827;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.seller-listing-meta {
+    -fx-text-fill: #5f6b7a;
+    -fx-font-size: 12px;
+}
+
+.seller-listing-price {
+    -fx-text-fill: #0a66c2;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+.seller-image-thumb {
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+}

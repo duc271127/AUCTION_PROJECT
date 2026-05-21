@@ -70,7 +70,8 @@
 
                     <Button text="Wallet"
                             focusTraversable="false"
-                            styleClass="market-wallet-button"/>
+                            styleClass="market-wallet-button"
+                            onAction="#handleOpenWallet"/>
 
                     <Button fx:id="wishlistButton"
                             text="&#9825; 0"

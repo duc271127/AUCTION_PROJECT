@@ -32,6 +32,11 @@ public class CategoryController {
     }
 
     @FXML
+    private void handleOpenWallet() {
+        SceneManager.goToWallet();
+    }
+
+    @FXML
     private void handleGoToArt() {
         SceneManager.goToCategory("Art");
     }

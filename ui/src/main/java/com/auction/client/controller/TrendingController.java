@@ -38,6 +38,11 @@ public class TrendingController {
     }
 
     @FXML
+    private void handleOpenWallet() {
+        SceneManager.goToWallet();
+    }
+
+    @FXML
     private void handleLogout() {
         SessionManager.clear();
         SceneManager.goToAuth();
