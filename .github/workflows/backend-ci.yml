@@ -21,4 +21,3 @@ jobs:
           mvn -B clean test \
             -DskipTests=false \
             -Dspring.profiles.active=test
-          mvn -B clean test -DskipTests=false -Dspring.profiles.active=test
