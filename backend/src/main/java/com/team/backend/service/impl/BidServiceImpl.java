@@ -28,6 +28,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.HashMap;
+import java.util.stream.Collectors;
 
 @Service
 public class BidServiceImpl implements BidService {
@@ -265,8 +266,28 @@ public class BidServiceImpl implements BidService {
      * Trả về danh sách theo thứ tự mới nhất trước (desc).
      */
     @Override
-    public List<BidTransaction> getBidHistory(UUID auctionId) {
-        return bidRepository.findByAuctionIdOrderByCreatedAtAsc(auctionId);
+    public List<BidHistoryDto> getBidHistory(UUID auctionId) {
+
+        List<BidTransaction> transactions =
+                bidRepository.findByAuctionIdOrderByCreatedAtDesc(auctionId);
+
+        return transactions.stream()
+                .map(tx -> new BidHistoryDto(
+                        tx.getBidderId(),
+                        tx.getAmount(),
+                        tx.getCreatedAt()
+                ))
+                .toList();
+    }
+
+    @Override
+    public List<BidHistoryDto> getBidHistory(UUID auctionId, int limit) {
+        if (limit <= 0) limit = 50;
+        List<BidTransaction> transactions = bidRepository.findByAuctionIdOrderByCreatedAtDesc(auctionId);
+        return transactions.stream()
+                .limit(limit)
+                .map(tx -> new BidHistoryDto(tx.getBidderId(), tx.getAmount(), tx.getCreatedAt()))
+                .collect(Collectors.toList());
     }
 
     @Override
