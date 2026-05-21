@@ -61,7 +61,7 @@ public class BidController {
         if (limit == null) {
             history = bidService.getBidHistory(auctionId);
         } else {
-            history = bidService.getBidHistory(auctionId);
+            history = bidService.getBidHistory(auctionId, limit);
         }
         return ResponseEntity.ok(history);
     }
