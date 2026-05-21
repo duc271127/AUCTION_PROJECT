@@ -18,4 +18,6 @@ jobs:
       - name: Run Maven tests
         run: |
           cd backend
-          mvn -B clean test -DskipTests=false -Dspring.profiles.active=test
+          mvn -B clean test \
+            -DskipTests=false \
+            -Dspring.profiles.active=test

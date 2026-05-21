@@ -1,7 +1,9 @@
 package com.team.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.Min;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AutoBidRequestDto {
 
     @Min(value = 1, message = "maxAmount must be >= 1")

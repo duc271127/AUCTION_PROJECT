@@ -24,7 +24,7 @@ public class LoggingEventPublisher implements EventPublisher {
     }
 
     @Override
-    public void publishAutoBidPlaced(UUID auctionId, UUID bidderId, double amount, Instant timestamp) {
-        log.info("EVENT AutoBidPlaced auction={} bidder={} amount={} ts={}", auctionId, bidderId, amount, timestamp);
+    public void publishAutoBidPlaced(UUID auctionId, UUID bidderId, double amount, UUID previousLeader, Instant timestamp) {
+        log.info("EVENT AutoBidPlaced auction={} bidder={} amount={} prevLeader={} ts={}", auctionId, bidderId, amount, previousLeader, timestamp);
     }
 }

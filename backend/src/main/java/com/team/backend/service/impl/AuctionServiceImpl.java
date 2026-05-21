@@ -15,33 +15,26 @@ import com.team.backend.service.AuctionHelper;
 import com.team.backend.service.AuctionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.UUID;
 
-/**
- * AuctionServiceImpl - hợp nhất hai phiên bản của bạn:
- * - Giữ các rule nghiệp vụ từ file cũ (kiểm tra item, start/end time, trạng thái SCHEDULED/ACTIVE)
- * - Thêm các API trả DTO (getDetail) để các service khác (ví dụ FavoriteService) gọi
- * - Có refreshStates định kỳ để cập nhật trạng thái auction theo thời gian
- *
- * Tất cả thông báo log/exception bằng tiếng Việt để dễ đọc.
- */
 @Service
 public class AuctionServiceImpl implements AuctionService {
 
     private static final Logger log = LoggerFactory.getLogger(AuctionServiceImpl.class);
+    private static final double DEFAULT_MIN_INCREMENT = 1.0;
 
     private final AuctionRepository auctionRepository;
     private final ItemRepository itemRepository;
     private final BidRepository bidRepository;
     private final AuctionHelper auctionHelper;
-
-    private static final double DEFAULT_MIN_INCREMENT = 1.0;
 
     public AuctionServiceImpl(AuctionRepository auctionRepository,
                               ItemRepository itemRepository,
@@ -53,176 +46,151 @@ public class AuctionServiceImpl implements AuctionService {
         this.auctionHelper = auctionHelper;
     }
 
-    // Create / Read / Update
-
     @Override
     @Transactional
     public Auction createAuction(Auction auction) {
-
         if (auction == null) {
-            throw new BusinessRuleException("Auction payload là bắt buộc");
+            throw new BusinessRuleException("Auction payload is required");
         }
-
         if (auction.getStartTime() == null || auction.getEndTime() == null) {
-            throw new BusinessRuleException("Start time và end time là bắt buộc");
+            throw new BusinessRuleException("startTime and endTime are required");
         }
-
         if (!auction.getStartTime().isBefore(auction.getEndTime())) {
-            throw new BusinessRuleException("startTime phải trước endTime");
+            throw new BusinessRuleException("startTime must be before endTime");
         }
-
         if (auction.getItem() == null && auction.getItemId() == null) {
-            throw new BusinessRuleException("Auction phải tham chiếu tới một Item");
+            throw new BusinessRuleException("Auction must reference an item");
         }
 
-        // Nếu item entity chưa được set nhưng có itemId, cố gắng load
         if (auction.getItem() == null && auction.getItemId() != null) {
-            Item it = itemRepository.findById(auction.getItemId())
-                    .orElseThrow(() -> new BusinessRuleException("Item không tồn tại: " + auction.getItemId()));
-            auction.setItem(it);
+            Item item = itemRepository.findById(auction.getItemId())
+                    .orElseThrow(() -> new BusinessRuleException("Item not found: " + auction.getItemId()));
+            auction.setItem(item);
         }
 
-        if (auction.getItem() != null && auction.getItem().getStartingPrice() <= 0) {
-            throw new BusinessRuleException("Giá khởi điểm của Item phải lớn hơn 0");
-        }
-
-        Instant now = Instant.now();
-
-        // Khởi tạo currentPrice từ item nếu chưa set
-        if (auction.getCurrentPrice() == 0.0 && auction.getItem() != null) {
+        if (auction.getItem() != null && auction.getItem().getStartingPrice() != null && auction.getCurrentPrice() == 0.0) {
             auction.setCurrentPrice(auction.getItem().getStartingPrice());
         }
 
-        if (auction.getStartTime().isAfter(now)) {
-            auction.setState(AuctionState.SCHEDULED);
-        } else if (!auction.getEndTime().isBefore(now)) {
-            auction.setState(AuctionState.ACTIVE);
-        } else {
-            throw new BusinessRuleException("endTime phải ở tương lai");
-        }
+        applyDerivedAuctionFields(auction, auction.getItem(), auction.getCreatedBy() != null ? auction.getCreatedBy() : auction.getSellerId());
+        applyInitialState(auction);
 
-        if (auction.getId() == null) auction.setId(UUID.randomUUID());
-        if (auction.getCreatedAt() == null) auction.setCreatedAt(Instant.now());
+        if (auction.getId() == null) {
+            auction.setId(UUID.randomUUID());
+        }
+        if (auction.getCreatedAt() == null) {
+            auction.setCreatedAt(Instant.now());
+        }
         auction.setUpdatedAt(Instant.now());
 
-        Auction saved = auctionRepository.save(auction);
-        log.info("Tạo auction: id={}, itemId={}, state={}", saved.getId(), saved.getItemId(), saved.getState());
-        return saved;
+        return auctionRepository.save(auction);
     }
 
     @Override
     @Transactional
     public Auction createAuction(AuctionCreateDto dto, UUID sellerId) {
         if (dto == null) {
-            throw new BusinessRuleException("AuctionCreateDto là bắt buộc");
+            throw new BusinessRuleException("AuctionCreateDto is required");
         }
         if (sellerId == null) {
-            throw new BusinessRuleException("sellerId là bắt buộc");
+            throw new BusinessRuleException("sellerId is required");
         }
 
-        // Lấy thông tin item từ DTO (giả định DTO có getter)
-        UUID dtoItemId = dto.getItemId();
         Item item;
-
-        if (dtoItemId != null) {
-            // Nếu truyền itemId, load item và kiểm tra quyền sở hữu
-            item = itemRepository.findById(dtoItemId)
-                    .orElseThrow(() -> new BusinessRuleException("Item không tồn tại: " + dtoItemId));
-
+        if (dto.getItemId() != null) {
+            item = itemRepository.findById(dto.getItemId())
+                    .orElseThrow(() -> new BusinessRuleException("Item not found: " + dto.getItemId()));
             if (!sellerId.equals(item.getSellerId())) {
-                throw new BusinessRuleException("Người bán không sở hữu item này");
+                throw new BusinessRuleException("Seller does not own this item");
             }
         } else {
-            // Nếu không truyền itemId, tạo Item mới từ thông tin DTO
-            String itemName = dto.getItemName();
-            String itemDescription = dto.getItemDescription();
-            Double startPrice = dto.getStartPrice();
-
-            if (itemName == null || itemName.trim().isEmpty()) {
-                throw new BusinessRuleException("itemName là bắt buộc khi không truyền itemId");
+            if (dto.getItemName() == null || dto.getItemName().isBlank()) {
+                throw new BusinessRuleException("itemName is required when itemId is missing");
             }
-            if (startPrice == null || startPrice <= 0) {
-                throw new BusinessRuleException("startPrice phải lớn hơn 0 khi tạo Item mới");
+            if (dto.getStartPrice() <= 0) {
+                throw new BusinessRuleException("startPrice must be greater than 0");
             }
 
             Item newItem = new Item();
-            newItem.setName(itemName.trim());
-            newItem.setDescription(itemDescription == null ? "" : itemDescription.trim());
-            newItem.setStartingPrice(startPrice);
             newItem.setSellerId(sellerId);
-
+            newItem.setName(dto.getItemName().trim());
+            newItem.setDescription(dto.getItemDescription() == null ? "" : dto.getItemDescription().trim());
+            newItem.setCategory(dto.getCategory());
+            newItem.setImagePath(dto.getImageUrl());
+            newItem.setStartingPrice(dto.getStartPrice());
             item = itemRepository.save(newItem);
         }
 
-        // Lấy thời gian bắt đầu/kết thúc từ DTO
-        Instant startTime = dto.getStartTime();
-        Instant endTime = dto.getEndTime();
-
-        if (startTime == null || endTime == null) {
-            throw new BusinessRuleException("startTime và endTime là bắt buộc");
+        if (dto.getStartTime() == null || dto.getEndTime() == null) {
+            throw new BusinessRuleException("startTime and endTime are required");
         }
-        if (!startTime.isBefore(endTime)) {
-            throw new BusinessRuleException("startTime phải trước endTime");
+        if (!dto.getStartTime().isBefore(dto.getEndTime())) {
+            throw new BusinessRuleException("startTime must be before endTime");
         }
 
-        Instant now = Instant.now();
-
-        // Tạo entity Auction và gán các trường cần thiết
         Auction auction = new Auction();
         auction.setItem(item);
-        auction.setItemId(item.getId()); // đảm bảo lưu itemId để truy vấn nhanh
-        auction.setStartTime(startTime);
-        auction.setEndTime(endTime);
-        auction.setCurrentPrice(item.getStartingPrice());
+        auction.setItemId(item.getId());
+        auction.setStartTime(dto.getStartTime());
+        auction.setEndTime(dto.getEndTime());
+        auction.setCurrentPrice(item.getStartingPrice() == null ? 0.0 : item.getStartingPrice());
         auction.setCreatedBy(sellerId);
+        auction.setSellerId(sellerId);
+        applyDerivedAuctionFields(auction, item, sellerId);
+        applyInitialState(auction);
 
-        if (auction.getId() == null) auction.setId(UUID.randomUUID());
-        if (auction.getCreatedAt() == null) auction.setCreatedAt(Instant.now());
+        if (auction.getId() == null) {
+            auction.setId(UUID.randomUUID());
+        }
+        if (auction.getCreatedAt() == null) {
+            auction.setCreatedAt(Instant.now());
+        }
         auction.setUpdatedAt(Instant.now());
 
-        if (startTime.isAfter(now)) {
-            auction.setState(AuctionState.SCHEDULED);
-        } else if (!endTime.isBefore(now)) {
-            auction.setState(AuctionState.ACTIVE);
-        } else {
-            throw new BusinessRuleException("endTime phải ở tương lai");
-        }
-
-        Auction saved = auctionRepository.save(auction);
-        return saved;
+        return auctionRepository.save(auction);
     }
-
 
     @Override
     public Auction getAuction(UUID auctionId) {
-        return auctionRepository.findById(auctionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy auction: " + auctionId));
+        Auction auction = auctionRepository.findById(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));
+        populateTransientFields(auction);
+        return auction;
     }
 
     @Override
     public List<Auction> listAuctions() {
-        List<Auction> all = auctionRepository.findAll();
-        all.forEach(this::populateTransientFields);
-        return all;
+        List<Auction> auctions = auctionRepository.findAll();
+        auctions.forEach(this::populateTransientFields);
+        return auctions;
     }
 
     @Override
     public List<Auction> listAuctionsByState(AuctionState state) {
-        if (state == null) return listAuctions();
-        List<Auction> all = auctionRepository.findByState(state);
-        all.forEach(this::populateTransientFields);
-        return all;
+        if (state == null) {
+            return listAuctions();
+        }
+        List<Auction> auctions = auctionRepository.findByState(state);
+        auctions.forEach(this::populateTransientFields);
+        return auctions;
+    }
+
+    @Override
+    public Page<Auction> searchCatalog(String category, String q, AuctionState state, Pageable pageable) {
+        Page<Auction> page = auctionRepository.searchCatalog(category, q, state, pageable);
+        page.forEach(this::populateTransientFields);
+        return page;
     }
 
     @Override
     @Transactional
     public Auction updateAuction(Auction auction) {
-
         if (auction == null || auction.getId() == null) {
-            throw new BusinessRuleException("Auction và auction id là bắt buộc");
+            throw new BusinessRuleException("Auction id is required");
         }
+
         Auction existing = auctionRepository.findById(auction.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy auction: " + auction.getId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auction.getId()));
 
         existing.setTitle(auction.getTitle());
         existing.setDescription(auction.getDescription());
@@ -234,73 +202,63 @@ public class AuctionServiceImpl implements AuctionService {
         existing.setCurrentPrice(auction.getCurrentPrice());
         existing.setLeaderId(auction.getLeaderId());
         existing.setWinnerId(auction.getWinnerId());
+        existing.setSellerId(auction.getSellerId());
         existing.setState(auction.getState());
         existing.setUpdatedAt(Instant.now());
-
-        Auction saved = auctionRepository.save(existing);
-        log.info("Cập nhật auction: id={}", saved.getId());
-        return saved;
+        return auctionRepository.save(existing);
     }
-
-    // Lifecycle operations
 
     @Override
     @Transactional
     public void closeAuction(UUID auctionId) {
+        Auction auction = auctionRepository.findById(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));
 
-        Auction a = getAuction(auctionId);
-        if (a.getState() == AuctionState.FINISHED || a.getState() == AuctionState.CANCELLED) {
-            throw new BusinessRuleException("Auction đã kết thúc hoặc bị hủy");
+        if (auction.getState() == AuctionState.FINISHED || auction.getState() == AuctionState.CANCELLED) {
+            throw new BusinessRuleException("Auction is already closed");
         }
 
-        a.setState(AuctionState.FINISHED);
-        if (a.getLeaderId() != null) a.setWinnerId(a.getLeaderId());
-        a.setUpdatedAt(Instant.now());
-        auctionRepository.save(a);
-        log.info("Đã đóng auction: id={}, winner={}", auctionId, a.getWinnerId());
+        auction.setState(AuctionState.FINISHED);
+        if (auction.getLeaderId() != null) {
+            auction.setWinnerId(auction.getLeaderId());
+        }
+        auction.setUpdatedAt(Instant.now());
+        auctionRepository.save(auction);
     }
 
     @Override
     @Transactional
     public void startAuction(UUID auctionId) {
+        Auction auction = auctionRepository.findById(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));
 
-        Auction a = getAuction(auctionId);
-
-        if (a.getState() != AuctionState.SCHEDULED) {
-            throw new BusinessRuleException("Auction không ở trạng thái SCHEDULED");
+        if (auction.getState() != AuctionState.SCHEDULED) {
+            throw new BusinessRuleException("Auction is not in SCHEDULED state");
         }
 
-        a.setState(AuctionState.ACTIVE);
-        a.setUpdatedAt(Instant.now());
-        auctionRepository.save(a);
-        log.info("Đã bắt đầu auction: id={}", auctionId);
+        auction.setState(AuctionState.ACTIVE);
+        auction.setUpdatedAt(Instant.now());
+        auctionRepository.save(auction);
     }
 
     @Override
     @Transactional
     public void refreshStates() {
-
         Instant now = Instant.now();
 
-        // Bắt đầu các auction đã đến giờ
         List<Auction> toStart = auctionRepository.findByStateAndStartTimeBefore(AuctionState.SCHEDULED, now);
-        for (Auction a : toStart) {
-
-            a.setState(AuctionState.ACTIVE);
-            a.setUpdatedAt(now);
-            auctionRepository.save(a);
-            log.info("Chuyển auction sang ACTIVE: id={}", a.getId());
+        for (Auction auction : toStart) {
+            auction.setState(AuctionState.ACTIVE);
+            auction.setUpdatedAt(now);
+            auctionRepository.save(auction);
         }
 
-        // Kết thúc các auction đã quá giờ
         List<Auction> toFinish = auctionRepository.findByStateAndEndTimeBefore(AuctionState.ACTIVE, now);
-        for (Auction a : toFinish) {
-
-            a.setState(AuctionState.FINISHED);
-            a.setWinnerId(a.getLeaderId());
-            a.setUpdatedAt(now);
-            auctionRepository.save(a);
-            log.info("Chuyển auction sang FINISHED: id={}, winner={}", a.getId(), a.getWinnerId());
+        for (Auction auction : toFinish) {
+            auction.setState(AuctionState.FINISHED);
+            auction.setWinnerId(auction.getLeaderId());
+            auction.setUpdatedAt(now);
+            auctionRepository.save(auction);
         }
     }
 
@@ -309,48 +267,116 @@ public class AuctionServiceImpl implements AuctionService {
         try {
             refreshStates();
         } catch (Exception ex) {
-            log.error("Lỗi khi refresh trạng thái auction: {}", ex.getMessage(), ex);
+            log.error("Failed to refresh auction states", ex);
         }
     }
 
     @Override
     public void validateAuctionOpenForBidding(UUID auctionId) {
-        Auction a = getAuction(auctionId);
-        if (a.getState() != AuctionState.SCHEDULED && a.getState() != AuctionState.ACTIVE) {
-            throw new BusinessRuleException("Auction không mở để đặt giá");
+        Auction auction = getAuction(auctionId);
+        if (auction.getState() != AuctionState.SCHEDULED && auction.getState() != AuctionState.ACTIVE) {
+            throw new BusinessRuleException("Auction is not open for bidding");
         }
+
         Instant now = Instant.now();
-        if (now.isBefore(a.getStartTime()) || now.isAfter(a.getEndTime())) {
-            throw new BusinessRuleException("Auction không trong khoảng thời gian hoạt động");
+        if (auction.getStartTime() == null || auction.getEndTime() == null) {
+            throw new BusinessRuleException("Auction schedule is incomplete");
+        }
+        if (now.isBefore(auction.getStartTime()) || now.isAfter(auction.getEndTime())) {
+            throw new BusinessRuleException("Auction is outside its active time window");
         }
     }
-
-    // API trả DTO
 
     @Override
     public AuctionDetailResponse getDetail(UUID auctionId) {
-        Auction a = auctionRepository.findById(auctionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy auction: " + auctionId));
+        Auction auction = auctionRepository.findById(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));
+        populateTransientFields(auction);
 
-        int bidCount = bidRepository.findByAuctionIdOrderByCreatedAtAsc(auctionId).size();
-        double minNext = a.getCurrentPrice() + DEFAULT_MIN_INCREMENT;
-        String leaderName = auctionHelper.lookupUserName(a.getLeaderId());
-
-        AuctionDetailResponse dto = AuctionMapper.toDetail(a, bidCount, minNext, leaderName);
-        return dto;
+        String leaderName = auctionHelper.lookupUserName(auction.getLeaderId());
+        String sellerName = auctionHelper.lookupUserName(auction.getSellerId() != null ? auction.getSellerId() : auction.getCreatedBy());
+        return AuctionMapper.toDetail(
+                auction,
+                auction.getBidCount() == null ? 0 : auction.getBidCount(),
+                auction.getMinNextBid() == null ? auction.getCurrentPrice() + DEFAULT_MIN_INCREMENT : auction.getMinNextBid(),
+                leaderName,
+                sellerName
+        );
     }
 
-    // Helpers
-
-    private void populateTransientFields(Auction a) {
-        if (a == null) return;
-        try {
-            int bidCount = bidRepository.findByAuctionIdOrderByCreatedAtAsc(a.getId()).size();
-            a.setBidCount(bidCount);
-            a.setMinNextBid(a.getCurrentPrice() + DEFAULT_MIN_INCREMENT);
-            a.setSellerName(auctionHelper.lookupUserName(a.getCreatedBy()));
-        } catch (Exception ex) {
-            log.warn("Không thể populate transient fields cho auction {}: {}", a.getId(), ex.getMessage());
+    private void applyInitialState(Auction auction) {
+        Instant now = Instant.now();
+        if (auction.getStartTime().isAfter(now)) {
+            auction.setState(AuctionState.SCHEDULED);
+        } else if (!auction.getEndTime().isBefore(now)) {
+            auction.setState(AuctionState.ACTIVE);
+        } else {
+            throw new BusinessRuleException("endTime must be in the future");
         }
+    }
+
+    private void applyDerivedAuctionFields(Auction auction, Item item, UUID sellerId) {
+        if (auction == null || item == null) {
+            return;
+        }
+
+        if (auction.getSellerId() == null) {
+            auction.setSellerId(sellerId != null ? sellerId : item.getSellerId());
+        }
+        if (auction.getCreatedBy() == null) {
+            auction.setCreatedBy(auction.getSellerId());
+        }
+        if (isBlank(auction.getTitle())) {
+            auction.setTitle(firstNonBlank(item.getName()));
+        }
+        if (isBlank(auction.getDescription())) {
+            auction.setDescription(firstNonBlank(item.getDescription()));
+        }
+        if (isBlank(auction.getCategory())) {
+            auction.setCategory(firstNonBlank(item.getCategory()));
+        }
+        if (isBlank(auction.getImageUrl())) {
+            auction.setImageUrl(firstNonBlank(item.getImagePath(), firstImage(item)));
+        }
+    }
+
+    private void populateTransientFields(Auction auction) {
+        if (auction == null) {
+            return;
+        }
+
+        try {
+            int bidCount = bidRepository.findByAuctionIdOrderByCreatedAtAsc(auction.getId()).size();
+            auction.setBidCount(bidCount);
+            auction.setMinNextBid(auction.getCurrentPrice() + DEFAULT_MIN_INCREMENT);
+            auction.setSellerName(auctionHelper.lookupUserName(auction.getSellerId() != null ? auction.getSellerId() : auction.getCreatedBy()));
+        } catch (Exception ex) {
+            log.warn("Could not populate transient fields for auction {}", auction.getId(), ex);
+        }
+    }
+
+    private String firstImage(Item item) {
+        if (item == null || item.getImageUrls() == null || item.getImageUrls().isEmpty()) {
+            return null;
+        }
+        return item.getImageUrls().get(0);
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+
+        for (String value : values) {
+            if (!isBlank(value)) {
+                return value.trim();
+            }
+        }
+
+        return null;
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }

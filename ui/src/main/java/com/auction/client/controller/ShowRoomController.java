@@ -1,9 +1,12 @@
 package com.auction.client.controller;
 
+import com.auction.client.dto.response.AuctionDetailResponse;
 import com.auction.client.dto.response.AuctionListResponse;
 import com.auction.client.model.AuctionItem;
 import com.auction.client.navigation.SceneManager;
 import com.auction.client.service.AuctionApiService;
+import com.auction.client.service.FavoriteApiService;
+import com.auction.client.service.ItemApiService;
 import com.auction.client.session.SessionManager;
 import com.auction.client.util.MockData;
 import javafx.fxml.FXML;
@@ -45,6 +48,8 @@ public class ShowRoomController {
     @FXML private Label savedAuctionsCountLabel;
 
     private final AuctionApiService auctionApiService = new AuctionApiService();
+    private final FavoriteApiService favoriteApiService = new FavoriteApiService();
+    private final ItemApiService itemApiService = new ItemApiService();
     private final List<AuctionItem> items = new ArrayList<>();
     private final Set<String> favoriteAuctionIds = new LinkedHashSet<>();
 
@@ -56,19 +61,31 @@ public class ShowRoomController {
         }
 
         usernameLabel.setText(firstNonBlank(SessionManager.getUsername(), "Bidder"));
+        loadFavorites();
         loadAuctionList();
         updateWishlistUi();
     }
 
+    private void loadFavorites() {
+        try {
+            favoriteAuctionIds.clear();
+            for (AuctionDetailResponse favorite : favoriteApiService.getFavorites()) {
+                if (favorite.getId() != null) {
+                    favoriteAuctionIds.add(favorite.getId().toString());
+                }
+            }
+        } catch (Exception ignored) {
+            favoriteAuctionIds.clear();
+        }
+    }
+
     private void loadAuctionList() {
         try {
-            List<AuctionListResponse> responses = auctionApiService.getAuctions();
+            List<AuctionListResponse> responses = auctionApiService.getAuctions().getItems();
             items.clear();
-
-            for (int i = 0; i < responses.size(); i++) {
+            for (int i = 0; i < Math.min(3, responses.size()); i++) {
                 items.add(mapToAuctionItem(responses.get(i), i));
             }
-
             bindCards();
         } catch (Exception e) {
             showFallbackState("Cannot load auctions.");
@@ -76,20 +93,18 @@ public class ShowRoomController {
     }
 
     private AuctionItem mapToAuctionItem(AuctionListResponse response, int index) {
-        String imagePath = getDefaultImagePath(index);
+        String imagePath = response.getImageUrl() == null || response.getImageUrl().isBlank()
+                ? getDefaultImagePath(index)
+                : response.getImageUrl();
         String currentBid = "$" + String.format("%,.0f", response.getCurrentPrice());
         String timeInfo = formatEndTime(response.getEndTime());
         String status = response.getState() == null ? "UNKNOWN" : response.getState();
         String idValue = response.getId() != null ? response.getId().toString() : "";
+        String title = response.getTitle() != null && !response.getTitle().isBlank()
+                ? response.getTitle()
+                : response.getItemName();
 
-        return new AuctionItem(
-                idValue,
-                response.getItemName() == null ? "Unnamed Item" : response.getItemName(),
-                imagePath,
-                currentBid,
-                timeInfo,
-                status
-        );
+        return new AuctionItem(idValue, title == null ? "Unnamed Item" : title, imagePath, currentBid, timeInfo, status);
     }
 
     private String getDefaultImagePath(int index) {
@@ -104,12 +119,7 @@ public class ShowRoomController {
         if (endTime == null || endTime.isBlank()) {
             return "No end time";
         }
-
-        if (endTime.length() >= 16) {
-            return endTime.substring(0, 16).replace("T", " ");
-        }
-
-        return endTime;
+        return endTime.length() >= 16 ? endTime.substring(0, 16).replace("T", " ") : endTime;
     }
 
     private void bindCards() {
@@ -125,7 +135,6 @@ public class ShowRoomController {
                                 Label statusLabel,
                                 ImageView imageView,
                                 Button favoriteButton) {
-
         if (index >= items.size()) {
             nameLabel.setText("No auction");
             bidLabel.setText("Current Bid: -");
@@ -139,22 +148,25 @@ public class ShowRoomController {
         }
 
         AuctionItem item = items.get(index);
-
         nameLabel.setText(item.getName());
         bidLabel.setText("Current Bid: " + item.getCurrentBid());
         timeLabel.setText("Ends: " + item.getTimeLeft());
         statusLabel.setText(item.getStatus());
-
-        try {
-            Image image = new Image(getClass().getResourceAsStream(item.getImagePath()));
-            imageView.setImage(image);
-        } catch (Exception e) {
-            imageView.setImage(null);
-            System.out.println("Image not found: " + item.getImagePath());
-        }
-
+        bindCardImage(imageView, item.getImagePath());
         favoriteButton.setDisable(false);
         updateFavoriteButton(favoriteButton, item);
+    }
+
+    private void bindCardImage(ImageView imageView, String imagePath) {
+        try {
+            if (imagePath != null && (imagePath.startsWith("http://") || imagePath.startsWith("https://") || imagePath.startsWith("/uploads") || imagePath.startsWith("uploads/"))) {
+                imageView.setImage(new Image(itemApiService.toAbsoluteImageUrl(imagePath), true));
+            } else {
+                imageView.setImage(new Image(getClass().getResourceAsStream(imagePath)));
+            }
+        } catch (Exception e) {
+            imageView.setImage(null);
+        }
     }
 
     private void showFallbackState(String message) {
@@ -220,6 +232,8 @@ public class ShowRoomController {
 
     @FXML
     private void handleGoToForYou() {
+        loadFavorites();
+        loadAuctionList();
         updateWishlistUi();
     }
 
@@ -262,7 +276,6 @@ public class ShowRoomController {
         if (index < 0 || index >= items.size()) {
             return;
         }
-
         MockData.setSelectedItem(items.get(index));
         SceneManager.goToProductDetail();
     }
@@ -273,10 +286,15 @@ public class ShowRoomController {
         }
 
         AuctionItem item = items.get(index);
-        if (favoriteAuctionIds.contains(item.getId())) {
-            favoriteAuctionIds.remove(item.getId());
-        } else {
-            favoriteAuctionIds.add(item.getId());
+        try {
+            if (favoriteAuctionIds.contains(item.getId())) {
+                favoriteApiService.removeFavorite(item.getId());
+                favoriteAuctionIds.remove(item.getId());
+            } else {
+                favoriteApiService.addFavorite(item.getId());
+                favoriteAuctionIds.add(item.getId());
+            }
+        } catch (Exception ignored) {
         }
 
         bindCards();
@@ -308,7 +326,6 @@ public class ShowRoomController {
         if (values == null) {
             return "";
         }
-
         for (String value : values) {
             if (value != null && !value.isBlank()) {
                 return value;
