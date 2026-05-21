@@ -3,25 +3,33 @@ package com.team.backend.mapper;
 import com.team.backend.dto.AuctionDetailResponse;
 import com.team.backend.entity.Auction;
 
-public class AuctionMapper {
-    public static AuctionDetailResponse toDetail(Auction a, int bidCount, double minNextBid, String leaderName) {
-        AuctionDetailResponse r = new AuctionDetailResponse();
-        r.id = a.getId();
-        r.title = a.getTitle();
-        r.description = a.getDescription();
-        r.imageUrl = a.getImageUrl();
-        r.category = a.getCategory();
-        // Nếu entity có sellerId riêng, thay a.getCreatedBy() bằng a.getSellerId()
-        r.sellerId = a.getCreatedBy();
-        r.bidCount = bidCount;
-        r.currentPrice = a.getCurrentPrice();
-        r.minNextBid = minNextBid;
-        r.leaderName = leaderName;
-        // Auction.getState() trả AuctionState (enum) -> chuyển sang String
-        r.state = a.getState() == null ? null : a.getState().name();
-        r.startTime = a.getStartTime();
-        r.endTime = a.getEndTime();
+public final class AuctionMapper {
 
-        return r;
+    private AuctionMapper() {
+    }
+
+    public static AuctionDetailResponse toDetail(Auction auction,
+                                                 int bidCount,
+                                                 double minNextBid,
+                                                 String leaderName,
+                                                 String sellerName) {
+        AuctionDetailResponse response = new AuctionDetailResponse();
+        response.id = auction.getId();
+        response.itemId = auction.getItemId();
+        response.title = auction.getTitle();
+        response.description = auction.getDescription();
+        response.imageUrl = auction.getImageUrl();
+        response.category = auction.getCategory();
+        response.sellerId = auction.getSellerId() != null ? auction.getSellerId() : auction.getCreatedBy();
+        response.sellerName = sellerName;
+        response.leaderId = auction.getLeaderId();
+        response.bidCount = bidCount;
+        response.currentPrice = auction.getCurrentPrice();
+        response.minNextBid = minNextBid;
+        response.leaderName = leaderName;
+        response.state = auction.getState() == null ? null : auction.getState().name();
+        response.startTime = auction.getStartTime();
+        response.endTime = auction.getEndTime();
+        return response;
     }
 }

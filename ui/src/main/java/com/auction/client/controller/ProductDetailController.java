@@ -1,6 +1,6 @@
 package com.auction.client.controller;
 
-import com.auction.client.dto.response.AuctionListResponse;
+import com.auction.client.dto.response.AuctionDetailResponse;
 import com.auction.client.dto.response.PublicItemDetailResponse;
 import com.auction.client.model.AuctionItem;
 import com.auction.client.navigation.SceneManager;
@@ -21,14 +21,12 @@ public class ProductDetailController {
     @FXML private ImageView mainImageView;
     @FXML private ImageView thumb1ImageView;
     @FXML private ImageView thumb2ImageView;
-
     @FXML private Label productNameLabel;
     @FXML private Label currentBidLabel;
     @FXML private Label countdownLabel;
     @FXML private Label statusLabel;
     @FXML private Label specsLabel;
     @FXML private Label bidMessageLabel;
-
     @FXML private TextField bidAmountField;
 
     private final AuctionApiService auctionApiService = new AuctionApiService();
@@ -51,7 +49,7 @@ public class ProductDetailController {
 
     private void loadAuctionDetail() {
         try {
-            AuctionListResponse response = auctionApiService.getAuctionById(selectedItem.getId());
+            AuctionDetailResponse response = auctionApiService.getAuctionDetail(selectedItem.getId());
             bindDetailFromApi(response);
         } catch (Exception e) {
             bindFallbackFromSelectedItem();
@@ -59,19 +57,11 @@ public class ProductDetailController {
         }
     }
 
-    private void bindDetailFromApi(AuctionListResponse response) {
-        productNameLabel.setText(
-                response.getItemName() == null || response.getItemName().isBlank()
-                        ? "Unnamed Item"
-                        : response.getItemName()
-        );
-
+    private void bindDetailFromApi(AuctionDetailResponse response) {
+        productNameLabel.setText(safeText(response.getTitle(), "Unnamed Item"));
         currentBidLabel.setText("Current Highest Bid: $" + String.format("%,.0f", response.getCurrentPrice()));
-
         countdownLabel.setText("Ends: " + formatDateTime(response.getEndTime()));
-
         statusLabel.setText("Status: " + safeText(response.getState(), "UNKNOWN"));
-
         bindPublicItemDetail(response);
     }
 
@@ -80,61 +70,61 @@ public class ProductDetailController {
         currentBidLabel.setText("Current Highest Bid: " + selectedItem.getCurrentBid());
         countdownLabel.setText("Ends: " + selectedItem.getTimeLeft());
         statusLabel.setText("Status: " + selectedItem.getStatus());
-
         specsLabel.setText(
-                "Auction Detail:\\n" +
-                        "- Backend detail is not available right now\\n" +
-                        "- Showing selected item data from showroom\\n" +
+                "Auction Detail:\n" +
+                        "- Backend detail is not available right now\n" +
+                        "- Showing selected item data from showroom\n" +
                         "- Full specs will be added when backend returns more fields"
         );
-
         setDefaultImages(selectedItem.getImagePath());
     }
 
-    private void bindPublicItemDetail(AuctionListResponse auction) {
+    private void bindPublicItemDetail(AuctionDetailResponse auction) {
         if (auction.getItemId() == null) {
             bindAuctionSpecsOnly(auction);
-            setDefaultImages(selectedItem.getImagePath());
+            setAuctionImages(auction);
             return;
         }
 
         try {
             PublicItemDetailResponse item = itemApiService.getPublicItemDetail(auction.getItemId().toString());
-
             if (item.getProductName() != null && !item.getProductName().isBlank()) {
                 productNameLabel.setText(item.getProductName());
             }
 
             specsLabel.setText(
                     "Item Detail:\n" +
-                            "- Category: " + safeText(item.getCategory(), "General") + "\n" +
-                            "- Description: " + safeText(item.getDescription(), "No description") + "\n" +
+                            "- Category: " + safeText(item.getCategory(), safeText(auction.getCategory(), "General")) + "\n" +
+                            "- Description: " + safeText(item.getDescription(), safeText(auction.getDescription(), "No description")) + "\n" +
                             "- SKU: " + safeText(item.getSku(), "N/A") + "\n" +
                             "- Quantity: " + (item.getQuantity() == null ? "N/A" : item.getQuantity()) + "\n" +
-                            "- Seller ID: " + safeText(item.getSellerId() == null ? null : item.getSellerId().toString(), "N/A") + "\n\n" +
+                            "- Seller: " + safeText(auction.getSellerName(), auction.getSellerId() == null ? "N/A" : auction.getSellerId().toString()) + "\n\n" +
                             auctionSpecs(auction)
             );
-            setUploadedImages(item);
+            setUploadedImages(item, auction);
         } catch (Exception e) {
             bindAuctionSpecsOnly(auction);
-            setDefaultImages(selectedItem.getImagePath());
+            setAuctionImages(auction);
         }
     }
 
-    private void bindAuctionSpecsOnly(AuctionListResponse auction) {
+    private void bindAuctionSpecsOnly(AuctionDetailResponse auction) {
         specsLabel.setText(auctionSpecs(auction));
     }
 
-    private String auctionSpecs(AuctionListResponse auction) {
+    private String auctionSpecs(AuctionDetailResponse auction) {
         return "Auction Detail:\n" +
                 "- Auction ID: " + safeText(auction.getId() == null ? null : auction.getId().toString(), "N/A") + "\n" +
-                "- Item ID: " + safeText(auction.getItemId() == null ? null : auction.getItemId().toString(), "N/A") + "\n" +
+                "- Category: " + safeText(auction.getCategory(), "N/A") + "\n" +
+                "- Bid Count: " + auction.getBidCount() + "\n" +
+                "- Current Price: $" + String.format("%,.0f", auction.getCurrentPrice()) + "\n" +
+                "- Min Next Bid: $" + String.format("%,.0f", auction.getMinNextBid()) + "\n" +
+                "- Leader: " + safeText(auction.getLeaderName(), "No leader yet") + "\n" +
                 "- Start Time: " + formatDateTime(auction.getStartTime()) + "\n" +
-                "- End Time: " + formatDateTime(auction.getEndTime()) + "\n" +
-                "- Leader ID: " + safeText(auction.getLeaderId() == null ? null : auction.getLeaderId().toString(), "No leader yet");
+                "- End Time: " + formatDateTime(auction.getEndTime());
     }
 
-    private void setUploadedImages(PublicItemDetailResponse item) {
+    private void setUploadedImages(PublicItemDetailResponse item, AuctionDetailResponse auction) {
         List<String> images = new ArrayList<>();
         if (item.getImageUrls() != null) {
             images.addAll(item.getImageUrls());
@@ -142,14 +132,25 @@ public class ProductDetailController {
         if (images.isEmpty() && item.getImagePath() != null && !item.getImagePath().isBlank()) {
             images.add(item.getImagePath());
         }
+
         if (images.isEmpty()) {
-            setDefaultImages(selectedItem.getImagePath());
+            setAuctionImages(auction);
             return;
         }
 
         setRemoteImage(mainImageView, images.get(0));
         setRemoteImage(thumb1ImageView, images.get(0));
         setRemoteImage(thumb2ImageView, images.size() > 1 ? images.get(1) : images.get(0));
+    }
+
+    private void setAuctionImages(AuctionDetailResponse auction) {
+        if (auction.getImageUrl() != null && !auction.getImageUrl().isBlank()) {
+            setRemoteImage(mainImageView, auction.getImageUrl());
+            setRemoteImage(thumb1ImageView, auction.getImageUrl());
+            setRemoteImage(thumb2ImageView, auction.getImageUrl());
+            return;
+        }
+        setDefaultImages(selectedItem.getImagePath());
     }
 
     private void setRemoteImage(ImageView imageView, String imagePath) {
@@ -166,7 +167,6 @@ public class ProductDetailController {
             mainImageView.setImage(null);
             thumb1ImageView.setImage(null);
             thumb2ImageView.setImage(null);
-            System.out.println("Image not found: " + imagePath);
         }
     }
 
@@ -174,12 +174,7 @@ public class ProductDetailController {
         if (value == null || value.isBlank()) {
             return "N/A";
         }
-
-        if (value.length() >= 16) {
-            return value.substring(0, 16).replace("T", " ");
-        }
-
-        return value;
+        return value.length() >= 16 ? value.substring(0, 16).replace("T", " ") : value;
     }
 
     private String safeText(String value, String fallback) {
@@ -204,70 +199,28 @@ public class ProductDetailController {
 
     @FXML
     private void handleJoinLiveBidding() {
-        System.out.println("JOIN LIVE BIDDING CLICKED");
-
         if (selectedItem == null) {
-            System.out.println("selectedItem is null");
             showBidMessage("No selected auction.");
             return;
         }
-
-        System.out.println("selectedItem id = " + selectedItem.getId());
         SceneManager.goToLiveBidding();
     }
+
     @FXML
     private void handlePlaceBid() {
         hideBidMessage();
-
-        String bidText = bidAmountField.getText().trim();
-
-        if (bidText.isEmpty()) {
-            showBidMessage("Please enter a bid amount.");
+        if (bidAmountField.getText() == null || bidAmountField.getText().isBlank()) {
+            showBidMessage("Enter a bid amount first.");
             return;
         }
-
-        String numericText = bidText.replaceAll("[^0-9]", "");
-
-        if (numericText.isEmpty()) {
-            showBidMessage("Bid amount must be numeric.");
-            return;
-        }
-
-        int enteredBid = Integer.parseInt(numericText);
-
-        String currentBidText = currentBidLabel.getText().replaceAll("[^0-9]", "");
-        if (currentBidText.isEmpty()) {
-            showBidMessage("Current bid is unavailable.");
-            return;
-        }
-
-        int currentBid = Integer.parseInt(currentBidText);
-
-        if (enteredBid <= currentBid) {
-            showBidMessage("Your bid must be higher than the current highest bid.");
-            return;
-        }
-
-        showBidSuccess("Quick bid validation passed (detail screen only). Real bid will be in Block 5.");
+        showBidMessage("Use Live Bidding to place bids with the new contract.");
     }
 
     private void showBidMessage(String message) {
         bidMessageLabel.setText(message);
-        bidMessageLabel.setStyle("-fx-text-fill: #dc2626;");
-        bidMessageLabel.setManaged(true);
-        bidMessageLabel.setVisible(true);
-    }
-
-    private void showBidSuccess(String message) {
-        bidMessageLabel.setText(message);
-        bidMessageLabel.setStyle("-fx-text-fill: #16a34a;");
-        bidMessageLabel.setManaged(true);
-        bidMessageLabel.setVisible(true);
     }
 
     private void hideBidMessage() {
         bidMessageLabel.setText("");
-        bidMessageLabel.setManaged(false);
-        bidMessageLabel.setVisible(false);
     }
 }

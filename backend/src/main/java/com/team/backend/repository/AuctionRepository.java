@@ -38,6 +38,18 @@ public interface AuctionRepository extends JpaRepository<Auction, UUID> {
 
     Page<Auction> findByCategoryContainingIgnoreCaseAndTitleContainingIgnoreCase(String category, String q, Pageable pageable);
 
+    @Query("""
+            select a from Auction a
+            where (:category is null or trim(:category) = '' or lower(coalesce(a.category, '')) = lower(:category))
+              and (:q is null or trim(:q) = '' or lower(coalesce(a.title, '')) like lower(concat('%', :q, '%'))
+                   or lower(coalesce(a.description, '')) like lower(concat('%', :q, '%')))
+              and (:state is null or a.state = :state)
+            """)
+    Page<Auction> searchCatalog(@Param("category") String category,
+                                @Param("q") String q,
+                                @Param("state") AuctionState state,
+                                Pageable pageable);
+
     @Query("select count(a) from Auction a where a.item.sellerId = :sellerId and a.state = :state")
     long countBySellerIdAndState(@Param("sellerId") UUID sellerId, @Param("state") AuctionState state);
 

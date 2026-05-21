@@ -18,10 +18,7 @@ jobs:
       - name: Run Maven tests
         run: |
           cd backend
-<<<<<<< HEAD
           mvn -B clean test \
             -DskipTests=false \
             -Dspring.profiles.active=test
-=======
           mvn -B clean test -DskipTests=false -Dspring.profiles.active=test
->>>>>>> 57d4545cd4994a43467a2260cf3372c938ee769a

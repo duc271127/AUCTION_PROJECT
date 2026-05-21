@@ -4,6 +4,8 @@ import com.team.backend.dto.AuctionCreateDto;
 import com.team.backend.dto.AuctionDetailResponse;
 import com.team.backend.entity.Auction;
 import com.team.backend.entity.AuctionState;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.UUID;
@@ -20,4 +22,5 @@ public interface AuctionService {
     void refreshStates();
     void validateAuctionOpenForBidding(UUID auctionId);
     AuctionDetailResponse getDetail(UUID auctionId);
+    Page<Auction> searchCatalog(String category, String q, AuctionState state, Pageable pageable);
 }

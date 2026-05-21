@@ -1,46 +1,43 @@
 package com.auction.client.controller;
 
+import com.auction.client.dto.event.AuctionEventDto;
+import com.auction.client.dto.request.AutoBidRequest;
 import com.auction.client.dto.request.BidRequest;
-import com.auction.client.dto.response.AuctionListResponse;
+import com.auction.client.dto.response.AuctionDetailResponse;
+import com.auction.client.dto.response.BidPlacementResponse;
+import com.auction.client.dto.response.BidResponse;
 import com.auction.client.model.AuctionItem;
 import com.auction.client.model.BidRecord;
 import com.auction.client.navigation.SceneManager;
 import com.auction.client.service.AuctionApiService;
+import com.auction.client.service.RealtimeAuctionService;
 import com.auction.client.session.SessionManager;
 import com.auction.client.util.MockData;
-import com.auction.client.service.RealtimeAuctionService;
-import com.auction.client.dto.event.AuctionEventDto;
-import com.auction.client.dto.request.AutoBidRequest;
-import com.auction.client.dto.response.BidResponse;
-
 import javafx.animation.KeyFrame;
+import javafx.animation.ScaleTransition;
 import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
-import javafx.scene.control.TextField;
-import javafx.scene.control.Button;
-import javafx.scene.control.ListCell;
-import javafx.scene.layout.VBox;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.XYChart;
-
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.VBox;
 import javafx.util.Duration;
-import javafx.application.Platform;
-import javafx.animation.ScaleTransition;
-
-
 
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.List;
 
 public class LiveBiddingController {
 
@@ -51,13 +48,10 @@ public class LiveBiddingController {
     @FXML private Label countdownLabel;
     @FXML private Label outbidAlertLabel;
     @FXML private Button placeBidButton;
-        @FXML private Button autoBidButton;
-
+    @FXML private Button autoBidButton;
     @FXML private TextField bidInputField;
     @FXML private TextField autoBidMaxInput;
-
     @FXML private Label autoBidStatusLabel;
-
     @FXML private ListView<BidRecord> bidHistoryListView;
     @FXML private LineChart<Number, Number> bidChart;
 
@@ -67,49 +61,33 @@ public class LiveBiddingController {
     private final XYChart.Series<Number, Number> bidChartSeries = new XYChart.Series<>();
 
     private AuctionItem selectedItem;
-    private AuctionListResponse currentAuction;
+    private AuctionDetailResponse currentAuction;
     private Timeline refreshTimeline;
     private Timeline countdownTimeline;
     private boolean isLoadingAuction = false;
     private Long realtimeRemainingSeconds;
     private final Set<String> handledEventIds = new HashSet<>();
 
-
     @FXML
     public void initialize() {
-
         selectedItem = MockData.getSelectedItem();
-
         updateConnectionStatus("CONNECTING");
         outbidAlertLabel.setText("");
-
         bidHistoryListView.setItems(bidHistory);
-
         setupBidHistoryListView();
-
-        // setup realtime service
         setupRealtimeService();
         setupBidChart();
 
-        if (selectedItem == null
-                || selectedItem.getId() == null
-                || selectedItem.getId().isBlank()) {
-
+        if (selectedItem == null || selectedItem.getId() == null || selectedItem.getId().isBlank()) {
             showError("No selected auction.");
             showEmptyState();
             return;
         }
 
-        // load auction lần đầu
         loadAuctionDetail(true);
         loadBidHistory();
-
         realtimeAuctionService.connect(selectedItem.getId());
-
-        // polling refresh mỗi 5 giây
         startPollingRefresh();
-
-        // countdown timer
         startCountdownTimer();
     }
 
@@ -117,11 +95,9 @@ public class LiveBiddingController {
         if (isLoadingAuction) {
             return;
         }
-
         isLoadingAuction = true;
 
-        CompletableFuture
-                .supplyAsync(() -> auctionApiService.getAuctionById(selectedItem.getId()))
+        CompletableFuture.supplyAsync(() -> auctionApiService.getAuctionDetail(selectedItem.getId()))
                 .thenAccept(latest -> applyAuctionUpdate(latest, firstLoad))
                 .exceptionally(error -> {
                     showConnectionError();
@@ -129,9 +105,9 @@ public class LiveBiddingController {
                 });
     }
 
-    private void applyAuctionUpdate(AuctionListResponse latest, boolean firstLoad) {
+    private void applyAuctionUpdate(AuctionDetailResponse latest, boolean firstLoad) {
         runOnUiThread(() -> {
-            AuctionListResponse previous = currentAuction;
+            AuctionDetailResponse previous = currentAuction;
 
             if (previous != null && latest.getCurrentPrice() < previous.getCurrentPrice()) {
                 isLoadingAuction = false;
@@ -150,7 +126,7 @@ public class LiveBiddingController {
         });
     }
 
-    private void handleAuctionChange(AuctionListResponse previous, AuctionListResponse latest) {
+    private void handleAuctionChange(AuctionDetailResponse previous, AuctionDetailResponse latest) {
         if (latest.getCurrentPrice() <= previous.getCurrentPrice()) {
             return;
         }
@@ -163,32 +139,29 @@ public class LiveBiddingController {
         if (iAmLeader) {
             showSuccess("You are leading this auction.");
         } else {
-            addBidHistory("Other bidder", latest.getCurrentPrice());
+            addBidHistory(latest.getLeaderName() == null ? "Other bidder" : latest.getLeaderName(), latest.getCurrentPrice());
             showInfo("Current bid updated to " + formatMoney(latest.getCurrentPrice()) + ".");
         }
     }
+
     private void playCurrentBidPulse() {
-        ScaleTransition scaleTransition = new ScaleTransition(Duration.millis(160), currentBidLabel);
-
-        scaleTransition.setFromX(1.0);
-        scaleTransition.setFromY(1.0);
-        scaleTransition.setToX(1.08);
-        scaleTransition.setToY(1.08);
-        scaleTransition.setAutoReverse(true);
-        scaleTransition.setCycleCount(2);
-
-        scaleTransition.play();
+        ScaleTransition transition = new ScaleTransition(Duration.millis(160), currentBidLabel);
+        transition.setFromX(1.0);
+        transition.setFromY(1.0);
+        transition.setToX(1.08);
+        transition.setToY(1.08);
+        transition.setAutoReverse(true);
+        transition.setCycleCount(2);
+        transition.play();
     }
 
     private void showConnectionError() {
         runOnUiThread(() -> {
             connectionStatusLabel.setText("DISCONNECTED");
-
             if (currentAuction == null) {
                 showError("Cannot load live auction.");
                 showEmptyState();
             }
-
             isLoadingAuction = false;
         });
     }
@@ -200,71 +173,30 @@ public class LiveBiddingController {
             Platform.runLater(task);
         }
     }
+
     private void setupRealtimeService() {
-        realtimeAuctionService.setOnAuctionEvent(event -> {
-            runOnUiThread(() -> handleRealtimeEvent(event));
-        });
-
-        realtimeAuctionService.setOnConnectionStatusChanged(status -> {
-            runOnUiThread(() -> updateConnectionStatus(status));
-        });
-
-        realtimeAuctionService.setOnError(message -> {
-            runOnUiThread(() -> showError(message));
-        });
+        realtimeAuctionService.setOnAuctionEvent(event -> runOnUiThread(() -> handleRealtimeEvent(event)));
+        realtimeAuctionService.setOnConnectionStatusChanged(status -> runOnUiThread(() -> updateConnectionStatus(status)));
+        realtimeAuctionService.setOnError(message -> runOnUiThread(() -> showError(message)));
     }
 
     private void updateConnectionStatus(String status) {
-        if (status == null || status.isBlank()) {
-            status = "UNKNOWN";
-        }
+        String safeStatus = (status == null || status.isBlank()) ? "UNKNOWN" : status;
+        connectionStatusLabel.setText(safeStatus);
 
-        connectionStatusLabel.setText(status);
-
-        if ("SUBSCRIBED".equalsIgnoreCase(status)
-                || "SOCKET CONNECTED".equalsIgnoreCase(status)
-                || "CONNECTED".equalsIgnoreCase(status)) {
-
-            connectionStatusLabel.setStyle(
-                    "-fx-background-color: #dcfce7;" +
-                            "-fx-text-fill: #15803d;" +
-                            "-fx-padding: 6 12;" +
-                            "-fx-background-radius: 999;" +
-                            "-fx-font-weight: bold;"
-            );
-
-        } else if ("CONNECTING".equalsIgnoreCase(status)
-                || "RECONNECTING".equalsIgnoreCase(status)
-                || "POLLING".equalsIgnoreCase(status)
-                || "POLLING ONLY".equalsIgnoreCase(status)) {
-
-            connectionStatusLabel.setStyle(
-                    "-fx-background-color: #fef9c3;" +
-                            "-fx-text-fill: #854d0e;" +
-                            "-fx-padding: 6 12;" +
-                            "-fx-background-radius: 999;" +
-                            "-fx-font-weight: bold;"
-            );
-
-        } else if ("DISCONNECTED".equalsIgnoreCase(status)
-                || "ERROR".equalsIgnoreCase(status)) {
-
-            connectionStatusLabel.setStyle(
-                    "-fx-background-color: #fee2e2;" +
-                            "-fx-text-fill: #dc2626;" +
-                            "-fx-padding: 6 12;" +
-                            "-fx-background-radius: 999;" +
-                            "-fx-font-weight: bold;"
-            );
-
+        if ("SUBSCRIBED".equalsIgnoreCase(safeStatus)
+                || "SOCKET CONNECTED".equalsIgnoreCase(safeStatus)
+                || "CONNECTED".equalsIgnoreCase(safeStatus)) {
+            connectionStatusLabel.setStyle("-fx-background-color: #dcfce7;-fx-text-fill: #15803d;-fx-padding: 6 12;-fx-background-radius: 999;-fx-font-weight: bold;");
+        } else if ("CONNECTING".equalsIgnoreCase(safeStatus)
+                || "RECONNECTING".equalsIgnoreCase(safeStatus)
+                || "POLLING".equalsIgnoreCase(safeStatus)
+                || "POLLING ONLY".equalsIgnoreCase(safeStatus)) {
+            connectionStatusLabel.setStyle("-fx-background-color: #fef9c3;-fx-text-fill: #854d0e;-fx-padding: 6 12;-fx-background-radius: 999;-fx-font-weight: bold;");
+        } else if ("DISCONNECTED".equalsIgnoreCase(safeStatus) || "ERROR".equalsIgnoreCase(safeStatus)) {
+            connectionStatusLabel.setStyle("-fx-background-color: #fee2e2;-fx-text-fill: #dc2626;-fx-padding: 6 12;-fx-background-radius: 999;-fx-font-weight: bold;");
         } else {
-            connectionStatusLabel.setStyle(
-                    "-fx-background-color: #e2e8f0;" +
-                            "-fx-text-fill: #334155;" +
-                            "-fx-padding: 6 12;" +
-                            "-fx-background-radius: 999;" +
-                            "-fx-font-weight: bold;"
-            );
+            connectionStatusLabel.setStyle("-fx-background-color: #e2e8f0;-fx-text-fill: #334155;-fx-padding: 6 12;-fx-background-radius: 999;-fx-font-weight: bold;");
         }
     }
 
@@ -272,37 +204,31 @@ public class LiveBiddingController {
         if (event.getEventId() == null || event.getEventId().isBlank()) {
             return false;
         }
-
         if (handledEventIds.contains(event.getEventId())) {
             return true;
         }
-
         handledEventIds.add(event.getEventId());
         return false;
     }
+
     private void handleRealtimeEvent(AuctionEventDto event) {
         if (event == null || event.getType() == null || event.getType().isBlank()) {
             return;
         }
-
         if (shouldSkipEvent(event)) {
             return;
         }
-
 
         switch (event.getType()) {
             case "BID_PLACED" -> handleBidPlacedEvent(event);
             case "LEADER_CHANGED" -> handleLeaderChangedEvent(event);
             case "AUCTION_EXTENDED" -> handleAuctionExtendedEvent(event);
-            case "AUCTION_CLOSED", "AUCTION_FINISHED" -> handleAuctionFinishedEvent(event);
-            case "ERROR" -> showError(
-                    event.getMessage() == null ? "Realtime error." : event.getMessage()
-            );
-            default -> showInfo(
-                    event.getMessage() == null ? "Unknown realtime event: " + event.getType() : event.getMessage()
-            );
+            case "AUCTION_CLOSED" -> handleAuctionFinishedEvent(event);
+            case "ERROR" -> showError(event.getMessage() == null ? "Realtime error." : event.getMessage());
+            default -> showInfo(event.getMessage() == null ? "Unknown realtime event: " + event.getType() : event.getMessage());
         }
     }
+
     private void handleBidPlacedEvent(AuctionEventDto event) {
         if (event.getCurrentPrice() == null) {
             showInfo(event.getMessage() == null ? "New bid placed." : event.getMessage());
@@ -310,28 +236,21 @@ public class LiveBiddingController {
             return;
         }
 
-        String bidderName = event.getLeaderName();
-
-        if (bidderName == null || bidderName.isBlank()) {
-            bidderName = "Other bidder";
-        }
-
         if (currentAuction != null) {
             currentAuction.setCurrentPrice(event.getCurrentPrice());
         }
 
+        String bidderName = event.getLeaderName();
+        if (bidderName == null || bidderName.isBlank()) {
+            bidderName = "Other bidder";
+        }
+
         currentBidLabel.setText(formatMoney(event.getCurrentPrice()));
         leaderLabel.setText("Leader: " + bidderName);
-
         addBidHistory(bidderName, event.getCurrentPrice());
         playCurrentBidPulse();
-
         applyRealtimeCountdown(event);
-
-        showInfo(event.getMessage() == null
-                ? bidderName + " placed a new bid."
-                : event.getMessage());
-
+        showInfo(event.getMessage() == null ? bidderName + " placed a new bid." : event.getMessage());
         loadAuctionDetail(false);
     }
 
@@ -341,37 +260,20 @@ public class LiveBiddingController {
             return;
         }
 
-        if (currentAuction != null && event.getCurrentPrice() < currentAuction.getCurrentPrice()) {
-            return;
-        }
-
         if (currentAuction != null) {
             currentAuction.setCurrentPrice(event.getCurrentPrice());
         }
 
         currentBidLabel.setText(formatMoney(event.getCurrentPrice()));
-
-        String leaderName = event.getLeaderName();
-        if (leaderName == null || leaderName.isBlank()) {
-            leaderName = "Unknown bidder";
-        }
-
-        leaderLabel.setText("Leader: " + leaderName);
-
+        leaderLabel.setText("Leader: " + safeLeaderName(event.getLeaderName()));
         playCurrentBidPulse();
         applyRealtimeCountdown(event);
-
-        showInfo(event.getMessage() == null
-                ? "Current bid updated to " + formatMoney(event.getCurrentPrice()) + "."
-                : event.getMessage());
+        showInfo(event.getMessage() == null ? "Leader changed." : event.getMessage());
     }
 
     private void handleAuctionExtendedEvent(AuctionEventDto event) {
         applyRealtimeCountdown(event);
-
-        showInfo(event.getMessage() == null
-                ? "Auction time extended."
-                : event.getMessage());
+        showInfo(event.getMessage() == null ? "Auction time extended." : event.getMessage());
     }
 
     private void handleAuctionFinishedEvent(AuctionEventDto event) {
@@ -383,72 +285,58 @@ public class LiveBiddingController {
         }
 
         lockBiddingControls();
-
-        String winnerName = event.getLeaderName();
         String message = event.getMessage();
-
         if (message == null || message.isBlank()) {
-            if (winnerName != null && !winnerName.isBlank()) {
-                message = "Auction finished. Winner: " + winnerName + ".";
-            } else {
-                message = "Auction finished.";
-            }
+            String winnerName = event.getLeaderName();
+            message = winnerName == null || winnerName.isBlank()
+                    ? "Auction finished."
+                    : "Auction finished. Winner: " + winnerName + ".";
         }
-
         showInfo(message);
     }
 
     private void lockBiddingControls() {
         bidInputField.setDisable(true);
-
         if (autoBidMaxInput != null) {
             autoBidMaxInput.setDisable(true);
         }
-
         if (placeBidButton != null) {
             placeBidButton.setDisable(true);
         }
-
         if (autoBidButton != null) {
             autoBidButton.setDisable(true);
         }
     }
 
-    private void bindAuctionToScreen(AuctionListResponse auction) {
-        String title = auction.getItemName() == null || auction.getItemName().isBlank()
-                ? "Unnamed Auction"
-                : auction.getItemName();
-
-        lotTitleLabel.setText("Lot - " + title);
+    private void bindAuctionToScreen(AuctionDetailResponse auction) {
+        lotTitleLabel.setText("Lot - " + (auction.getTitle() == null || auction.getTitle().isBlank() ? "Unnamed Auction" : auction.getTitle()));
         currentBidLabel.setText(formatMoney(auction.getCurrentPrice()));
         countdownLabel.setText(formatCountdown(auction.getEndTime()));
-        leaderLabel.setText("Leader: " + formatLeader(auction.getLeaderId()));
+        leaderLabel.setText("Leader: " + safeLeaderName(auction.getLeaderName()));
 
-        if (auction.getState() != null && auction.getState().equalsIgnoreCase("FINISHED")) {
+        if ("FINISHED".equalsIgnoreCase(auction.getState()) || "CANCELLED".equalsIgnoreCase(auction.getState())) {
             lockBiddingControls();
         }
     }
 
-    private void detectOutbid(AuctionListResponse previous, AuctionListResponse latest) {
+    private void detectOutbid(AuctionDetailResponse previous, AuctionDetailResponse latest) {
         UUID currentUserId = SessionManager.getUserId();
-
         if (currentUserId == null) {
             return;
         }
 
         boolean iWasLeader = currentUserId.equals(previous.getLeaderId());
         boolean iAmLeader = currentUserId.equals(latest.getLeaderId());
-
         if (iWasLeader && !iAmLeader) {
             showError("You have been outbid.");
         }
     }
+
     private void setupBidHistoryListView() {
         bidHistoryListView.setCellFactory(listView -> new ListCell<>() {
             @Override
             protected void updateItem(BidRecord bidRecord, boolean empty) {
                 super.updateItem(bidRecord, empty);
-
                 if (empty || bidRecord == null) {
                     setText(null);
                     setGraphic(null);
@@ -457,16 +345,13 @@ public class LiveBiddingController {
 
                 Label bidderLabel = new Label(bidRecord.getBidderName());
                 bidderLabel.getStyleClass().add("bid-history-bidder");
-
                 Label amountLabel = new Label(bidRecord.getBidAmount());
                 amountLabel.getStyleClass().add("bid-history-amount");
-
                 Label timeLabel = new Label(bidRecord.getBidTime());
                 timeLabel.getStyleClass().add("bid-history-time");
 
                 VBox box = new VBox(3, bidderLabel, amountLabel, timeLabel);
                 box.getStyleClass().add("bid-history-item");
-
                 setText(null);
                 setGraphic(box);
             }
@@ -477,7 +362,6 @@ public class LiveBiddingController {
         if (bidChart == null) {
             return;
         }
-
         bidChart.setLegendVisible(false);
         bidChart.setAnimated(false);
         bidChart.getData().clear();
@@ -489,8 +373,7 @@ public class LiveBiddingController {
             return;
         }
 
-        CompletableFuture
-                .supplyAsync(() -> auctionApiService.getBidHistory(selectedItem.getId()))
+        CompletableFuture.supplyAsync(() -> auctionApiService.getBidHistory(selectedItem.getId()))
                 .thenAccept(this::applyBidHistory)
                 .exceptionally(error -> null);
     }
@@ -505,25 +388,18 @@ public class LiveBiddingController {
             }
 
             int chartIndex = 1;
-
             for (BidResponse bid : history) {
-                String bidder = bid.getBidderId() == null
-                        ? "Bidder"
-                        : shortId(bid.getBidderId());
+                String bidder = bid.getBidderName();
+                if (bidder == null || bidder.isBlank()) {
+                    bidder = bid.getBidderId() == null ? "Bidder" : shortId(bid.getBidderId());
+                }
+                if (bid.isAutoBid()) {
+                    bidder += " (auto)";
+                }
 
-                String time = bid.getCreatedAt() == null
-                        ? ""
-                        : formatHistoryTime(bid.getCreatedAt());
-
-                bidHistory.add(0, new BidRecord(
-                        bidder,
-                        formatMoney(bid.getAmount()),
-                        time
-                ));
-
-                bidChartSeries.getData().add(
-                        new XYChart.Data<>(chartIndex++, bid.getAmount())
-                );
+                String time = bid.getCreatedAt() == null ? "" : formatHistoryTime(bid.getCreatedAt());
+                bidHistory.add(new BidRecord(bidder, formatMoney(bid.getAmount()), time));
+                bidChartSeries.getData().add(new XYChart.Data<>(chartIndex++, bid.getAmount()));
             }
         });
     }
@@ -545,7 +421,6 @@ public class LiveBiddingController {
 
     private void increaseBidBy(int increment) {
         double baseValue = currentAuction != null ? currentAuction.getCurrentPrice() : 0;
-
         String input = bidInputField.getText().trim();
         if (!input.isEmpty()) {
             try {
@@ -574,7 +449,6 @@ public class LiveBiddingController {
         }
 
         String input = bidInputField.getText().trim();
-
         if (input.isEmpty()) {
             showError("Please enter a bid amount.");
             return;
@@ -588,44 +462,53 @@ public class LiveBiddingController {
             return;
         }
 
-        if (newBid <= currentAuction.getCurrentPrice()) {
-            showError("Your bid must be higher than current highest bid.");
+        double minNextBid = currentAuction.getMinNextBid() > 0 ? currentAuction.getMinNextBid() : currentAuction.getCurrentPrice() + 1;
+        if (newBid < minNextBid) {
+            showError("Your bid must be at least " + formatMoney(minNextBid) + ".");
             return;
         }
-
-        BidRequest request = new BidRequest(SessionManager.getUserId(), newBid);
-        final double bidAmount = newBid;
 
         if (placeBidButton != null) {
             placeBidButton.setDisable(true);
         }
 
-        CompletableFuture
-                .supplyAsync(() -> auctionApiService.placeBid(selectedItem.getId(), request))
-                .thenAccept(updatedAuction -> runOnUiThread(() -> {
-                    currentAuction = updatedAuction;
-                    bindAuctionToScreen(updatedAuction);
-
-                    addBidHistory("You", bidAmount);
-
-                    bidInputField.clear();
-                    showSuccess("Bid placed successfully.");
-
-                    if (placeBidButton != null) {
-                        placeBidButton.setDisable(false);
-                    }
-                }))
+        CompletableFuture.supplyAsync(() -> auctionApiService.placeBid(selectedItem.getId(), new BidRequest(newBid)))
+                .thenAccept(response -> runOnUiThread(() -> applyBidPlacementResponse(response)))
                 .exceptionally(error -> {
                     runOnUiThread(() -> {
                         showError(extractFriendlyMessage(error.getMessage()));
                         loadAuctionDetail(false);
-
                         if (placeBidButton != null) {
                             placeBidButton.setDisable(false);
                         }
                     });
                     return null;
                 });
+    }
+
+    private void applyBidPlacementResponse(BidPlacementResponse response) {
+        if (currentAuction != null) {
+            currentAuction.setCurrentPrice(response.getCurrentPrice());
+            currentAuction.setMinNextBid(response.getMinNextBid());
+            currentAuction.setLeaderName(response.getLeaderName());
+            currentAuction.setEndTime(response.getEndTime());
+            currentAuction.setState(response.getState());
+        }
+
+        currentBidLabel.setText(formatMoney(response.getCurrentPrice()));
+        leaderLabel.setText("Leader: " + safeLeaderName(response.getLeaderName()));
+        countdownLabel.setText(formatCountdown(response.getEndTime()));
+        addBidHistory(response.getBidderDisplay() == null ? "You" : response.getBidderDisplay(), response.getCurrentPrice());
+        bidInputField.clear();
+        showSuccess("Bid placed successfully.");
+
+        if ("FINISHED".equalsIgnoreCase(response.getState())) {
+            lockBiddingControls();
+        }
+
+        if (placeBidButton != null) {
+            placeBidButton.setDisable(false);
+        }
     }
 
     @FXML
@@ -643,14 +526,12 @@ public class LiveBiddingController {
         }
 
         String input = autoBidMaxInput.getText().trim();
-
         if (input.isEmpty()) {
             showError("Please enter your auto-bid max amount.");
             return;
         }
 
         double maxAmount;
-
         try {
             maxAmount = Double.parseDouble(input.replaceAll("[^0-9.]", ""));
         } catch (NumberFormatException e) {
@@ -667,18 +548,12 @@ public class LiveBiddingController {
             autoBidButton.setDisable(true);
         }
 
-        CompletableFuture
-                .runAsync(() -> auctionApiService.setAutoBid(
-                        selectedItem.getId(),
-                        new AutoBidRequest(SessionManager.getUserId(), maxAmount)
-                ))
-                .thenRun(() -> runOnUiThread(() -> {
+        CompletableFuture.supplyAsync(() -> auctionApiService.setAutoBid(selectedItem.getId(), new AutoBidRequest(maxAmount)))
+                .thenAccept(response -> runOnUiThread(() -> {
                     if (autoBidStatusLabel != null) {
-                        autoBidStatusLabel.setText("Auto-bid enabled up to " + formatMoney(maxAmount));
+                        autoBidStatusLabel.setText("Auto-bid enabled up to " + formatMoney(response.getMaxAmount()));
                     }
-
                     showSuccess("Auto-bid enabled.");
-
                     if (autoBidButton != null) {
                         autoBidButton.setDisable(false);
                     }
@@ -686,7 +561,6 @@ public class LiveBiddingController {
                 .exceptionally(error -> {
                     runOnUiThread(() -> {
                         showError(extractFriendlyMessage(error.getMessage()));
-
                         if (autoBidButton != null) {
                             autoBidButton.setDisable(false);
                         }
@@ -696,28 +570,23 @@ public class LiveBiddingController {
     }
 
     private void startPollingRefresh() {
-        refreshTimeline = new Timeline(
-                new KeyFrame(Duration.seconds(5), event -> loadAuctionDetail(false))
-        );
+        refreshTimeline = new Timeline(new KeyFrame(Duration.seconds(5), event -> loadAuctionDetail(false)));
         refreshTimeline.setCycleCount(Timeline.INDEFINITE);
         refreshTimeline.play();
     }
 
     private void startCountdownTimer() {
-        countdownTimeline = new Timeline(
-                new KeyFrame(Duration.seconds(1), event -> {
-                    if (realtimeRemainingSeconds != null) {
-                        realtimeRemainingSeconds = Math.max(0, realtimeRemainingSeconds - 1);
-                        countdownLabel.setText(formatSeconds(realtimeRemainingSeconds));
-                        return;
-                    }
+        countdownTimeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
+            if (realtimeRemainingSeconds != null) {
+                realtimeRemainingSeconds = Math.max(0, realtimeRemainingSeconds - 1);
+                countdownLabel.setText(formatSeconds(realtimeRemainingSeconds));
+                return;
+            }
 
-                    if (currentAuction != null) {
-                        countdownLabel.setText(formatCountdown(currentAuction.getEndTime()));
-                    }
-                })
-        );
-
+            if (currentAuction != null) {
+                countdownLabel.setText(formatCountdown(currentAuction.getEndTime()));
+            }
+        }));
         countdownTimeline.setCycleCount(Timeline.INDEFINITE);
         countdownTimeline.play();
     }
@@ -725,6 +594,7 @@ public class LiveBiddingController {
     private String formatMoney(double value) {
         return "$" + String.format("%,.0f", value);
     }
+
     private String getCurrentTimeText() {
         return DateTimeFormatter.ofPattern("HH:mm:ss")
                 .withZone(ZoneId.systemDefault())
@@ -735,7 +605,6 @@ public class LiveBiddingController {
         if (id == null || id.isBlank()) {
             return "Unknown";
         }
-
         return id.length() > 8 ? id.substring(0, 8) + "..." : id;
     }
 
@@ -743,7 +612,6 @@ public class LiveBiddingController {
         if (rawTime == null || rawTime.isBlank()) {
             return "";
         }
-
         try {
             return DateTimeFormatter.ofPattern("HH:mm:ss")
                     .withZone(ZoneId.systemDefault())
@@ -754,16 +622,10 @@ public class LiveBiddingController {
     }
 
     private void addBidHistory(String bidderName, double amount) {
-        bidHistory.add(0, new BidRecord(
-                bidderName,
-                formatMoney(amount),
-                getCurrentTimeText()
-        ));
-
+        bidHistory.add(0, new BidRecord(bidderName, formatMoney(amount), getCurrentTimeText()));
         if (bidHistory.size() > 50) {
             bidHistory.remove(50, bidHistory.size());
         }
-
         appendBidChartPoint(amount);
     }
 
@@ -780,41 +642,20 @@ public class LiveBiddingController {
     }
 
     private void appendBidChartPoint(double amount) {
-        if (bidChartSeries == null) {
-            return;
-        }
-
         int nextIndex = bidChartSeries.getData().size() + 1;
         bidChartSeries.getData().add(new XYChart.Data<>(nextIndex, amount));
-
         if (bidChartSeries.getData().size() > 50) {
             bidChartSeries.getData().remove(0);
         }
-    }
-
-    private String formatLeader(UUID leaderId) {
-        if (leaderId == null) {
-            return "No leader yet";
-        }
-
-        UUID currentUserId = SessionManager.getUserId();
-        if (currentUserId != null && currentUserId.equals(leaderId)) {
-            return "You";
-        }
-
-        String text = leaderId.toString();
-        return text.length() > 8 ? text.substring(0, 8) + "..." : text;
     }
 
     private String formatCountdown(String endTime) {
         if (endTime == null || endTime.isBlank()) {
             return "N/A";
         }
-
         try {
             Instant end = Instant.parse(endTime);
             java.time.Duration remaining = java.time.Duration.between(Instant.now(), end);
-
             if (remaining.isNegative() || remaining.isZero()) {
                 return "00:00:00";
             }
@@ -823,19 +664,17 @@ public class LiveBiddingController {
             long hours = totalSeconds / 3600;
             long minutes = (totalSeconds % 3600) / 60;
             long seconds = totalSeconds % 60;
-
             return String.format("%02d:%02d:%02d", hours, minutes, seconds);
         } catch (Exception e) {
             return endTime;
         }
     }
+
     private String formatSeconds(long totalSeconds) {
         long safeSeconds = Math.max(0, totalSeconds);
-
         long hours = safeSeconds / 3600;
         long minutes = (safeSeconds % 3600) / 60;
         long seconds = safeSeconds % 60;
-
         return String.format("%02d:%02d:%02d", hours, minutes, seconds);
     }
 
@@ -856,6 +695,13 @@ public class LiveBiddingController {
         return rawMessage;
     }
 
+    private String safeLeaderName(String leaderName) {
+        if (leaderName == null || leaderName.isBlank()) {
+            return "No leader yet";
+        }
+        return leaderName;
+    }
+
     private void showEmptyState() {
         lotTitleLabel.setText("No auction selected");
         currentBidLabel.setText("-");
@@ -872,6 +718,7 @@ public class LiveBiddingController {
         outbidAlertLabel.setText(message);
         outbidAlertLabel.setStyle("-fx-text-fill: #16a34a;");
     }
+
     private void showInfo(String message) {
         outbidAlertLabel.setText(message);
         outbidAlertLabel.setStyle("-fx-text-fill: #2563eb;");
@@ -883,17 +730,13 @@ public class LiveBiddingController {
 
     @FXML
     private void handleBack() {
-
         if (refreshTimeline != null) {
             refreshTimeline.stop();
         }
-
         if (countdownTimeline != null) {
             countdownTimeline.stop();
         }
-
         realtimeAuctionService.disconnect();
-
         SceneManager.goToProductDetail();
     }
 }
