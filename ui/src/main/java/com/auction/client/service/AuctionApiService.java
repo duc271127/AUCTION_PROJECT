@@ -29,6 +29,54 @@ public class AuctionApiService {
         return searchAuctions(null, null, null, 0, 12, "endTime,asc");
     }
 
+    public AuctionPageResponse getTrendingAuctions(String category, String q, String state, int page, int size) {
+        try {
+            StringBuilder endpoint = new StringBuilder("/api/auctions/trending?page=")
+                    .append(page)
+                    .append("&size=")
+                    .append(size);
+
+            if (category != null && !category.isBlank()) {
+                endpoint.append("&category=").append(encode(category));
+            }
+            if (q != null && !q.isBlank()) {
+                endpoint.append("&q=").append(encode(q));
+            }
+            if (state != null && !state.isBlank()) {
+                endpoint.append("&state=").append(encode(state));
+            }
+
+            String responseBody = apiClient.get(endpoint.toString());
+            return objectMapper.readValue(responseBody, AuctionPageResponse.class);
+        } catch (Exception e) {
+            throw new ApiException("Load trending auctions failed: " + e.getMessage(), e);
+        }
+    }
+
+    public AuctionPageResponse getForYouAuctions(String category, String q, String state, int page, int size) {
+        try {
+            StringBuilder endpoint = new StringBuilder("/api/auctions/for-you?page=")
+                    .append(page)
+                    .append("&size=")
+                    .append(size);
+
+            if (category != null && !category.isBlank()) {
+                endpoint.append("&category=").append(encode(category));
+            }
+            if (q != null && !q.isBlank()) {
+                endpoint.append("&q=").append(encode(q));
+            }
+            if (state != null && !state.isBlank()) {
+                endpoint.append("&state=").append(encode(state));
+            }
+
+            String responseBody = apiClient.get(endpoint.toString());
+            return objectMapper.readValue(responseBody, AuctionPageResponse.class);
+        } catch (Exception e) {
+            throw new ApiException("Load personalized auctions failed: " + e.getMessage(), e);
+        }
+    }
+
     public AuctionPageResponse searchAuctions(String category, String q, String state, int page, int size, String sort) {
         try {
             StringBuilder endpoint = new StringBuilder("/api/auctions?page=")
@@ -107,6 +155,14 @@ public class AuctionApiService {
             return objectMapper.readValue(responseBody, new TypeReference<List<BidResponse>>() {});
         } catch (Exception e) {
             throw new ApiException("Load bid history failed: " + e.getMessage(), e);
+        }
+    }
+
+    public void trackView(String auctionId) {
+        try {
+            apiClient.post("/api/auctions/" + auctionId + "/view", "");
+        } catch (Exception e) {
+            throw new ApiException("Track auction view failed: " + e.getMessage(), e);
         }
     }
 

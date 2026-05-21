@@ -6,6 +6,7 @@ import java.util.UUID;
 public class AdminWalletActivityResponse {
     private UUID id;
     private UUID userId;
+    private String userDisplayName;
     private String type;
     private BigDecimal amount;
     private BigDecimal balanceAfter;
@@ -16,6 +17,9 @@ public class AdminWalletActivityResponse {
 
     public UUID getUserId() { return userId; }
     public void setUserId(UUID userId) { this.userId = userId; }
+
+    public String getUserDisplayName() { return userDisplayName; }
+    public void setUserDisplayName(String userDisplayName) { this.userDisplayName = userDisplayName; }
 
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }

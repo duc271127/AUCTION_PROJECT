@@ -13,6 +13,9 @@ public class AuctionListResponse {
     private UUID sellerId;
     private String sellerName;
     private double currentPrice;
+    private long viewCount;
+    private long favoriteCount;
+    private double trendingScore;
     private int bidCount;
     private double minNextBid;
     private UUID leaderId;
@@ -102,6 +105,30 @@ public class AuctionListResponse {
 
     public void setCurrentPrice(double currentPrice) {
         this.currentPrice = currentPrice;
+    }
+
+    public long getViewCount() {
+        return viewCount;
+    }
+
+    public void setViewCount(long viewCount) {
+        this.viewCount = viewCount;
+    }
+
+    public long getFavoriteCount() {
+        return favoriteCount;
+    }
+
+    public void setFavoriteCount(long favoriteCount) {
+        this.favoriteCount = favoriteCount;
+    }
+
+    public double getTrendingScore() {
+        return trendingScore;
+    }
+
+    public void setTrendingScore(double trendingScore) {
+        this.trendingScore = trendingScore;
     }
 
     public UUID getLeaderId() {

@@ -49,6 +49,10 @@ public class ProductDetailController {
 
     private void loadAuctionDetail() {
         try {
+            try {
+                auctionApiService.trackView(selectedItem.getId());
+            } catch (Exception ignored) {
+            }
             AuctionDetailResponse response = auctionApiService.getAuctionDetail(selectedItem.getId());
             bindDetailFromApi(response);
         } catch (Exception e) {

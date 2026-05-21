@@ -18,6 +18,7 @@ public class AuctionCreateDto {
     public String description;
     public String imageUrl;
     public String category;
+    public Double reservePrice;
 
     @NotNull
     public Instant startTime;
@@ -48,6 +49,9 @@ public class AuctionCreateDto {
 
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
+
+    public Double getReservePrice() { return reservePrice; }
+    public void setReservePrice(Double reservePrice) { this.reservePrice = reservePrice; }
 
     public Instant getStartTime() { return startTime; }
     public void setStartTime(Instant startTime) { this.startTime = startTime; }

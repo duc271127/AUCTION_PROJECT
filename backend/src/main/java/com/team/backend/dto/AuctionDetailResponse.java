@@ -15,6 +15,9 @@ public class AuctionDetailResponse {
     public UUID leaderId;
     public int bidCount;
     public double currentPrice;
+    public long viewCount;
+    public long favoriteCount;
+    public double trendingScore;
     public double minNextBid;
     public String leaderName;
     public String state;

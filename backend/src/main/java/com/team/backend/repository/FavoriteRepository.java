@@ -10,6 +10,7 @@ import java.util.UUID;
 @Repository
 public interface FavoriteRepository extends JpaRepository<Favorite, UUID> {
     List<Favorite> findByUserId(UUID userId);
+    long countByAuctionId(UUID auctionId);
     boolean existsByUserIdAndAuctionId(UUID userId, UUID auctionId);
     void deleteByUserIdAndAuctionId(UUID userId, UUID auctionId);
 }

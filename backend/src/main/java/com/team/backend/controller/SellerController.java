@@ -14,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
+import java.util.List;
 
 @RestController
 @RequestMapping("/seller")
@@ -40,12 +41,30 @@ public class SellerController {
 
         UUID sellerId = resolveSellerId(sellerIdHeader, sellerIdParam);
 
+        List<com.team.backend.entity.Auction> sellerAuctions = auctionRepository.findBySellerId(sellerId);
+        long completedAuctions = sellerAuctions.stream()
+                .filter(auction -> auction.getState() == AuctionState.FINISHED)
+                .count();
+        long wonAuctions = sellerAuctions.stream()
+                .filter(auction -> auction.getState() == AuctionState.FINISHED && auction.getWinnerId() != null)
+                .count();
+        double totalRevenue = sellerAuctions.stream()
+                .filter(auction -> auction.getState() == AuctionState.FINISHED && auction.getWinnerId() != null)
+                .mapToDouble(com.team.backend.entity.Auction::getCurrentPrice)
+                .sum();
+        double averageSalePrice = wonAuctions == 0 ? 0.0 : totalRevenue / wonAuctions;
+        double successRate = completedAuctions == 0 ? 0.0 : (wonAuctions * 100.0) / completedAuctions;
+
         SellerStatsDto stats = new SellerStatsDto(
                 itemRepository.countBySellerId(sellerId),
                 itemRepository.countBySellerIdAndStatus(sellerId, ItemStatus.PENDING),
                 itemRepository.countBySellerIdAndStatus(sellerId, ItemStatus.APPROVED),
                 itemRepository.countBySellerIdAndStatus(sellerId, ItemStatus.REJECTED),
-                auctionRepository.countBySellerIdAndState(sellerId, AuctionState.ACTIVE)
+                auctionRepository.countBySellerIdAndState(sellerId, AuctionState.ACTIVE),
+                completedAuctions,
+                successRate,
+                totalRevenue,
+                averageSalePrice
         );
 
         return ResponseEntity.ok(stats);
