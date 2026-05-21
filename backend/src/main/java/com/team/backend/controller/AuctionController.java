@@ -3,16 +3,15 @@ package com.team.backend.controller;
 import com.team.backend.dto.AuctionCreateDto;
 import com.team.backend.dto.AuctionDto;
 import com.team.backend.dto.AutoBidRequestDto;
+import com.team.backend.dto.BidHistoryDto;
 import com.team.backend.dto.BidRequestDto;
 import com.team.backend.entity.Auction;
 import com.team.backend.entity.AutoBid;
-import com.team.backend.entity.BidTransaction;
 import com.team.backend.entity.User;
 import com.team.backend.exception.BusinessRuleException;
 import com.team.backend.exception.ResourceNotFoundException;
 import com.team.backend.realtime.RealtimeEvent;
 import com.team.backend.realtime.RealtimeEventFactory;
-import com.team.backend.realtime.RealtimeEventType;
 import com.team.backend.realtime.RealtimeNotifier;
 import com.team.backend.service.AuctionService;
 import com.team.backend.service.AutoBidService;
@@ -37,11 +36,11 @@ import java.util.stream.Collectors;
 
 /**
  * AuctionController - controller đầy đủ cho các thao tác liên quan auction:
- * - create auction (seller/admin)
- * - place bid (authenticated)
- * - set auto-bid (authenticated)
- * - list auctions, get auction detail
- * - close auction (authenticated)
+ * - tạo auction (seller/admin)
+ * - đặt giá (authenticated)
+ * - đặt auto-bid (authenticated)
+ * - liệt kê auctions, xem chi tiết auction
+ * - đóng auction (authenticated)
  *
  * Controller phát realtime events qua RealtimeNotifier sau khi thay đổi trạng thái.
  */
@@ -71,7 +70,7 @@ public class AuctionController {
     }
 
     // -------------------------
-    // Create auction endpoints
+    // Tạo auction
     // -------------------------
 
     @PostMapping
@@ -80,7 +79,7 @@ public class AuctionController {
         UUID sellerId = resolveUserIdFromSecurity();
         Auction created = auctionService.createAuction(dto, sellerId);
         URI location = URI.create("/api/auctions/" + created.getId());
-        log.info("Auction created by seller {}: auctionId={}", sellerId, created.getId());
+        log.info("Đã tạo auction bởi seller {}: auctionId={}", sellerId, created.getId());
         return ResponseEntity.created(location).body(toDto(created));
     }
 
@@ -90,19 +89,19 @@ public class AuctionController {
                                                               @Valid @RequestBody AuctionCreateDto dto) {
         Auction created = auctionService.createAuction(dto, sellerId);
         URI location = URI.create("/api/auctions/" + created.getId());
-        log.info("Auction created by admin {} for seller {}: auctionId={}", resolveUserIdFromSecurity(), sellerId, created.getId());
+        log.info("Admin {} đã tạo auction cho seller {}: auctionId={}", resolveUserIdFromSecurity(), sellerId, created.getId());
         return ResponseEntity.created(location).body(toDto(created));
     }
 
     // -------------------------
-    // Place bid
+    // Đặt giá
     // -------------------------
 
     /**
-     * Place a bid on an auction.
-     * - bidderId can be provided via X-User-Id header (for testing) or resolved from security context.
-     * - request body contains amount (and optional bidderId for non-authenticated test flows).
-     * - returns updated AuctionDto.
+     * Đặt giá cho một auction.
+     * - bidderId có thể được truyền qua header X-User-Id (dùng cho testing) hoặc lấy từ security context.
+     * - body chứa amount (và có thể bidderId cho luồng test không auth).
+     * - trả về AuctionDto đã cập nhật.
      */
     @PostMapping("/{id}/bids")
     @PreAuthorize("isAuthenticated()")
@@ -113,20 +112,20 @@ public class AuctionController {
 
         UUID bidderId = userId != null ? userId : dto.bidderId;
         if (bidderId == null) {
-            throw new BusinessRuleException("bidderId is required");
+            throw new BusinessRuleException("Yêu cầu phải có bidderId");
         }
 
-        // read-before to capture old endTime for anti-sniping detection
+        // đọc trước để lấy endTime cũ phục vụ kiểm tra anti-sniping
         Auction beforeBid = auctionService.getAuction(id);
         Instant oldEndTime = beforeBid == null ? null : beforeBid.getEndTime();
 
-        // place bid (service handles validation, locking, auto-bid, anti-sniping)
+        // thực hiện đặt giá (service xử lý validate, lock, auto-bid, anti-sniping)
         bidService.placeBid(id, bidderId, dto.amount);
 
-        // fetch updated auction and broadcast realtime events
+        // lấy auction đã cập nhật và phát sự kiện realtime
         Auction updated = auctionService.getAuction(id);
 
-        // broadcast bid placed event
+        // phát sự kiện đặt giá
         RealtimeEvent bidEvent = RealtimeEventFactory.bidPlaced(
                 id,
                 bidderId,
@@ -135,22 +134,22 @@ public class AuctionController {
         );
         realtimeNotifier.broadcastToAuction(id, bidEvent);
 
-        // if auction was extended due to anti-sniping, broadcast extension event
+        // nếu auction được gia hạn do anti-sniping thì phát sự kiện gia hạn
         if (oldEndTime != null && updated.getEndTime() != null && updated.getEndTime().isAfter(oldEndTime)) {
             RealtimeEvent extendedEvent = RealtimeEventFactory.auctionExtended(
                     id,
-                    bidderId,
                     updated.getCurrentPrice(),
                     updated.getEndTime()
             );
             realtimeNotifier.broadcastToAuction(id, extendedEvent);
         }
 
+        log.info("Đã đặt giá: auction={}, bidder={}, amount={}", id, bidderId, dto.amount);
         return ResponseEntity.ok(toDto(updated));
     }
 
     // -------------------------
-    // Auto-bid endpoints
+    // Auto-bid
     // -------------------------
 
     @PostMapping("/{id}/auto-bid")
@@ -162,19 +161,18 @@ public class AuctionController {
 
         UUID bidderId = userId != null ? userId : dto.bidderId;
         if (bidderId == null) {
-            throw new BusinessRuleException("bidderId is required");
+            throw new BusinessRuleException("Yêu cầu phải có bidderId");
         }
 
         AutoBid autoBid = autoBidService.setAutoBid(id, bidderId, dto.maxAmount);
-        log.info("AutoBid set: auction={}, bidder={}, maxAmount={}", id, bidderId, dto.maxAmount);
+        log.info("Đã thiết lập AutoBid: auction={}, bidder={}, maxAmount={}", id, bidderId, dto.maxAmount);
         return ResponseEntity.ok(autoBid);
     }
 
-<<<<<<< Updated upstream
     // -------------------------
-    // Read endpoints
+    // Đọc dữ liệu liên quan auto-bid
     // -------------------------
-=======
+
     @DeleteMapping("/{id}/auto-bid")
     public ResponseEntity<Void> cancelAutoBid(
             @PathVariable UUID id,
@@ -182,10 +180,11 @@ public class AuctionController {
     ) {
         UUID bidderId = userId;
         if (bidderId == null) {
-            throw new BusinessRuleException("bidderId is required");
+            throw new BusinessRuleException("Yêu cầu phải có bidderId");
         }
 
         autoBidService.cancelAutoBid(id, bidderId);
+        log.info("Đã huỷ AutoBid: auction={}, bidder={}", id, bidderId);
         return ResponseEntity.noContent().build();
     }
 
@@ -202,16 +201,15 @@ public class AuctionController {
             @RequestHeader(value = "X-User-Id", required = false) UUID userId
     ) {
         if (userId == null) {
-            throw new BusinessRuleException("bidderId is required");
+            throw new BusinessRuleException("Yêu cầu phải có bidderId");
         }
         List<AutoBid> list = autoBidService.listAutoBidsByUser(userId);
         return ResponseEntity.ok(list);
     }
 
     // =========================
-    // GET ALL AUCTIONS
+    // Danh sách và chi tiết auction
     // =========================
->>>>>>> Stashed changes
 
     @GetMapping
     public ResponseEntity<List<AuctionDto>> listAuctions() {
@@ -226,28 +224,21 @@ public class AuctionController {
         return ResponseEntity.ok(toDto(a));
     }
 
+    // Lịch sử đặt giá (trả BidHistoryDto)
     @GetMapping("/{id}/bids")
-<<<<<<< Updated upstream
-    public ResponseEntity<List<BidTransaction>> getBidHistory(@PathVariable UUID id) {
-        return ResponseEntity.ok(bidService.getBidHistory(id));
-=======
     public ResponseEntity<List<BidHistoryDto>> getBidHistory(
             @PathVariable UUID id,
             @RequestParam(value = "limit", required = false) Integer limit
     ) {
         if (limit == null) {
-            return ResponseEntity.ok(
-                    bidService.getBidHistory(id)
-            );
+            return ResponseEntity.ok(bidService.getBidHistory(id));
         } else {
-            return ResponseEntity.ok(
-                    bidService.getBidHistory(id)
-            );
+            return ResponseEntity.ok(bidService.getBidHistory(id, limit));
         }
     }
 
     // =========================
-    // AUCTION SUMMARY / METADATA
+    // Thông tin tóm tắt / metadata
     // =========================
 
     @GetMapping("/{id}/summary")
@@ -270,20 +261,20 @@ public class AuctionController {
     public ResponseEntity<Double> getMinIncrement() {
         double min = bidService.getMinIncrement();
         return ResponseEntity.ok(min);
->>>>>>> Stashed changes
     }
 
     // -------------------------
-    // Admin / control endpoints
+    // Admin / điều khiển
     // -------------------------
 
     @PostMapping("/{id}/close")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> closeAuction(@PathVariable UUID id) {
         auctionService.closeAuction(id);
-        // broadcast auction finished event
+        // phát sự kiện auction kết thúc
         RealtimeEvent finished = RealtimeEventFactory.auctionFinished(id);
         realtimeNotifier.broadcastToAuction(id, finished);
+        log.info("Đã đóng auction: auctionId={}", id);
         return ResponseEntity.noContent().build();
     }
 
@@ -311,12 +302,12 @@ public class AuctionController {
     private UUID resolveUserIdFromSecurity() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || auth.getName() == null) {
-            throw new BusinessRuleException("Unauthenticated: user cannot be resolved");
+            throw new BusinessRuleException("Người dùng chưa xác thực, không thể xác định user");
         }
         String username = auth.getName();
         User user = userService.findByUsername(username);
         if (user == null) {
-            throw new ResourceNotFoundException("Authenticated user not found: " + username);
+            throw new ResourceNotFoundException("Không tìm thấy người dùng đã xác thực: " + username);
         }
         return user.getId();
     }
