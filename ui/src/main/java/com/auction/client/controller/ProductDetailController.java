@@ -1,10 +1,12 @@
 package com.auction.client.controller;
 
 import com.auction.client.dto.response.AuctionListResponse;
+import com.auction.client.dto.response.PublicItemDetailResponse;
 import com.auction.client.model.AuctionItem;
 import com.auction.client.navigation.SceneManager;
 import com.auction.client.service.AuctionApiService;
 import com.auction.client.session.SessionManager;
+import com.auction.client.service.ItemApiService;
 import com.auction.client.util.MockData;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
@@ -15,6 +17,9 @@ import javafx.scene.control.Button;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class ProductDetailController {
 
@@ -39,6 +44,7 @@ public class ProductDetailController {
     @FXML private Button detailFavoriteButton;
 
     private final AuctionApiService auctionApiService = new AuctionApiService();
+    private final ItemApiService itemApiService = new ItemApiService();
     private AuctionItem selectedItem;
     private boolean favoriteSelected = false;
     private int favoriteCount = 36;
@@ -79,16 +85,7 @@ public class ProductDetailController {
         updateCountdown(response.getEndTime());
         statusLabel.setText("No reserve price");
 
-        specsLabel.setText(
-                "Auction Detail:\\n" +
-                        "- Auction ID: " + safeText(response.getId() == null ? null : response.getId().toString(), "N/A") + "\\n" +
-                        "- Item ID: " + safeText(response.getItemId() == null ? null : response.getItemId().toString(), "N/A") + "\\n" +
-                        "- Start Time: " + formatDateTime(response.getStartTime()) + "\\n" +
-                        "- End Time: " + formatDateTime(response.getEndTime()) + "\\n" +
-                        "- Leader ID: " + safeText(response.getLeaderId() == null ? null : response.getLeaderId().toString(), "No leader yet")
-        );
-
-        setDefaultImages(selectedItem.getImagePath());
+        bindPublicItemDetail(response);
     }
 
     private void bindFallbackFromSelectedItem() {
@@ -106,6 +103,71 @@ public class ProductDetailController {
         );
 
         setDefaultImages(selectedItem.getImagePath());
+    }
+
+    private void bindPublicItemDetail(AuctionListResponse auction) {
+        if (auction.getItemId() == null) {
+            bindAuctionSpecsOnly(auction);
+            setDefaultImages(selectedItem.getImagePath());
+            return;
+        }
+
+        try {
+            PublicItemDetailResponse item = itemApiService.getPublicItemDetail(auction.getItemId().toString());
+
+            if (item.getProductName() != null && !item.getProductName().isBlank()) {
+                productNameLabel.setText(item.getProductName());
+            }
+
+            specsLabel.setText(
+                    "Item Detail:\n" +
+                            "- Category: " + safeText(item.getCategory(), "General") + "\n" +
+                            "- Description: " + safeText(item.getDescription(), "No description") + "\n" +
+                            "- SKU: " + safeText(item.getSku(), "N/A") + "\n" +
+                            "- Quantity: " + (item.getQuantity() == null ? "N/A" : item.getQuantity()) + "\n" +
+                            "- Seller ID: " + safeText(item.getSellerId() == null ? null : item.getSellerId().toString(), "N/A") + "\n\n" +
+                            auctionSpecs(auction)
+            );
+            setUploadedImages(item);
+        } catch (Exception e) {
+            bindAuctionSpecsOnly(auction);
+            setDefaultImages(selectedItem.getImagePath());
+        }
+    }
+
+    private void bindAuctionSpecsOnly(AuctionListResponse auction) {
+        specsLabel.setText(auctionSpecs(auction));
+    }
+
+    private String auctionSpecs(AuctionListResponse auction) {
+        return "Auction Detail:\n" +
+                "- Auction ID: " + safeText(auction.getId() == null ? null : auction.getId().toString(), "N/A") + "\n" +
+                "- Item ID: " + safeText(auction.getItemId() == null ? null : auction.getItemId().toString(), "N/A") + "\n" +
+                "- Start Time: " + formatDateTime(auction.getStartTime()) + "\n" +
+                "- End Time: " + formatDateTime(auction.getEndTime()) + "\n" +
+                "- Leader ID: " + safeText(auction.getLeaderId() == null ? null : auction.getLeaderId().toString(), "No leader yet");
+    }
+
+    private void setUploadedImages(PublicItemDetailResponse item) {
+        List<String> images = new ArrayList<>();
+        if (item.getImageUrls() != null) {
+            images.addAll(item.getImageUrls());
+        }
+        if (images.isEmpty() && item.getImagePath() != null && !item.getImagePath().isBlank()) {
+            images.add(item.getImagePath());
+        }
+        if (images.isEmpty()) {
+            setDefaultImages(selectedItem.getImagePath());
+            return;
+        }
+
+        setRemoteImage(mainImageView, images.get(0));
+        setRemoteImage(thumb1ImageView, images.get(0));
+        setRemoteImage(thumb2ImageView, images.size() > 1 ? images.get(1) : images.get(0));
+    }
+
+    private void setRemoteImage(ImageView imageView, String imagePath) {
+        imageView.setImage(new Image(itemApiService.toAbsoluteImageUrl(imagePath), true));
     }
 
     private void setDefaultImages(String imagePath) {

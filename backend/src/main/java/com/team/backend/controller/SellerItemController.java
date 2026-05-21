@@ -86,6 +86,16 @@ public class SellerItemController {
         return ResponseEntity.ok(itemService.findResponsesBySellerId(sellerId));
     }
 
+    @GetMapping("/v2/recent")
+    public ResponseEntity<List<ItemResponse>> listRecentSellerItemsV2(
+            @RequestHeader(value = "X-Seller-Id", required = false) UUID sellerIdHeader,
+            @RequestParam(value = "sellerId", required = false) UUID sellerIdParam,
+            @RequestParam(value = "limit", defaultValue = "5") int limit) {
+
+        UUID sellerId = resolveSellerId(sellerIdHeader, sellerIdParam, null);
+        return ResponseEntity.ok(itemService.findRecentResponsesBySellerId(sellerId, limit));
+    }
+
     @PostMapping("/v2")
     public ResponseEntity<ItemResponse> createItemV2(
             @RequestHeader(value = "X-Seller-Id", required = false) UUID sellerIdHeader,

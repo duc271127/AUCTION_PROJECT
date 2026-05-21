@@ -3,11 +3,13 @@ package com.auction.client.service;
 import com.auction.client.dto.request.CreateItemRequest;
 import com.auction.client.dto.request.UpdateItemRequest;
 import com.auction.client.dto.response.ItemResponse;
+import com.auction.client.dto.response.UploadResponse;
 import com.auction.client.exception.ApiException;
 import com.auction.client.session.SessionManager;
 
 import java.util.List;
 import java.util.UUID;
+import java.io.File;
 
 public class SellerItemApiService {
 
@@ -31,6 +33,36 @@ public class SellerItemApiService {
                 SELLER_ITEMS_ENDPOINT + "?sellerId=" + sellerId,
                 ItemResponse.class
         );
+    }
+
+    public List<ItemResponse> getRecentItems(int limit) throws ApiException {
+        UUID sellerId = SessionManager.getUserId();
+        if (sellerId == null) {
+            throw new ApiException("Seller id is missing. Please login again.");
+        }
+
+        return apiClient.getList(
+                SELLER_ITEMS_ENDPOINT + "/recent?sellerId=" + sellerId + "&limit=" + limit,
+                ItemResponse.class
+        );
+    }
+
+    public String uploadImage(File imageFile) throws ApiException {
+        if (imageFile == null) {
+            return "";
+        }
+
+        UploadResponse response = apiClient.postMultipartFile(
+                "/api/uploads/images",
+                "file",
+                imageFile.toPath(),
+                UploadResponse.class
+        );
+        return response == null || response.getUrl() == null ? "" : response.getUrl();
+    }
+
+    public String toAbsoluteImageUrl(String imagePath) {
+        return apiClient.toAbsoluteUrl(imagePath);
     }
 
     public ItemResponse createItem(CreateItemRequest request) throws ApiException {

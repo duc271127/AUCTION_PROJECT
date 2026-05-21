@@ -123,6 +123,14 @@ public class SceneManager {
         switchScene("/fxml/live_bidding.fxml", "Auction Project - Live Bidding", "/css/live_bidding.css");
     }
 
+    public static void goToWallet() {
+        if (!SessionManager.isAuthenticated()) {
+            goToAuth();
+            return;
+        }
+        switchScene("/fxml/wallet.fxml", "Auction Project - Wallet", "/css/wallet.css");
+    }
+
     public static void goToCategory() {
         if (!requireRole("BIDDER")) {
             return;

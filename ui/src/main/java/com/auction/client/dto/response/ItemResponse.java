@@ -1,5 +1,6 @@
 package com.auction.client.dto.response;
 
+import java.util.List;
 import java.util.UUID;
 
 public class ItemResponse {
@@ -14,6 +15,9 @@ public class ItemResponse {
     private String startDate;
     private String endDate;
     private String imagePath;
+    private List<String> imageUrls;
+    private String sku;
+    private Integer quantity;
 
     public ItemResponse() {
     }
@@ -105,4 +109,13 @@ public class ItemResponse {
     public void setImagePath(String imagePath) {
         this.imagePath = imagePath;
     }
+
+    public List<String> getImageUrls() { return imageUrls; }
+    public void setImageUrls(List<String> imageUrls) { this.imageUrls = imageUrls; }
+
+    public String getSku() { return sku; }
+    public void setSku(String sku) { this.sku = sku; }
+
+    public Integer getQuantity() { return quantity; }
+    public void setQuantity(Integer quantity) { this.quantity = quantity; }
 }

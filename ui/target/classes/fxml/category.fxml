@@ -71,7 +71,8 @@
 
                     <Button text="Wallet"
                             focusTraversable="false"
-                            styleClass="market-wallet-button"/>
+                            styleClass="market-wallet-button"
+                            onAction="#handleOpenWallet"/>
 
                     <Button text="&#9825;"
                             focusTraversable="false"

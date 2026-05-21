@@ -1,6 +1,8 @@
 package com.team.backend.controller;
 
 import com.team.backend.dto.AdminStatsDto;
+import com.team.backend.dto.AdminWalletActivityDto;
+import com.team.backend.dto.AdminNotificationDto;
 import com.team.backend.dto.AuctionDto;
 import com.team.backend.dto.CreateAuctionRequest;
 import com.team.backend.dto.PendingItemDto;
@@ -83,6 +85,18 @@ public class AdminController {
     @GetMapping("/stats")
     public ResponseEntity<AdminStatsDto> getStats() {
         return ResponseEntity.ok(adminService.getStats());
+    }
+
+    @GetMapping("/wallet-activity/recent")
+    public ResponseEntity<List<AdminWalletActivityDto>> getRecentWalletActivity(
+            @RequestParam(value = "limit", defaultValue = "5") int limit) {
+        return ResponseEntity.ok(adminService.getRecentWalletActivity(limit));
+    }
+
+    @GetMapping("/notifications/recent")
+    public ResponseEntity<List<AdminNotificationDto>> getRecentNotifications(
+            @RequestParam(value = "limit", defaultValue = "5") int limit) {
+        return ResponseEntity.ok(adminService.getRecentNotifications(limit));
     }
 
     private UUID resolveCurrentUserId() {
