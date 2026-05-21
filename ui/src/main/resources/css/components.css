@@ -10,6 +10,119 @@
     -fx-font-weight: 800;
 }
 
+.market-top-nav {
+    -fx-background-color: #ffffff;
+    -fx-border-color: transparent transparent #dddddd transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.market-brand {
+    -fx-text-fill: #0047ff;
+    -fx-font-size: 22px;
+    -fx-font-weight: 800;
+    -fx-font-style: italic;
+}
+
+.market-nav-link {
+    -fx-background-color: transparent;
+    -fx-text-fill: #111111;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+    -fx-padding: 8 10;
+    -fx-cursor: hand;
+}
+
+.market-nav-link:hover {
+    -fx-text-fill: #0047ff;
+}
+
+.market-category-menu {
+    -fx-background-color: transparent;
+    -fx-padding: 2 6;
+    -fx-cursor: hand;
+}
+
+.market-category-menu > .label {
+    -fx-text-fill: #111111;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+}
+
+.market-category-menu:hover > .label {
+    -fx-text-fill: #0047ff;
+}
+
+.market-category-menu > .arrow-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0 4;
+}
+
+.market-category-menu > .arrow-button > .arrow {
+    -fx-background-color: #0047ff;
+}
+
+.market-category-menu .menu-item {
+    -fx-pref-width: 190px;
+    -fx-padding: 12 18;
+}
+
+.market-category-menu .menu-item .label {
+    -fx-text-fill: #222222;
+    -fx-font-size: 14px;
+}
+
+.market-category-menu .menu-item:focused {
+    -fx-background-color: #eef4ff;
+}
+
+.market-search {
+    -fx-background-color: #f2f2f2;
+    -fx-background-radius: 8;
+    -fx-border-color: transparent;
+    -fx-pref-height: 34px;
+    -fx-font-size: 13px;
+}
+
+.market-wallet-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #0047ff;
+    -fx-font-size: 12px;
+    -fx-font-weight: 800;
+    -fx-padding: 5 6;
+    -fx-cursor: hand;
+}
+
+.market-wallet-button:hover {
+    -fx-background-color: #e8f2ff;
+    -fx-background-radius: 999;
+}
+
+.market-icon-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #0047ff;
+    -fx-font-size: 20px;
+    -fx-font-weight: 800;
+    -fx-padding: 4 6;
+    -fx-cursor: hand;
+}
+
+.market-icon-button:hover {
+    -fx-background-color: #e8f2ff;
+    -fx-background-radius: 999;
+}
+
+.market-user-icon {
+    -fx-text-fill: #111111;
+    -fx-font-size: 18px;
+    -fx-font-weight: 800;
+}
+
+.market-username {
+    -fx-text-fill: #111111;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+}
+
 .app-card,
 .item-card,
 .feature-card,

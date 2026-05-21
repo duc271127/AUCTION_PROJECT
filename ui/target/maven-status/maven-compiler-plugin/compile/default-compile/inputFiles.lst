@@ -15,10 +15,12 @@ D:\Projects\AUCTION_PROJECT\ui\src\main\java\com\auction\client\service\SellerIt
 D:\Projects\AUCTION_PROJECT\ui\src\main\java\com\auction\client\controller\HomeController.java
 D:\Projects\AUCTION_PROJECT\ui\src\main\java\com\auction\client\service\RealtimeAuctionService.java
 D:\Projects\AUCTION_PROJECT\ui\src\main\java\com\auction\client\MainApp.java
+D:\Projects\AUCTION_PROJECT\ui\src\main\java\com\auction\client\controller\TrendingController.java
 D:\Projects\AUCTION_PROJECT\ui\src\main\java\com\auction\client\exception\ApiException.java
 D:\Projects\AUCTION_PROJECT\ui\src\main\java\com\auction\client\dto\request\UpdateItemRequest.java
 D:\Projects\AUCTION_PROJECT\ui\src\main\java\com\auction\client\controller\SellerDashboardController.java
 D:\Projects\AUCTION_PROJECT\ui\src\main\java\com\auction\client\dto\request\LoginRequest.java
+D:\Projects\AUCTION_PROJECT\ui\src\main\java\com\auction\client\controller\CategoryController.java
 D:\Projects\AUCTION_PROJECT\ui\src\main\java\com\auction\client\controller\ShowRoomController.java
 D:\Projects\AUCTION_PROJECT\ui\src\main\java\com\auction\client\socket\SocketEventListener.java
 D:\Projects\AUCTION_PROJECT\ui\src\main\java\com\auction\client\model\BidRecord.java
