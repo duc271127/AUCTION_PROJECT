@@ -241,6 +241,7 @@ public class ItemServiceImpl implements ItemService {
             throw new BusinessRuleException("startingPrice must be positive");
         }
         validateQuantity(request.getQuantity());
+        request.setStatus(null);
 
         Item item = new Item();
         item.setSellerId(sellerId);
@@ -290,6 +291,7 @@ public class ItemServiceImpl implements ItemService {
         if (request == null) {
             throw new BusinessRuleException("request is required");
         }
+        request.setStatus(null);
 
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessRuleException("Item not found: " + itemId));
@@ -337,6 +339,10 @@ public class ItemServiceImpl implements ItemService {
             validateQuantity(request.getQuantity());
             item.setQuantity(request.getQuantity());
         }
+
+        item.setStatus(ItemStatus.PENDING);
+        item.setApprovedBy(null);
+        item.setApprovedAt(null);
 
         Item saved = itemRepository.save(item);
         return toResponse(saved);

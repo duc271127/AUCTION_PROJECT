@@ -8,5 +8,6 @@ import java.util.UUID;
 public interface BidRepository extends JpaRepository<BidTransaction, UUID> {
     List<BidTransaction> findByAuctionIdOrderByCreatedAtAsc(UUID auctionId);
     List<BidTransaction> findByAuctionIdOrderByCreatedAtDesc(UUID auctionId);
-
+    List<BidTransaction> findByBidderIdOrderByCreatedAtDesc(UUID bidderId);
+    long countByAuctionId(UUID auctionId);
 }

@@ -9,6 +9,7 @@ import java.util.UUID;
 public class PendingItemDto {
     public UUID id;
     public UUID sellerId;
+    public String sellerName;
     public String productName;
     public String description;
     public String category;

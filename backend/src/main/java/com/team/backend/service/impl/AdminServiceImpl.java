@@ -3,6 +3,7 @@ package com.team.backend.service.impl;
 import com.team.backend.dto.PendingItemDto;
 import com.team.backend.dto.AdminWalletActivityDto;
 import com.team.backend.dto.AdminNotificationDto;
+import com.team.backend.dto.AuctionCreateDto;
 import com.team.backend.entity.Auction;
 import com.team.backend.entity.AuctionState;
 import com.team.backend.entity.Item;
@@ -12,6 +13,8 @@ import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.ItemRepository;
 
 import com.team.backend.service.AdminService;
+import com.team.backend.service.AuctionHelper;
+import com.team.backend.service.AuctionService;
 import com.team.backend.dto.AdminStatsDto;
 import com.team.backend.repository.UserRepository;
 import com.team.backend.repository.WalletTransactionRepository;
@@ -24,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -42,6 +46,8 @@ public class AdminServiceImpl implements AdminService {
 
     private final ItemRepository itemRepository;
     private final AuctionRepository auctionRepository;
+    private final AuctionService auctionService;
+    private final AuctionHelper auctionHelper;
 
     private final UserRepository userRepository;
     private final WalletTransactionRepository walletTransactionRepository;
@@ -50,12 +56,16 @@ public class AdminServiceImpl implements AdminService {
     public AdminServiceImpl(
             ItemRepository itemRepository,
             AuctionRepository auctionRepository,
+            AuctionService auctionService,
+            AuctionHelper auctionHelper,
             UserRepository userRepository,
             WalletTransactionRepository walletTransactionRepository,
             AdminNotificationRepository adminNotificationRepository
     ) {
         this.itemRepository = itemRepository;
         this.auctionRepository = auctionRepository;
+        this.auctionService = auctionService;
+        this.auctionHelper = auctionHelper;
         this.userRepository = userRepository;
         this.walletTransactionRepository = walletTransactionRepository;
         this.adminNotificationRepository = adminNotificationRepository;
@@ -131,24 +141,14 @@ public class AdminServiceImpl implements AdminService {
             throw new BusinessRuleException("Item must be APPROVED before creating auction");
         }
 
-        Auction auction = new Auction();
-        auction.setItem(item);
-        auction.setItemId(item.getId());
-        auction.setStartTime(start == null ? Instant.now() : start);
-        auction.setEndTime(end == null ? Instant.now().plusSeconds(3600) : end);
-        auction.setCreatedBy(adminId);
-        auction.setCreatedAt(Instant.now());
-        auction.setCurrentPrice(startingPrice);
-        auction.setReservePrice(reservePrice == null ? 0.0 : reservePrice);
+        AuctionCreateDto dto = new AuctionCreateDto();
+        dto.setItemId(item.getId());
+        dto.setStartTime(start == null ? Instant.now() : start);
+        dto.setEndTime(end == null ? Instant.now().plusSeconds(3600) : end);
+        dto.setStartPrice(startingPrice);
+        dto.setReservePrice(reservePrice == null ? 0.0 : reservePrice);
 
-        Instant now = Instant.now();
-        if (start != null && start.isAfter(now)) {
-            auction.setState(AuctionState.SCHEDULED);
-        } else {
-            auction.setState(AuctionState.ACTIVE);
-        }
-
-        Auction saved = auctionRepository.save(auction);
+        Auction saved = auctionService.createAuction(dto, item.getSellerId(), adminId);
         saveNotification("AUCTION_CREATED", "Auction created for item: " + item.getName());
         log.info("Auction created for item: itemId={}, auctionId={}, adminId={}", itemId, saved.getId(), adminId);
         return saved;
@@ -161,6 +161,7 @@ public class AdminServiceImpl implements AdminService {
         PendingItemDto d = new PendingItemDto();
         d.id = item.getId();
         d.sellerId = item.getSellerId();
+        d.sellerName = auctionHelper.lookupUserName(item.getSellerId());
         d.productName = item.getName();
         d.description = item.getDescription();
         d.category = item.getCategory();
@@ -219,6 +220,12 @@ public class AdminServiceImpl implements AdminService {
         long totalUsers = userRepository.count();
         long activeSellers = userRepository.findByRole("SELLER").size();
         long totalAuctions = auctionRepository.count();
+        long activeAuctions = auctionRepository.findByState(AuctionState.ACTIVE).size();
+        long closedAuctions = auctionRepository.findByState(AuctionState.FINISHED).size();
+        Instant monthStart = Instant.now().atZone(ZoneOffset.UTC).withDayOfMonth(1).toInstant();
+        long newSellersThisMonth = userRepository.findByRole("SELLER").stream()
+                .filter(user -> user.getCreatedAt() != null && !user.getCreatedAt().isBefore(monthStart))
+                .count();
 
         double revenue = auctionRepository.findByState(AuctionState.FINISHED)
                 .stream()
@@ -226,7 +233,20 @@ public class AdminServiceImpl implements AdminService {
                 .mapToDouble(Auction::getCurrentPrice)
                 .sum();
 
-        return new AdminStatsDto(totalUsers, activeSellers, totalAuctions, revenue);
+        double auctionSuccessRate = closedAuctions == 0
+                ? 0.0
+                : (auctionRepository.findByState(AuctionState.FINISHED).stream().filter(a -> a.getWinnerId() != null).count() * 100.0) / closedAuctions;
+
+        return new AdminStatsDto(
+                totalUsers,
+                activeSellers,
+                totalAuctions,
+                activeAuctions,
+                closedAuctions,
+                newSellersThisMonth,
+                auctionSuccessRate,
+                revenue
+        );
     }
 
     @Override
@@ -240,6 +260,7 @@ public class AdminServiceImpl implements AdminService {
                     AdminWalletActivityDto dto = new AdminWalletActivityDto();
                     dto.setId(tx.getId());
                     dto.setUserId(tx.getUserId());
+                    dto.setUserDisplayName(auctionHelper.lookupUserName(tx.getUserId()));
                     dto.setType(tx.getType());
                     dto.setAmount(tx.getAmount());
                     dto.setBalanceAfter(tx.getBalanceAfter());

@@ -161,9 +161,37 @@ public class AuctionController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/trending")
+    public ResponseEntity<AuctionPageResponse> listTrendingAuctions(@RequestParam(value = "category", required = false) String category,
+                                                                    @RequestParam(value = "q", required = false) String q,
+                                                                    @RequestParam(value = "state", required = false) String state,
+                                                                    @RequestParam(value = "page", defaultValue = "0") int page,
+                                                                    @RequestParam(value = "size", defaultValue = "12") int size) {
+        PageRequest pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100));
+        Page<Auction> result = auctionService.searchTrendingCatalog(category, q, parseState(state), pageable);
+        return ResponseEntity.ok(toPageResponse(result));
+    }
+
+    @GetMapping("/for-you")
+    public ResponseEntity<AuctionPageResponse> listPersonalizedAuctions(@RequestParam(value = "category", required = false) String category,
+                                                                        @RequestParam(value = "q", required = false) String q,
+                                                                        @RequestParam(value = "state", required = false) String state,
+                                                                        @RequestParam(value = "page", defaultValue = "0") int page,
+                                                                        @RequestParam(value = "size", defaultValue = "12") int size) {
+        PageRequest pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100));
+        Page<Auction> result = auctionService.searchPersonalizedCatalog(resolveCurrentUserIdOptional(), category, q, parseState(state), pageable);
+        return ResponseEntity.ok(toPageResponse(result));
+    }
+
     @GetMapping("/{id}/detail")
     public ResponseEntity<AuctionDetailResponse> getAuctionDetail(@PathVariable UUID id) {
         return ResponseEntity.ok(auctionService.getDetail(id));
+    }
+
+    @PostMapping("/{id}/view")
+    public ResponseEntity<Void> trackAuctionView(@PathVariable UUID id) {
+        auctionService.incrementView(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}")
@@ -227,6 +255,9 @@ public class AuctionController {
         dto.sellerId = auction.getSellerId() != null ? auction.getSellerId() : auction.getCreatedBy();
         dto.sellerName = auction.getSellerName() != null ? auction.getSellerName() : auctionHelper.lookupUserName(dto.sellerId);
         dto.currentPrice = auction.getCurrentPrice();
+        dto.viewCount = Math.max(0L, auction.getViewCount());
+        dto.favoriteCount = auction.getFavoriteCount() == null ? 0L : auction.getFavoriteCount();
+        dto.trendingScore = auction.getTrendingScore() == null ? 0.0 : auction.getTrendingScore();
         dto.bidCount = auction.getBidCount() == null ? 0 : auction.getBidCount();
         dto.minNextBid = auction.getMinNextBid() == null ? auction.getCurrentPrice() + bidService.getMinIncrement() : auction.getMinNextBid();
         dto.leaderId = auction.getLeaderId();
@@ -278,6 +309,26 @@ public class AuctionController {
             throw new AuthenticationCredentialsNotFoundException("Authenticated user not found: " + auth.getName());
         }
         return user.getId();
+    }
+
+    private UUID resolveCurrentUserIdOptional() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null || auth.getName().isBlank() || "anonymousUser".equals(auth.getName())) {
+            return null;
+        }
+
+        User user = userService.findByUsername(auth.getName());
+        return user == null ? null : user.getId();
+    }
+
+    private AuctionPageResponse toPageResponse(Page<Auction> result) {
+        AuctionPageResponse response = new AuctionPageResponse();
+        response.setItems(result.getContent().stream().map(this::toDto).toList());
+        response.setPage(result.getNumber());
+        response.setSize(result.getSize());
+        response.setTotalElements(result.getTotalElements());
+        response.setTotalPages(result.getTotalPages());
+        return response;
     }
 
     private boolean currentUserHasRole(String role) {

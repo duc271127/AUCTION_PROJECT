@@ -10,11 +10,13 @@ import com.team.backend.exception.ResourceNotFoundException;
 import com.team.backend.mapper.AuctionMapper;
 import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.BidRepository;
+import com.team.backend.repository.FavoriteRepository;
 import com.team.backend.repository.ItemRepository;
 import com.team.backend.service.AuctionHelper;
 import com.team.backend.service.AuctionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,7 +24,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -34,15 +41,18 @@ public class AuctionServiceImpl implements AuctionService {
     private final AuctionRepository auctionRepository;
     private final ItemRepository itemRepository;
     private final BidRepository bidRepository;
+    private final FavoriteRepository favoriteRepository;
     private final AuctionHelper auctionHelper;
 
     public AuctionServiceImpl(AuctionRepository auctionRepository,
                               ItemRepository itemRepository,
                               BidRepository bidRepository,
+                              FavoriteRepository favoriteRepository,
                               AuctionHelper auctionHelper) {
         this.auctionRepository = auctionRepository;
         this.itemRepository = itemRepository;
         this.bidRepository = bidRepository;
+        this.favoriteRepository = favoriteRepository;
         this.auctionHelper = auctionHelper;
     }
 
@@ -89,6 +99,12 @@ public class AuctionServiceImpl implements AuctionService {
     @Override
     @Transactional
     public Auction createAuction(AuctionCreateDto dto, UUID sellerId) {
+        return createAuction(dto, sellerId, sellerId);
+    }
+
+    @Override
+    @Transactional
+    public Auction createAuction(AuctionCreateDto dto, UUID sellerId, UUID actorId) {
         if (dto == null) {
             throw new BusinessRuleException("AuctionCreateDto is required");
         }
@@ -134,7 +150,8 @@ public class AuctionServiceImpl implements AuctionService {
         auction.setStartTime(dto.getStartTime());
         auction.setEndTime(dto.getEndTime());
         auction.setCurrentPrice(item.getStartingPrice() == null ? 0.0 : item.getStartingPrice());
-        auction.setCreatedBy(sellerId);
+        auction.setReservePrice(dto.getReservePrice() == null ? item.getReservePrice() : dto.getReservePrice());
+        auction.setCreatedBy(actorId == null ? sellerId : actorId);
         auction.setSellerId(sellerId);
         applyDerivedAuctionFields(auction, item, sellerId);
         applyInitialState(auction);
@@ -180,6 +197,16 @@ public class AuctionServiceImpl implements AuctionService {
         Page<Auction> page = auctionRepository.searchCatalog(category, q, state, pageable);
         page.forEach(this::populateTransientFields);
         return page;
+    }
+
+    @Override
+    public Page<Auction> searchTrendingCatalog(String category, String q, AuctionState state, Pageable pageable) {
+        return rankCatalog(category, q, state, pageable, null, true);
+    }
+
+    @Override
+    public Page<Auction> searchPersonalizedCatalog(UUID userId, String category, String q, AuctionState state, Pageable pageable) {
+        return rankCatalog(category, q, state, pageable, userId, false);
     }
 
     @Override
@@ -289,8 +316,20 @@ public class AuctionServiceImpl implements AuctionService {
 
     @Override
     public AuctionDetailResponse getDetail(UUID auctionId) {
+        return getDetail(auctionId, false);
+    }
+
+    @Override
+    @Transactional
+    public AuctionDetailResponse getDetail(UUID auctionId, boolean incrementView) {
         Auction auction = auctionRepository.findById(auctionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));
+
+        if (incrementView) {
+            auction.setViewCount(Math.max(0L, auction.getViewCount()) + 1L);
+            auction = auctionRepository.save(auction);
+        }
+
         populateTransientFields(auction);
 
         String leaderName = auctionHelper.lookupUserName(auction.getLeaderId());
@@ -302,6 +341,15 @@ public class AuctionServiceImpl implements AuctionService {
                 leaderName,
                 sellerName
         );
+    }
+
+    @Override
+    @Transactional
+    public void incrementView(UUID auctionId) {
+        Auction auction = auctionRepository.findById(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));
+        auction.setViewCount(Math.max(0L, auction.getViewCount()) + 1L);
+        auctionRepository.save(auction);
     }
 
     private void applyInitialState(Auction auction) {
@@ -346,13 +394,125 @@ public class AuctionServiceImpl implements AuctionService {
         }
 
         try {
-            int bidCount = bidRepository.findByAuctionIdOrderByCreatedAtAsc(auction.getId()).size();
+            int bidCount = Math.toIntExact(bidRepository.countByAuctionId(auction.getId()));
+            long favoriteCount = favoriteRepository.countByAuctionId(auction.getId());
             auction.setBidCount(bidCount);
+            auction.setFavoriteCount(favoriteCount);
             auction.setMinNextBid(auction.getCurrentPrice() + DEFAULT_MIN_INCREMENT);
             auction.setSellerName(auctionHelper.lookupUserName(auction.getSellerId() != null ? auction.getSellerId() : auction.getCreatedBy()));
+            auction.setTrendingScore(computeTrendingScore(auction));
         } catch (Exception ex) {
             log.warn("Could not populate transient fields for auction {}", auction.getId(), ex);
         }
+    }
+
+    private Page<Auction> rankCatalog(String category,
+                                      String q,
+                                      AuctionState state,
+                                      Pageable pageable,
+                                      UUID userId,
+                                      boolean trendingOnly) {
+        Set<String> preferredCategories = trendingOnly || userId == null
+                ? Set.of()
+                : resolvePreferredCategories(userId);
+        List<Auction> ranked = auctionRepository.findAll()
+                .stream()
+                .filter(auction -> matchesCatalogFilter(auction, category, q, state))
+                .peek(this::populateTransientFields)
+                .sorted(trendingOnly
+                        ? Comparator.comparingDouble(this::computeTrendingScore).reversed()
+                        : Comparator.<Auction>comparingDouble(auction -> computePersonalizedScore(auction, preferredCategories)).reversed()
+                            .thenComparing(Auction::getEndTime, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), ranked.size());
+        List<Auction> content = start >= ranked.size() ? List.of() : ranked.subList(start, end);
+        return new PageImpl<>(content, pageable, ranked.size());
+    }
+
+    private boolean matchesCatalogFilter(Auction auction, String category, String q, AuctionState state) {
+        if (auction == null) {
+            return false;
+        }
+        if (state != null && auction.getState() != state) {
+            return false;
+        }
+        if (category != null && !category.isBlank()) {
+            String auctionCategory = auction.getCategory() == null ? "" : auction.getCategory().trim();
+            if (!auctionCategory.equalsIgnoreCase(category.trim())) {
+                return false;
+            }
+        }
+        if (q != null && !q.isBlank()) {
+            String needle = q.trim().toLowerCase(Locale.ROOT);
+            String haystack = ((auction.getTitle() == null ? "" : auction.getTitle()) + " " +
+                    (auction.getDescription() == null ? "" : auction.getDescription())).toLowerCase(Locale.ROOT);
+            if (!haystack.contains(needle)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private double computeTrendingScore(Auction auction) {
+        if (auction == null) {
+            return 0.0;
+        }
+
+        double bidScore = auction.getBidCount() == null ? 0.0 : auction.getBidCount() * 4.0;
+        double favoriteScore = auction.getFavoriteCount() == null ? 0.0 : auction.getFavoriteCount() * 6.0;
+        double viewScore = Math.max(0L, auction.getViewCount()) * 0.4;
+        double freshnessBonus = 0.0;
+
+        if (auction.getCreatedAt() != null) {
+            long ageHours = Math.max(0L, ChronoUnit.HOURS.between(auction.getCreatedAt(), Instant.now()));
+            freshnessBonus = Math.max(0.0, 48.0 - ageHours);
+        }
+
+        double endingSoonBonus = 0.0;
+        if (auction.getEndTime() != null && auction.getState() == AuctionState.ACTIVE) {
+            long remainingHours = Math.max(0L, ChronoUnit.HOURS.between(Instant.now(), auction.getEndTime()));
+            endingSoonBonus = remainingHours <= 24 ? (24 - remainingHours) * 1.5 : 0.0;
+        }
+
+        return bidScore + favoriteScore + viewScore + freshnessBonus + endingSoonBonus;
+    }
+
+    private double computePersonalizedScore(Auction auction, Set<String> preferredCategories) {
+        double baseScore = computeTrendingScore(auction);
+        if (preferredCategories == null || preferredCategories.isEmpty()) {
+            return baseScore;
+        }
+        String category = auction.getCategory();
+        double categoryBoost = category != null && preferredCategories.contains(category.trim().toLowerCase(Locale.ROOT))
+                ? 30.0
+                : 0.0;
+        return baseScore + categoryBoost;
+    }
+
+    private Set<String> resolvePreferredCategories(UUID userId) {
+        Set<String> categories = new HashSet<>();
+
+        favoriteRepository.findByUserId(userId).forEach(favorite ->
+                auctionRepository.findById(favorite.getAuctionId())
+                        .map(Auction::getCategory)
+                        .ifPresent(category -> addCategoryPreference(categories, category)));
+
+        bidRepository.findByBidderIdOrderByCreatedAtDesc(userId).stream()
+                .limit(20)
+                .forEach(bid -> auctionRepository.findById(bid.getAuctionId())
+                        .map(Auction::getCategory)
+                        .ifPresent(category -> addCategoryPreference(categories, category)));
+
+        return categories;
+    }
+
+    private void addCategoryPreference(Set<String> categories, String category) {
+        if (category == null || category.isBlank()) {
+            return;
+        }
+        categories.add(category.trim().toLowerCase(Locale.ROOT));
     }
 
     private String firstImage(Item item) {
