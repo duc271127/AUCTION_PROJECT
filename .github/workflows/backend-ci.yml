@@ -6,22 +6,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: auction_db
-          MYSQL_USER: testuser
-          MYSQL_PASSWORD: testpass
-        options: >-
-          --health-cmd="mysqladmin ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-        ports:
-          - 3306:3306
-
     steps:
       - uses: actions/checkout@v3
 
@@ -34,11 +18,6 @@ jobs:
       - name: Run Maven tests
         run: |
           cd backend
-          mvn test -DskipTests=false \
-            -Dspring.datasource.url=jdbc:mysql://localhost:3306/auction_db \
-            -Dspring.datasource.username=testuser \
-            -Dspring.datasource.password=testpass \
-            -Dspring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver \
-            -Dspring.jpa.database-platform=org.hibernate.dialect.MySQL8Dialect \
-            -Dspring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect \
-            -Dspring.jpa.hibernate.ddl-auto=create-drop
+          mvn -B clean test \
+            -DskipTests=false \
+            -Dspring.profiles.active=test
