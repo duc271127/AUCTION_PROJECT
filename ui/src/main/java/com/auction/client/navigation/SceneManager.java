@@ -1,6 +1,7 @@
 package com.auction.client.navigation;
 
 import com.auction.client.session.SessionManager;
+import com.auction.client.controller.CategoryController;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Parent;
@@ -102,6 +103,15 @@ public class SceneManager {
         switchScene("/fxml/showroom.fxml", "Auction Project - Showroom", "/css/showroom.css");
     }
 
+    public static void goToTrending() {
+        if (!requireRole("BIDDER")) {
+            return;
+        }
+        switchScene(
+                "/fxml/trending.fxml", "Auction Project - Trending", "/css/trending.css"
+        );
+    }
+
     public static void goToHome() {
         switchScene("/fxml/home.fxml", "Auction Project - Home", "/css/home.css");
     }
@@ -111,6 +121,29 @@ public class SceneManager {
             return;
         }
         switchScene("/fxml/live_bidding.fxml", "Auction Project - Live Bidding", "/css/live_bidding.css");
+    }
+
+    public static void goToCategory() {
+        if (!requireRole("BIDDER")) {
+            return;
+        }
+
+        switchScene("/fxml/category.fxml", "Auction Project - Category", "/css/category.css"
+        );
+    }
+
+    public static void goToCategory(String category) {
+        if (!requireRole("BIDDER")) {
+            return;
+        }
+
+        CategoryController.setSelectedCategory(category);
+
+        switchScene(
+                "/fxml/category.fxml",
+                "Auction Project - " + category,
+                "/css/category.css"
+        );
     }
 
     private static boolean requireRole(String role) {

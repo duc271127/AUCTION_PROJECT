@@ -1,3 +1,4 @@
+com\auction\client\controller\TrendingController.class
 com\auction\client\controller\HomeController.class
 com\auction\client\service\RealtimeAuctionService.class
 com\auction\client\dto\request\CreateItemRequest.class
@@ -30,6 +31,7 @@ com\auction\client\socket\AuctionSocketClient$1.class
 module-info.class
 com\auction\client\model\BidRecord.class
 com\auction\client\controller\SellerDashboardController.class
+com\auction\client\controller\CategoryController.class
 com\auction\client\dto\response\BidResponse.class
 com\auction\client\controller\LiveBiddingController$1.class
 com\auction\client\dto\event\AuctionEventDto.class
