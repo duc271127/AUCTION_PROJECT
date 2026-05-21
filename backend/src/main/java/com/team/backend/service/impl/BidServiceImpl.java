@@ -1,4 +1,5 @@
 package com.team.backend.service.impl;
+import com.team.backend.dto.BidHistoryDto;
 
 import com.team.backend.entity.Auction;
 import com.team.backend.entity.AuctionState;
@@ -266,7 +267,17 @@ public class BidServiceImpl implements BidService {
     }
 
     @Override
-    public List<BidTransaction> getBidHistory(UUID auctionId) {
-        return bidRepository.findByAuctionIdOrderByCreatedAtAsc(auctionId);
+    public List<BidHistoryDto> getBidHistory(UUID auctionId) {
+
+        List<BidTransaction> transactions =
+                bidRepository.findByAuctionIdOrderByCreatedAtDesc(auctionId);
+
+        return transactions.stream()
+                .map(tx -> new BidHistoryDto(
+                        tx.getBidderId(),
+                        tx.getAmount(),
+                        tx.getCreatedAt()
+                ))
+                .toList();
     }
 }
