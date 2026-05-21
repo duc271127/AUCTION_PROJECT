@@ -11,6 +11,7 @@ public interface BidService {
 
     BidTransaction placeBid(UUID auctionId, UUID bidderId, double amount);
     List<BidHistoryDto> getBidHistory(UUID auctionId);
+    List<BidHistoryDto> getBidHistory(UUID auctionId, int limit);
     Map<String, Object> getAuctionSummary(UUID auctionId);
     UUID getCurrentLeader(UUID auctionId);
     double getMinIncrement();
