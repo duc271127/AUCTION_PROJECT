@@ -13,7 +13,7 @@ module com.auction.client {
     opens com.auction.client.model to javafx.base;
 
     opens com.auction.client.dto.request to com.fasterxml.jackson.databind, com.google.gson;
-    opens com.auction.client.dto.response to com.fasterxml.jackson.databind, com.google.gson;
+    opens com.auction.client.dto.response to com.fasterxml.jackson.databind, com.google.gson, javafx.base;
     opens com.auction.client.dto.event to com.fasterxml.jackson.databind, com.google.gson;
 
     exports com.auction.client;

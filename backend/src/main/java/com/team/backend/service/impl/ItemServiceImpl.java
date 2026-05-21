@@ -4,6 +4,7 @@ import com.team.backend.dto.ItemCreateDto;
 import com.team.backend.dto.ItemCreateRequest;
 import com.team.backend.dto.ItemDto;
 import com.team.backend.dto.ItemResponse;
+import com.team.backend.dto.PublicItemDetailDto;
 import com.team.backend.entity.Item;
 import com.team.backend.entity.ItemStatus;
 import com.team.backend.exception.BusinessRuleException;
@@ -18,6 +19,8 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -73,6 +76,24 @@ public class ItemServiceImpl implements ItemService {
     @Override
     public Item getItem(UUID id) {
         return itemRepository.findById(id).orElseThrow(() -> new BusinessRuleException("Item not found: " + id));
+    }
+
+    @Override
+    public PublicItemDetailDto getPublicItemDetail(UUID id) {
+        Item item = getItem(id);
+        PublicItemDetailDto dto = new PublicItemDetailDto();
+        dto.setId(item.getId());
+        dto.setProductName(item.getName());
+        dto.setDescription(item.getDescription());
+        dto.setCategory(item.getCategory());
+        dto.setImagePath(item.getImagePath());
+        dto.setImageUrls(itemImageUrls(item));
+        dto.setSellerId(item.getSellerId());
+        dto.setSku(item.getSku());
+        dto.setQuantity(item.getQuantity());
+        dto.setStatus(item.getStatus() == null ? null : item.getStatus().name());
+        dto.setStartingPrice(item.getStartingPrice());
+        return dto;
     }
 
     // -------------------------
@@ -192,6 +213,15 @@ public class ItemServiceImpl implements ItemService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public List<ItemResponse> findRecentResponsesBySellerId(UUID sellerId, int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 20));
+        return findResponsesBySellerId(sellerId)
+                .stream()
+                .limit(safeLimit)
+                .collect(Collectors.toList());
+    }
+
     /**
      * Tạo item cho seller dựa trên request từ frontend, trả về ItemResponse.
      */
@@ -210,6 +240,7 @@ public class ItemServiceImpl implements ItemService {
         if (request.getStartingPrice() == null || request.getStartingPrice() <= 0) {
             throw new BusinessRuleException("startingPrice must be positive");
         }
+        validateQuantity(request.getQuantity());
 
         Item item = new Item();
         item.setSellerId(sellerId);
@@ -237,7 +268,7 @@ public class ItemServiceImpl implements ItemService {
 
         item.setStartTime(parseStartDate(request.getStartDate()));
         item.setEndTime(parseEndDate(request.getEndDate()));
-        item.setImagePath(request.getImagePath() == null ? "" : request.getImagePath());
+        applyImages(item, request.getImagePath(), request.getImageUrls());
         item.setCreatedAt(Instant.now());
 
         Item saved = itemRepository.save(item);
@@ -295,12 +326,15 @@ public class ItemServiceImpl implements ItemService {
             item.setEndTime(parseEndDate(request.getEndDate()));
         }
         if (request.getImagePath() != null) {
-            item.setImagePath(request.getImagePath());
+            applyImages(item, request.getImagePath(), request.getImageUrls());
+        } else if (request.getImageUrls() != null) {
+            applyImages(item, item.getImagePath(), request.getImageUrls());
         }
         if (request.getSku() != null) {
             item.setSku(request.getSku().trim());
         }
         if (request.getQuantity() != null) {
+            validateQuantity(request.getQuantity());
             item.setQuantity(request.getQuantity());
         }
 
@@ -354,6 +388,7 @@ public class ItemServiceImpl implements ItemService {
         }
 
         r.setImagePath(item.getImagePath());
+        r.setImageUrls(itemImageUrls(item));
         r.setStartDate(formatDate(item.getStartTime()));
         r.setEndDate(formatDate(item.getEndTime()));
         return r;
@@ -402,5 +437,54 @@ public class ItemServiceImpl implements ItemService {
         }
         // trả về yyyy-MM-dd (frontend-friendly)
         return LocalDate.ofInstant(value, ZoneOffset.UTC).toString();
+    }
+
+    private void validateQuantity(Integer quantity) {
+        if (quantity != null && quantity < 0) {
+            throw new BusinessRuleException("quantity must be zero or greater");
+        }
+    }
+
+    private void applyImages(Item item, String primaryImage, List<String> imageUrls) {
+        List<String> normalizedUrls = normalizeImageUrls(primaryImage, imageUrls);
+        item.setImagePath(normalizedUrls.isEmpty() ? "" : normalizedUrls.get(0));
+        item.setImageUrls(normalizedUrls);
+    }
+
+    private List<String> itemImageUrls(Item item) {
+        return normalizeImageUrls(item.getImagePath(), item.getImageUrls());
+    }
+
+    private List<String> normalizeImageUrls(String primaryImage, List<String> imageUrls) {
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        addImageReference(normalized, primaryImage);
+
+        if (imageUrls != null) {
+            for (String imageUrl : imageUrls) {
+                addImageReference(normalized, imageUrl);
+            }
+        }
+
+        return new ArrayList<>(normalized);
+    }
+
+    private void addImageReference(LinkedHashSet<String> normalized, String imageReference) {
+        if (imageReference == null || imageReference.isBlank()) {
+            return;
+        }
+
+        String trimmed = imageReference.trim();
+        validateImageReference(trimmed);
+        normalized.add(trimmed);
+    }
+
+    private void validateImageReference(String imageReference) {
+        boolean looksLikeWindowsPath = imageReference.matches("^[A-Za-z]:\\\\.*");
+        boolean looksLikeFileUri = imageReference.startsWith("file:");
+        boolean looksLikeUncPath = imageReference.startsWith("\\\\");
+
+        if (looksLikeWindowsPath || looksLikeFileUri || looksLikeUncPath) {
+            throw new BusinessRuleException("Image references must be uploaded URLs, not local file paths");
+        }
     }
 }

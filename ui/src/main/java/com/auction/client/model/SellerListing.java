@@ -1,5 +1,6 @@
 package com.auction.client.model;
 import java.util.UUID;
+import java.util.List;
 
 public class SellerListing {
     private UUID id;
@@ -13,13 +14,17 @@ public class SellerListing {
     private String startDate;
     private String endDate;
     private String imagePath;
+    private List<String> imageUrls;
+    private String sku;
+    private Integer quantity;
 
     public SellerListing() {
     }
 
     public SellerListing(UUID id, UUID sellerId, String productName, String description, String category,
                          String startingPrice, String reservePrice,
-                         String status, String startDate, String endDate,  String imagePath) {
+                         String status, String startDate, String endDate, String imagePath, List<String> imageUrls,
+                         String sku, Integer quantity) {
         this.id = id;
         this.sellerId = sellerId;
         this.productName = productName;
@@ -31,6 +36,9 @@ public class SellerListing {
         this.startDate = startDate;
         this.endDate = endDate;
         this.imagePath = imagePath;
+        this.imageUrls = imageUrls;
+        this.sku = sku;
+        this.quantity = quantity;
     }
 
     public UUID getId() {
@@ -119,4 +127,13 @@ public class SellerListing {
     public void setImagePath(String imagePath) {
         this.imagePath = imagePath;
     }
+
+    public List<String> getImageUrls() { return imageUrls; }
+    public void setImageUrls(List<String> imageUrls) { this.imageUrls = imageUrls; }
+
+    public String getSku() { return sku; }
+    public void setSku(String sku) { this.sku = sku; }
+
+    public Integer getQuantity() { return quantity; }
+    public void setQuantity(Integer quantity) { this.quantity = quantity; }
 }
