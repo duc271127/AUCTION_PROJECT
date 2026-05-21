@@ -8,7 +8,6 @@
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Priority?>
 <?import javafx.scene.layout.VBox?>
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
@@ -47,23 +46,23 @@
 
                     <HBox spacing="16.0">
                         <VBox HBox.hgrow="ALWAYS" spacing="8.0" styleClass="admin-stat-card">
-                            <Label fx:id="activeAuctionsLabel" text="0" styleClass="admin-stat-number"/>
-                            <Label text="Active Auctions" styleClass="admin-stat-label"/>
-                        </VBox>
-
-                        <VBox HBox.hgrow="ALWAYS" spacing="8.0" styleClass="admin-stat-card">
-                            <Label fx:id="pendingApprovalsLabel" text="0" styleClass="admin-stat-number"/>
-                            <Label text="Pending Approvals" styleClass="admin-stat-label"/>
-                        </VBox>
-
-                        <VBox HBox.hgrow="ALWAYS" spacing="8.0" styleClass="admin-stat-card">
-                            <Label fx:id="reportedItemsLabel" text="0" styleClass="admin-stat-number"/>
-                            <Label text="Reported / Rejected" styleClass="admin-stat-label"/>
-                        </VBox>
-
-                        <VBox HBox.hgrow="ALWAYS" spacing="8.0" styleClass="admin-stat-card">
                             <Label fx:id="totalUsersLabel" text="0" styleClass="admin-stat-number"/>
                             <Label text="Total Users" styleClass="admin-stat-label"/>
+                        </VBox>
+
+                        <VBox HBox.hgrow="ALWAYS" spacing="8.0" styleClass="admin-stat-card">
+                            <Label fx:id="activeSellersLabel" text="0" styleClass="admin-stat-number"/>
+                            <Label text="Active Sellers" styleClass="admin-stat-label"/>
+                        </VBox>
+
+                        <VBox HBox.hgrow="ALWAYS" spacing="8.0" styleClass="admin-stat-card">
+                            <Label fx:id="totalAuctionsLabel" text="0" styleClass="admin-stat-number"/>
+                            <Label text="Total Auctions" styleClass="admin-stat-label"/>
+                        </VBox>
+
+                        <VBox HBox.hgrow="ALWAYS" spacing="8.0" styleClass="admin-stat-card">
+                            <Label fx:id="revenueLabel" text="$0" styleClass="admin-stat-number"/>
+                            <Label text="Revenue" styleClass="admin-stat-label"/>
                         </VBox>
                     </HBox>
 
@@ -90,22 +89,40 @@
                                 <Button text="Approve" styleClass="primary-button" onAction="#handleApprove"/>
                                 <Button text="Reject" styleClass="secondary-button" onAction="#handleReject"/>
                                 <Button text="Review" styleClass="secondary-button" onAction="#handleReview"/>
-                                <Button text="Delete" styleClass="secondary-button" onAction="#handleDelete"/>
+                                <Button text="Delete" styleClass="danger-button" onAction="#handleDelete"/>
                             </HBox>
                         </VBox>
 
-                        <VBox spacing="14.0" prefWidth="320.0" styleClass="admin-side-card">
+                        <VBox spacing="14.0" prefWidth="420.0" styleClass="admin-side-card">
                             <padding>
                                 <Insets top="20" right="20" bottom="20" left="20"/>
                             </padding>
 
-                            <Label text="User Management" styleClass="admin-section-title"/>
-                            <Label text="Total users are monitored here in phase 1 demo." wrapText="true" styleClass="page-subtitle"/>
-                            <Label text="• View overall user count" styleClass="admin-note"/>
-                            <Label text="• Placeholder for ban / review tools" styleClass="admin-note"/>
-                            <Label text="• Future integration with backend user service" styleClass="admin-note"/>
+                            <Label text="Recent Wallet Activity" styleClass="admin-section-title"/>
+                            <TableView fx:id="walletActivityTable" prefHeight="360">
+                                <columns>
+                                    <TableColumn fx:id="walletUserColumn" text="User" prefWidth="130.0"/>
+                                    <TableColumn fx:id="walletTypeColumn" text="Type" prefWidth="80.0"/>
+                                    <TableColumn fx:id="walletAmountColumn" text="Amount" prefWidth="90.0"/>
+                                    <TableColumn fx:id="walletCreatedColumn" text="Created" prefWidth="110.0"/>
+                                </columns>
+                            </TableView>
                         </VBox>
                     </HBox>
+
+                    <VBox spacing="14.0" styleClass="admin-table-card">
+                        <padding>
+                            <Insets top="20" right="20" bottom="20" left="20"/>
+                        </padding>
+                        <Label text="Recent Notifications" styleClass="admin-section-title"/>
+                        <TableView fx:id="notificationTable" prefHeight="240">
+                            <columns>
+                                <TableColumn fx:id="notificationTypeColumn" text="Type" prefWidth="160.0"/>
+                                <TableColumn fx:id="notificationMessageColumn" text="Message" prefWidth="540.0"/>
+                                <TableColumn fx:id="notificationCreatedColumn" text="Created" prefWidth="260.0"/>
+                            </columns>
+                        </TableView>
+                    </VBox>
                 </VBox>
             </content>
         </ScrollPane>

@@ -1,6 +1,7 @@
 package com.team.backend.controller;
 
 import com.team.backend.dto.ItemCreateDto;
+import com.team.backend.dto.PublicItemDetailDto;
 import com.team.backend.entity.Item;
 import com.team.backend.dto.UserDto;
 import com.team.backend.service.ItemService;
@@ -24,6 +25,11 @@ public class ItemController {
     private final ItemService itemService;
 
     public ItemController(ItemService itemService) { this.itemService = itemService; }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<PublicItemDetailDto> getPublicItemDetail(@PathVariable UUID id) {
+        return ResponseEntity.ok(itemService.getPublicItemDetail(id));
+    }
 
     @PostMapping
     public ResponseEntity<Item> createItem(@Valid @RequestBody ItemCreateDto dto, Principal principal) {

@@ -3,6 +3,7 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TableColumn?>
@@ -12,6 +13,7 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.TilePane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.image.ImageView?>
 
@@ -32,6 +34,7 @@
             <Button text="Dashboard" maxWidth="Infinity" styleClass="sidebar-button"/>
             <Button text="Manage Auctions" maxWidth="Infinity" styleClass="sidebar-button"/>
             <Button text="Create Listing" maxWidth="Infinity" styleClass="sidebar-button"/>
+            <Button text="Wallet" maxWidth="Infinity" styleClass="sidebar-button" onAction="#handleOpenWallet"/>
             <Button text="Logout" maxWidth="Infinity" styleClass="secondary-button" onAction="#handleLogout"/>
         </VBox>
     </left>
@@ -51,6 +54,11 @@
 
                     <HBox spacing="16.0">
                         <VBox HBox.hgrow="ALWAYS" spacing="8.0" styleClass="seller-stat-card">
+                            <Label fx:id="totalListingsLabel" text="0" styleClass="seller-stat-number"/>
+                            <Label text="Total Listings" styleClass="seller-stat-label"/>
+                        </VBox>
+
+                        <VBox HBox.hgrow="ALWAYS" spacing="8.0" styleClass="seller-stat-card">
                             <Label fx:id="activeCountLabel" text="0" styleClass="seller-stat-number"/>
                             <Label text="Active Auctions" styleClass="seller-stat-label"/>
                         </VBox>
@@ -61,10 +69,32 @@
                         </VBox>
 
                         <VBox HBox.hgrow="ALWAYS" spacing="8.0" styleClass="seller-stat-card">
-                            <Label fx:id="endedCountLabel" text="0" styleClass="seller-stat-number"/>
-                            <Label text="Ended Listings" styleClass="seller-stat-label"/>
+                            <Label fx:id="approvedCountLabel" text="0" styleClass="seller-stat-number"/>
+                            <Label text="Approved Listings" styleClass="seller-stat-label"/>
+                        </VBox>
+
+                        <VBox HBox.hgrow="ALWAYS" spacing="8.0" styleClass="seller-stat-card">
+                            <Label fx:id="rejectedCountLabel" text="0" styleClass="seller-stat-number"/>
+                            <Label text="Rejected Listings" styleClass="seller-stat-label"/>
+                        </VBox>
+
+                        <VBox HBox.hgrow="ALWAYS" spacing="8.0" styleClass="seller-stat-card">
+                            <Label fx:id="walletBalanceLabel" text="$0" styleClass="seller-stat-number"/>
+                            <Label text="Wallet Balance" styleClass="seller-stat-label"/>
                         </VBox>
                     </HBox>
+
+                    <VBox spacing="14.0" styleClass="seller-table-card">
+                        <padding>
+                            <Insets top="20" right="20" bottom="20" left="20"/>
+                        </padding>
+                        <Label text="Recent Listings" styleClass="seller-section-title"/>
+                        <TilePane fx:id="recentListingsGrid"
+                                  prefColumns="4"
+                                  hgap="14"
+                                  vgap="14"
+                                  tileAlignment="TOP_LEFT"/>
+                    </VBox>
 
                     <HBox spacing="20.0">
                         <VBox spacing="14.0" HBox.hgrow="ALWAYS" styleClass="seller-table-card">
@@ -108,6 +138,12 @@
                             <Label text="Reserve Price" styleClass="field-label"/>
                             <TextField fx:id="reservePriceField" promptText="Enter reserve price (optional)"/>
 
+                            <Label text="SKU" styleClass="field-label"/>
+                            <TextField fx:id="skuField" promptText="Enter SKU"/>
+
+                            <Label text="Quantity" styleClass="field-label"/>
+                            <TextField fx:id="quantityField" text="1" promptText="Enter available quantity"/>
+
                             <Label text="Start Date" styleClass="field-label"/>
                             <DatePicker fx:id="startDatePicker"/>
 
@@ -116,10 +152,13 @@
 
                             <Label text="Product Image" styleClass="field-label"/>
 
-                            <Button text="Choose Image"
+                            <Button text="Choose Images"
                                     maxWidth="Infinity"
                                     styleClass="secondary-button"
                                     onAction="#handleChooseImage"/>
+
+                            <Label text="Primary Image" styleClass="field-label"/>
+                            <ComboBox fx:id="primaryImageChoice" maxWidth="Infinity" promptText="Select primary image"/>
 
                             <ImageView fx:id="productImagePreview"
                                        fitWidth="220"
@@ -130,6 +169,8 @@
                                    text="No image selected"
                                    wrapText="true"
                                    styleClass="field-label"/>
+
+                            <HBox fx:id="imagePreviewStrip" spacing="8.0"/>
 
                             <Label fx:id="sellerMessageLabel" text="" styleClass="seller-message"/>
 

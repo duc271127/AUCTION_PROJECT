@@ -2,6 +2,7 @@ package com.auction.client.dto.request;
 
 
 import java.util.UUID;
+import java.util.List;
 
 public class CreateItemRequest {
     private UUID sellerId;
@@ -13,6 +14,9 @@ public class CreateItemRequest {
     private String startDate;
     private String endDate;
     private String imagePath;
+    private List<String> imageUrls;
+    private String sku;
+    private Integer quantity;
 
     public CreateItemRequest() {
     }
@@ -20,7 +24,7 @@ public class CreateItemRequest {
     public CreateItemRequest(UUID sellerId, String productName, String description, String category,
                              double startingPrice, double reservePrice,
                              String startDate, String endDate,
-                             String imagePath) {
+                             String imagePath, List<String> imageUrls, String sku, Integer quantity) {
         this.sellerId = sellerId;
         this.productName = productName;
         this.description = description;
@@ -30,6 +34,9 @@ public class CreateItemRequest {
         this.startDate = startDate;
         this.endDate = endDate;
         this.imagePath = imagePath;
+        this.imageUrls = imageUrls;
+        this.sku = sku;
+        this.quantity = quantity;
     }
     public UUID getSellerId() {
         return sellerId;
@@ -102,4 +109,13 @@ public class CreateItemRequest {
     public void setImagePath(String imagePath) {
         this.imagePath = imagePath;
     }
+
+    public List<String> getImageUrls() { return imageUrls; }
+    public void setImageUrls(List<String> imageUrls) { this.imageUrls = imageUrls; }
+
+    public String getSku() { return sku; }
+    public void setSku(String sku) { this.sku = sku; }
+
+    public Integer getQuantity() { return quantity; }
+    public void setQuantity(Integer quantity) { this.quantity = quantity; }
 }

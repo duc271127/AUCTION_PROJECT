@@ -1,6 +1,9 @@
 package com.auction.client.service;
 
 import com.auction.client.dto.request.CreateAuctionRequest;
+import com.auction.client.dto.response.AdminStatsResponse;
+import com.auction.client.dto.response.AdminWalletActivityResponse;
+import com.auction.client.dto.response.AdminNotificationResponse;
 import com.auction.client.dto.response.AuctionListResponse;
 import com.auction.client.exception.ApiException;
 import com.auction.client.model.AdminApprovalItem;
@@ -49,5 +52,51 @@ public class AdminApiService {
         } catch (Exception e) {
             throw new ApiException("Create auction failed: " + e.getMessage(), e);
         }
+    }
+
+    public AdminStatsResponse getStats() {
+        try {
+            String responseBody = apiClient.get("/admin/stats");
+            return objectMapper.readValue(responseBody, AdminStatsResponse.class);
+        } catch (Exception e) {
+            throw new ApiException("Load admin stats failed: " + e.getMessage(), e);
+        }
+    }
+
+    public List<AdminWalletActivityResponse> getRecentWalletActivity(int limit) {
+        try {
+            String responseBody = apiClient.get("/admin/wallet-activity/recent?limit=" + limit);
+            return objectMapper.readValue(
+                    responseBody,
+                    new TypeReference<List<AdminWalletActivityResponse>>() {}
+            );
+        } catch (Exception e) {
+            throw new ApiException("Load wallet activity failed: " + e.getMessage(), e);
+        }
+    }
+
+    public List<AdminNotificationResponse> getRecentNotifications(int limit) {
+        try {
+            String responseBody = apiClient.get("/admin/notifications/recent?limit=" + limit);
+            return objectMapper.readValue(
+                    responseBody,
+                    new TypeReference<List<AdminNotificationResponse>>() {}
+            );
+        } catch (Exception e) {
+            throw new ApiException("Load notifications failed: " + e.getMessage(), e);
+        }
+    }
+
+    public AdminApprovalItem rejectItem(String itemId) {
+        try {
+            String responseBody = apiClient.post("/admin/items/" + itemId + "/reject", "");
+            return objectMapper.readValue(responseBody, AdminApprovalItem.class);
+        } catch (Exception e) {
+            throw new ApiException("Reject item failed: " + e.getMessage(), e);
+        }
+    }
+
+    public void deleteItem(String itemId) {
+        apiClient.delete("/admin/items/" + itemId);
     }
 }

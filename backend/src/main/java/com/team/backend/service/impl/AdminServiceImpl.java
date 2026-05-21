@@ -1,6 +1,8 @@
 package com.team.backend.service.impl;
 
 import com.team.backend.dto.PendingItemDto;
+import com.team.backend.dto.AdminWalletActivityDto;
+import com.team.backend.dto.AdminNotificationDto;
 import com.team.backend.entity.Auction;
 import com.team.backend.entity.AuctionState;
 import com.team.backend.entity.Item;
@@ -12,6 +14,9 @@ import com.team.backend.repository.ItemRepository;
 import com.team.backend.service.AdminService;
 import com.team.backend.dto.AdminStatsDto;
 import com.team.backend.repository.UserRepository;
+import com.team.backend.repository.WalletTransactionRepository;
+import com.team.backend.repository.AdminNotificationRepository;
+import com.team.backend.entity.AdminNotification;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,15 +44,21 @@ public class AdminServiceImpl implements AdminService {
     private final AuctionRepository auctionRepository;
 
     private final UserRepository userRepository;
+    private final WalletTransactionRepository walletTransactionRepository;
+    private final AdminNotificationRepository adminNotificationRepository;
 
     public AdminServiceImpl(
             ItemRepository itemRepository,
             AuctionRepository auctionRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            WalletTransactionRepository walletTransactionRepository,
+            AdminNotificationRepository adminNotificationRepository
     ) {
         this.itemRepository = itemRepository;
         this.auctionRepository = auctionRepository;
         this.userRepository = userRepository;
+        this.walletTransactionRepository = walletTransactionRepository;
+        this.adminNotificationRepository = adminNotificationRepository;
     }
 
     /**
@@ -83,6 +94,7 @@ public class AdminServiceImpl implements AdminService {
         item.setApprovedAt(Instant.now());
 
         Item saved = itemRepository.save(item);
+        saveNotification("ITEM_APPROVED", "Item approved: " + saved.getName());
         log.info("Item approved: itemId={}, adminId={}", itemId, adminId);
         return saved;
     }
@@ -137,6 +149,7 @@ public class AdminServiceImpl implements AdminService {
         }
 
         Auction saved = auctionRepository.save(auction);
+        saveNotification("AUCTION_CREATED", "Auction created for item: " + item.getName());
         log.info("Auction created for item: itemId={}, auctionId={}, adminId={}", itemId, saved.getId(), adminId);
         return saved;
     }
@@ -170,7 +183,9 @@ public class AdminServiceImpl implements AdminService {
                 .orElseThrow(() -> new BusinessRuleException("Item not found: " + itemId));
 
         item.setStatus(ItemStatus.REJECTED);
-        return itemRepository.save(item);
+        Item saved = itemRepository.save(item);
+        saveNotification("ITEM_REJECTED", "Item rejected: " + saved.getName());
+        return saved;
     }
 
     @Override
@@ -186,6 +201,7 @@ public class AdminServiceImpl implements AdminService {
                 .orElseThrow(() -> new BusinessRuleException("Item not found: " + itemId));
 
         itemRepository.delete(item);
+        saveNotification("ITEM_DELETED", "Item deleted: " + item.getName());
     }
 
     @Override
@@ -211,5 +227,53 @@ public class AdminServiceImpl implements AdminService {
                 .sum();
 
         return new AdminStatsDto(totalUsers, activeSellers, totalAuctions, revenue);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AdminWalletActivityDto> getRecentWalletActivity(int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 10));
+        return walletTransactionRepository.findTop10ByOrderByCreatedAtDesc()
+                .stream()
+                .limit(safeLimit)
+                .map(tx -> {
+                    AdminWalletActivityDto dto = new AdminWalletActivityDto();
+                    dto.setId(tx.getId());
+                    dto.setUserId(tx.getUserId());
+                    dto.setType(tx.getType());
+                    dto.setAmount(tx.getAmount());
+                    dto.setBalanceAfter(tx.getBalanceAfter());
+                    dto.setCreatedAt(tx.getCreatedAt());
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AdminNotificationDto> getRecentNotifications(int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 10));
+        return adminNotificationRepository.findTop10ByOrderByCreatedAtDesc()
+                .stream()
+                .limit(safeLimit)
+                .map(notification -> {
+                    AdminNotificationDto dto = new AdminNotificationDto();
+                    dto.setId(notification.getId());
+                    dto.setType(notification.getType());
+                    dto.setMessage(notification.getMessage());
+                    dto.setCreatedAt(notification.getCreatedAt());
+                    dto.setRead(notification.isRead());
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+
+    private void saveNotification(String type, String message) {
+        AdminNotification notification = new AdminNotification();
+        notification.setType(type);
+        notification.setMessage(message);
+        notification.setCreatedAt(Instant.now());
+        notification.setRead(false);
+        adminNotificationRepository.save(notification);
     }
 }

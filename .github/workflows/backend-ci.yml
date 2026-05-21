@@ -12,12 +12,16 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
-          java-version: '17'  # adjust to your Java version
+          java-version: '17'
           distribution: 'temurin'
 
       - name: Run Maven tests
         run: |
           cd backend
+<<<<<<< HEAD
           mvn -B clean test \
             -DskipTests=false \
             -Dspring.profiles.active=test
+=======
+          mvn -B clean test -DskipTests=false -Dspring.profiles.active=test
+>>>>>>> 57d4545cd4994a43467a2260cf3372c938ee769a

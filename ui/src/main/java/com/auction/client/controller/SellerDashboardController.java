@@ -3,10 +3,14 @@ package com.auction.client.controller;
 import com.auction.client.dto.request.CreateItemRequest;
 import com.auction.client.dto.request.UpdateItemRequest;
 import com.auction.client.dto.response.ItemResponse;
+import com.auction.client.dto.response.SellerStatsResponse;
+import com.auction.client.dto.response.WalletBalanceResponse;
 import com.auction.client.exception.ApiException;
 import com.auction.client.model.SellerListing;
 import com.auction.client.navigation.SceneManager;
 import com.auction.client.service.SellerItemApiService;
+import com.auction.client.service.SellerDashboardApiService;
+import com.auction.client.service.WalletApiService;
 import com.auction.client.session.SessionManager;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -15,8 +19,14 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.TilePane;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.io.File;
 import java.time.LocalDate;
 import java.util.List;
@@ -25,8 +35,12 @@ public class SellerDashboardController {
 
     @FXML private Label activeCountLabel;
     @FXML private Label pendingCountLabel;
-    @FXML private Label endedCountLabel;
+    @FXML private Label totalListingsLabel;
+    @FXML private Label approvedCountLabel;
+    @FXML private Label rejectedCountLabel;
+    @FXML private Label walletBalanceLabel;
     @FXML private Label sellerMessageLabel;
+    @FXML private TilePane recentListingsGrid;
 
     @FXML private TableView<SellerListing> listingTable;
     @FXML private TableColumn<SellerListing, String> productNameColumn;
@@ -41,17 +55,24 @@ public class SellerDashboardController {
     @FXML private TextField categoryField;
     @FXML private TextField startingPriceField;
     @FXML private TextField reservePriceField;
+    @FXML private TextField skuField;
+    @FXML private TextField quantityField;
     @FXML private DatePicker startDatePicker;
     @FXML private DatePicker endDatePicker;
 
     @FXML private ImageView productImagePreview;
     @FXML private Label selectedImageLabel;
+    @FXML private ComboBox<String> primaryImageChoice;
+    @FXML private HBox imagePreviewStrip;
 
     private final SellerItemApiService sellerItemApiService = new SellerItemApiService();
+    private final SellerDashboardApiService sellerDashboardApiService = new SellerDashboardApiService();
+    private final WalletApiService walletApiService = new WalletApiService();
     private final ObservableList<SellerListing> sellerListing = FXCollections.observableArrayList();
 
     private SellerListing selectedListing;
-    private File selectedImageFile;
+    private final List<File> selectedImageFiles = new ArrayList<>();
+    private final List<String> currentImageUrls = new ArrayList<>();
 
     @FXML
     public void initialize() {
@@ -59,6 +80,9 @@ public class SellerDashboardController {
         setupSelectionListener();
         listingTable.setItems(sellerListing);
         loadSellerItems();
+        loadSellerStats();
+        loadWalletBalance();
+        loadRecentListings();
         hideMessage();
     }
 
@@ -87,6 +111,8 @@ public class SellerDashboardController {
         categoryField.setText(item.getCategory());
         startingPriceField.setText(item.getStartingPrice());
         reservePriceField.setText(item.getReservePrice());
+        skuField.setText(item.getSku());
+        quantityField.setText(item.getQuantity() == null ? "1" : String.valueOf(item.getQuantity()));
 
         if (item.getStartDate() != null && !item.getStartDate().isBlank()) {
             startDatePicker.setValue(LocalDate.parse(item.getStartDate()));
@@ -100,13 +126,21 @@ public class SellerDashboardController {
             endDatePicker.setValue(null);
         }
 
-        selectedImageFile = null;
+        selectedImageFiles.clear();
+        currentImageUrls.clear();
+        if (item.getImageUrls() != null) {
+            currentImageUrls.addAll(item.getImageUrls());
+        } else if (item.getImagePath() != null && !item.getImagePath().isBlank()) {
+            currentImageUrls.add(item.getImagePath());
+        }
+        bindPrimaryImageChoices(currentImageUrls);
+        renderRemoteImagePreviews(currentImageUrls);
 
         if (item.getImagePath() != null && !item.getImagePath().isBlank()) {
             selectedImageLabel.setText(item.getImagePath());
 
             try {
-                Image image = new Image(new File(item.getImagePath()).toURI().toString());
+                Image image = new Image(sellerItemApiService.toAbsoluteImageUrl(item.getImagePath()), true);
                 productImagePreview.setImage(image);
             } catch (Exception e) {
                 productImagePreview.setImage(null);
@@ -127,8 +161,6 @@ public class SellerDashboardController {
                 sellerListing.add(mapToSellerListing(item));
             }
 
-            updateStats();
-
         } catch (ApiException e) {
             showError("Cannot load seller items: " + e.getMessage());
         } catch (Exception e) {
@@ -148,17 +180,17 @@ public class SellerDashboardController {
                 )
         );
 
-        File file = fileChooser.showOpenDialog(productNameField.getScene().getWindow());
+        List<File> files = fileChooser.showOpenMultipleDialog(productNameField.getScene().getWindow());
 
-        if (file == null) {
+        if (files == null || files.isEmpty()) {
             return;
         }
 
-        selectedImageFile = file;
-        selectedImageLabel.setText(file.getName());
-
-        Image image = new Image(file.toURI().toString());
-        productImagePreview.setImage(image);
+        selectedImageFiles.clear();
+        selectedImageFiles.addAll(files);
+        currentImageUrls.clear();
+        bindPrimaryFileChoices(files);
+        renderLocalImagePreviews(files);
     }
 
     @FXML
@@ -177,7 +209,8 @@ public class SellerDashboardController {
         }
 
         try {
-            String imagePath = selectedImageFile == null ? "" : selectedImageFile.getAbsolutePath();
+            List<String> imageUrls = uploadSelectedImages();
+            String imagePath = imageUrls.isEmpty() ? "" : imageUrls.get(0);
 
             CreateItemRequest request = new CreateItemRequest(
                     SessionManager.getUserId(),
@@ -188,7 +221,10 @@ public class SellerDashboardController {
                     getReservePriceValue(),
                     startDatePicker.getValue().toString(),
                     endDatePicker.getValue().toString(),
-                    imagePath
+                    imagePath,
+                    imageUrls,
+                    skuField.getText().trim(),
+                    getQuantityValue()
             );
 
             sellerItemApiService.createItem(request);
@@ -196,6 +232,8 @@ public class SellerDashboardController {
             showSuccess("Listing created successfully.");
             clearForm();
             loadSellerItems();
+            loadSellerStats();
+            loadRecentListings();
 
         } catch (ApiException e) {
             showError("Create failed: " + e.getMessage());
@@ -225,13 +263,10 @@ public class SellerDashboardController {
         }
 
         try {
-            String imagePath;
-
-            if (selectedImageFile != null) {
-                imagePath = selectedImageFile.getAbsolutePath();
-            } else {
-                imagePath = selectedListing.getImagePath();
-            }
+            List<String> imageUrls = selectedImageFiles.isEmpty()
+                    ? reorderCurrentImages()
+                    : uploadSelectedImages();
+            String imagePath = imageUrls.isEmpty() ? "" : imageUrls.get(0);
 
             UpdateItemRequest request = new UpdateItemRequest(
                     SessionManager.getUserId(),
@@ -242,7 +277,10 @@ public class SellerDashboardController {
                     getReservePriceValue(),
                     startDatePicker.getValue().toString(),
                     endDatePicker.getValue().toString(),
-                    imagePath
+                    imagePath,
+                    imageUrls,
+                    skuField.getText().trim(),
+                    getQuantityValue()
             );
 
             sellerItemApiService.updateItem(selectedListing.getId(), request);
@@ -250,6 +288,8 @@ public class SellerDashboardController {
             showSuccess("Listing updated successfully.");
             clearForm();
             loadSellerItems();
+            loadSellerStats();
+            loadRecentListings();
 
         } catch (ApiException e) {
             showError("Update failed: " + e.getMessage());
@@ -282,6 +322,8 @@ public class SellerDashboardController {
             showSuccess("Listing deleted successfully.");
             clearForm();
             loadSellerItems();
+            loadSellerStats();
+            loadRecentListings();
 
         } catch (ApiException e) {
             showError("Delete failed: " + e.getMessage());
@@ -302,11 +344,17 @@ public class SellerDashboardController {
         SceneManager.goToAuth();
     }
 
+    @FXML
+    private void handleOpenWallet() {
+        SceneManager.goToWallet();
+    }
+
     private ValidationResult validateForm() {
         String productName = productNameField.getText().trim();
         String description = descriptionArea.getText().trim();
         String startingPriceText = startingPriceField.getText().trim();
         String reservePriceText = reservePriceField.getText().trim();
+        String quantityText = quantityField.getText().trim();
         LocalDate startDate = startDatePicker.getValue();
         LocalDate endDate = endDatePicker.getValue();
 
@@ -320,6 +368,19 @@ public class SellerDashboardController {
 
         if (startingPriceText.isEmpty()) {
             return ValidationResult.invalid("Starting price is required.");
+        }
+
+        if (quantityText.isEmpty()) {
+            return ValidationResult.invalid("Quantity is required.");
+        }
+
+        try {
+            int quantity = Integer.parseInt(quantityText);
+            if (quantity < 0) {
+                return ValidationResult.invalid("Quantity cannot be negative.");
+            }
+        } catch (NumberFormatException e) {
+            return ValidationResult.invalid("Quantity must be a whole number.");
         }
 
         double startingPrice;
@@ -380,6 +441,10 @@ public class SellerDashboardController {
         return Double.parseDouble(reservePriceText);
     }
 
+    private int getQuantityValue() {
+        return Integer.parseInt(quantityField.getText().trim());
+    }
+
     private SellerListing mapToSellerListing(ItemResponse item) {
         return new SellerListing(
                 item.getId(),
@@ -392,30 +457,116 @@ public class SellerDashboardController {
                 item.getStatus(),
                 item.getStartDate(),
                 item.getEndDate(),
-                item.getImagePath()
+                item.getImagePath(),
+                item.getImageUrls(),
+                item.getSku(),
+                item.getQuantity()
         );
     }
 
-    private void updateStats() {
-        int activeCount = 0;
-        int pendingCount = 0;
-        int endedCount = 0;
+    private void loadSellerStats() {
+        try {
+            SellerStatsResponse stats = sellerDashboardApiService.getStats();
+            totalListingsLabel.setText(String.valueOf(stats.getTotalItems()));
+            pendingCountLabel.setText(String.valueOf(stats.getPendingItems()));
+            approvedCountLabel.setText(String.valueOf(stats.getApprovedItems()));
+            rejectedCountLabel.setText(String.valueOf(stats.getRejectedItems()));
+            activeCountLabel.setText(String.valueOf(stats.getActiveAuctions()));
+        } catch (Exception e) {
+            totalListingsLabel.setText("-");
+            pendingCountLabel.setText("-");
+            approvedCountLabel.setText("-");
+            rejectedCountLabel.setText("-");
+            activeCountLabel.setText("-");
+        }
+    }
 
-        for (SellerListing listing : sellerListing) {
-            String status = listing.getStatus();
+    private void loadWalletBalance() {
+        try {
+            WalletBalanceResponse balance = walletApiService.getBalance();
+            walletBalanceLabel.setText(balance.getBalance() == null ? "$0" : "$" + balance.getBalance());
+        } catch (Exception e) {
+            walletBalanceLabel.setText("-");
+        }
+    }
 
-            if ("Active".equalsIgnoreCase(status)) {
-                activeCount++;
-            } else if ("Pending Review".equalsIgnoreCase(status) || "Pending".equalsIgnoreCase(status)) {
-                pendingCount++;
-            } else if ("Ended".equalsIgnoreCase(status)) {
-                endedCount++;
-            }
+    private void loadRecentListings() {
+        if (recentListingsGrid == null) {
+            return;
         }
 
-        activeCountLabel.setText(String.valueOf(activeCount));
-        pendingCountLabel.setText(String.valueOf(pendingCount));
-        endedCountLabel.setText(String.valueOf(endedCount));
+        try {
+            recentListingsGrid.getChildren().clear();
+            for (ItemResponse item : sellerItemApiService.getRecentItems(4)) {
+                recentListingsGrid.getChildren().add(buildRecentListingCard(mapToSellerListing(item)));
+            }
+        } catch (Exception e) {
+            recentListingsGrid.getChildren().clear();
+            recentListingsGrid.getChildren().add(new Label("Cannot load recent listings."));
+        }
+    }
+
+    private VBox buildRecentListingCard(SellerListing listing) {
+        ImageView imageView = new ImageView();
+        imageView.setFitWidth(170);
+        imageView.setFitHeight(100);
+        imageView.setPreserveRatio(false);
+        imageView.getStyleClass().add("seller-listing-image");
+        setListingImage(imageView, listing.getImagePath());
+
+        Label name = new Label(listing.getProductName());
+        name.setWrapText(true);
+        name.getStyleClass().add("seller-listing-name");
+
+        Label details = new Label(firstNonBlank(listing.getCategory(), "General")
+                + " | " + firstNonBlank(listing.getStatus(), "PENDING"));
+        details.setWrapText(true);
+        details.getStyleClass().add("seller-listing-meta");
+
+        Label price = new Label("$" + firstNonBlank(listing.getStartingPrice(), "0"));
+        price.getStyleClass().add("seller-listing-price");
+
+        Button edit = new Button("Edit");
+        edit.getStyleClass().add("secondary-button");
+        edit.setOnAction(event -> selectListing(listing));
+
+        Button delete = new Button("Delete");
+        delete.getStyleClass().add("danger-button");
+        delete.setOnAction(event -> {
+            selectListing(listing);
+            handleDeleteListing();
+        });
+
+        HBox actions = new HBox(8, edit, delete);
+        HBox.setHgrow(edit, Priority.ALWAYS);
+        HBox.setHgrow(delete, Priority.ALWAYS);
+        edit.setMaxWidth(Double.MAX_VALUE);
+        delete.setMaxWidth(Double.MAX_VALUE);
+
+        VBox card = new VBox(8, imageView, name, details, price, actions);
+        card.getStyleClass().add("seller-listing-card");
+        return card;
+    }
+
+    private void selectListing(SellerListing listing) {
+        listingTable.getSelectionModel().select(listing);
+        if (listingTable.getSelectionModel().getSelectedItem() == null) {
+            fillFormFromSelectedItem(listing);
+            selectedListing = listing;
+        }
+    }
+
+    private void setListingImage(ImageView imageView, String imagePath) {
+        if (imagePath == null || imagePath.isBlank()) {
+            imageView.setImage(null);
+            return;
+        }
+
+        imageView.setImage(new Image(sellerItemApiService.toAbsoluteImageUrl(imagePath), true));
+    }
+
+    private String firstNonBlank(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
     }
 
     private void clearForm() {
@@ -424,16 +575,99 @@ public class SellerDashboardController {
         categoryField.clear();
         startingPriceField.clear();
         reservePriceField.clear();
+        skuField.clear();
+        quantityField.setText("1");
 
         startDatePicker.setValue(null);
         endDatePicker.setValue(null);
 
-        selectedImageFile = null;
+        selectedImageFiles.clear();
+        currentImageUrls.clear();
+        if (primaryImageChoice != null) {
+            primaryImageChoice.getItems().clear();
+        }
+        if (imagePreviewStrip != null) {
+            imagePreviewStrip.getChildren().clear();
+        }
         productImagePreview.setImage(null);
         selectedImageLabel.setText("No image selected");
 
         listingTable.getSelectionModel().clearSelection();
         selectedListing = null;
+    }
+
+    private List<String> uploadSelectedImages() {
+        List<String> uploaded = new ArrayList<>();
+        for (File imageFile : selectedImageFiles) {
+            String imageUrl = sellerItemApiService.uploadImage(imageFile);
+            if (imageUrl != null && !imageUrl.isBlank()) {
+                uploaded.add(imageUrl);
+            }
+        }
+
+        return moveSelectedPrimaryFirst(uploaded);
+    }
+
+    private List<String> reorderCurrentImages() {
+        return moveSelectedPrimaryFirst(new ArrayList<>(currentImageUrls));
+    }
+
+    private List<String> moveSelectedPrimaryFirst(List<String> images) {
+        if (images.isEmpty() || primaryImageChoice == null || primaryImageChoice.getSelectionModel().getSelectedIndex() <= 0) {
+            return images;
+        }
+
+        int primaryIndex = primaryImageChoice.getSelectionModel().getSelectedIndex();
+        if (primaryIndex >= images.size()) {
+            return images;
+        }
+
+        Collections.swap(images, 0, primaryIndex);
+        return images;
+    }
+
+    private void bindPrimaryFileChoices(List<File> files) {
+        List<String> labels = new ArrayList<>();
+        for (File file : files) {
+            labels.add(file.getName());
+        }
+        bindPrimaryImageChoices(labels);
+        selectedImageLabel.setText(files.size() + " image(s) selected");
+    }
+
+    private void bindPrimaryImageChoices(List<String> values) {
+        if (primaryImageChoice == null) {
+            return;
+        }
+
+        primaryImageChoice.getItems().setAll(values);
+        if (!values.isEmpty()) {
+            primaryImageChoice.getSelectionModel().select(0);
+        }
+    }
+
+    private void renderLocalImagePreviews(List<File> files) {
+        imagePreviewStrip.getChildren().clear();
+        for (File file : files) {
+            imagePreviewStrip.getChildren().add(buildPreviewImage(new Image(file.toURI().toString(), true)));
+        }
+        productImagePreview.setImage(new Image(files.get(0).toURI().toString(), true));
+    }
+
+    private void renderRemoteImagePreviews(List<String> imageUrls) {
+        imagePreviewStrip.getChildren().clear();
+        for (String imageUrl : imageUrls) {
+            imagePreviewStrip.getChildren().add(buildPreviewImage(new Image(sellerItemApiService.toAbsoluteImageUrl(imageUrl), true)));
+        }
+    }
+
+    private ImageView buildPreviewImage(Image image) {
+        ImageView preview = new ImageView(image);
+        preview.setFitWidth(68);
+        preview.setFitHeight(52);
+        preview.setPreserveRatio(false);
+        preview.getStyleClass().add("seller-image-thumb");
+        return preview;
     }
 
     private void showError(String message) {

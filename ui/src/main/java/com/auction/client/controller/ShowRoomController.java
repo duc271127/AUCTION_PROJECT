@@ -229,6 +229,11 @@ public class ShowRoomController {
     }
 
     @FXML
+    private void handleOpenWallet() {
+        SceneManager.goToWallet();
+    }
+
+    @FXML
     private void handleOpenCategories() {
         SceneManager.goToCategory();
     }

@@ -4,6 +4,7 @@ import com.team.backend.dto.ItemCreateDto;
 import com.team.backend.dto.ItemCreateRequest;
 import com.team.backend.dto.ItemDto;
 import com.team.backend.dto.ItemResponse;
+import com.team.backend.dto.PublicItemDetailDto;
 import com.team.backend.entity.Item;
 
 import java.util.List;
@@ -20,6 +21,7 @@ public interface ItemService {
     // ----- existing / legacy API (kept) -----
     Item createItem(ItemCreateDto dto, UUID sellerId);
     Item getItem(UUID id);
+    PublicItemDetailDto getPublicItemDetail(UUID id);
 
     List<ItemDto> findBySellerId(UUID sellerId);
     ItemDto createForSeller(ItemDto dto);
@@ -33,6 +35,7 @@ public interface ItemService {
      * sắp xếp theo createdAt desc.
      */
     List<ItemResponse> findResponsesBySellerId(UUID sellerId);
+    List<ItemResponse> findRecentResponsesBySellerId(UUID sellerId, int limit);
 
     /**
      * Tạo item cho seller dựa trên request từ frontend, trả về ItemResponse.
