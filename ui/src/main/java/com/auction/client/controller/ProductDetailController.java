@@ -4,12 +4,17 @@ import com.auction.client.dto.response.AuctionListResponse;
 import com.auction.client.model.AuctionItem;
 import com.auction.client.navigation.SceneManager;
 import com.auction.client.service.AuctionApiService;
+import com.auction.client.session.SessionManager;
 import com.auction.client.util.MockData;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.control.Button;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
 
 public class ProductDetailController {
 
@@ -20,17 +25,27 @@ public class ProductDetailController {
     @FXML private Label productNameLabel;
     @FXML private Label currentBidLabel;
     @FXML private Label countdownLabel;
+    @FXML private Label countdownDayLabel;
+    @FXML private Label countdownHourLabel;
+    @FXML private Label countdownMinuteLabel;
+    @FXML private Label countdownSecondLabel;
     @FXML private Label statusLabel;
     @FXML private Label specsLabel;
     @FXML private Label bidMessageLabel;
+    @FXML private Label detailUsernameLabel;
+    @FXML private Label topUsernameLabel;
 
     @FXML private TextField bidAmountField;
+    @FXML private Button detailFavoriteButton;
 
     private final AuctionApiService auctionApiService = new AuctionApiService();
     private AuctionItem selectedItem;
+    private boolean favoriteSelected = false;
+    private int favoriteCount = 36;
 
     @FXML
     public void initialize() {
+        bindSessionUsername();
         selectedItem = MockData.getSelectedItem();
 
         if (selectedItem == null) {
@@ -60,11 +75,9 @@ public class ProductDetailController {
                         : response.getItemName()
         );
 
-        currentBidLabel.setText("Current Highest Bid: $" + String.format("%,.0f", response.getCurrentPrice()));
-
-        countdownLabel.setText("Ends: " + formatDateTime(response.getEndTime()));
-
-        statusLabel.setText("Status: " + safeText(response.getState(), "UNKNOWN"));
+        currentBidLabel.setText("\u20ac " + String.format("%,.0f", response.getCurrentPrice()));
+        updateCountdown(response.getEndTime());
+        statusLabel.setText("No reserve price");
 
         specsLabel.setText(
                 "Auction Detail:\\n" +
@@ -80,9 +93,10 @@ public class ProductDetailController {
 
     private void bindFallbackFromSelectedItem() {
         productNameLabel.setText(selectedItem.getName());
-        currentBidLabel.setText("Current Highest Bid: " + selectedItem.getCurrentBid());
+        currentBidLabel.setText(selectedItem.getCurrentBid());
         countdownLabel.setText("Ends: " + selectedItem.getTimeLeft());
-        statusLabel.setText("Status: " + selectedItem.getStatus());
+        setCountdownParts(0);
+        statusLabel.setText("No reserve price");
 
         specsLabel.setText(
                 "Auction Detail:\\n" +
@@ -124,11 +138,57 @@ public class ProductDetailController {
         return (value == null || value.isBlank()) ? fallback : value;
     }
 
+    private void bindSessionUsername() {
+        String username = safeText(SessionManager.getUsername(), "Bidder");
+        detailUsernameLabel.setText(username);
+        topUsernameLabel.setText(username);
+    }
+
+    private void updateCountdown(String endTime) {
+        countdownLabel.setText("Ends: " + formatDateTime(endTime));
+        setCountdownParts(resolveRemainingSeconds(endTime));
+    }
+
+    private long resolveRemainingSeconds(String endTime) {
+        if (endTime == null || endTime.isBlank()) {
+            return 0;
+        }
+
+        try {
+            String normalizedEndTime = endTime.trim().replace(" ", "T");
+            if (normalizedEndTime.length() > 19) {
+                normalizedEndTime = normalizedEndTime.substring(0, 19);
+            }
+
+            LocalDateTime auctionEnd = LocalDateTime.parse(normalizedEndTime);
+            return Math.max(0, Duration.between(LocalDateTime.now(), auctionEnd).getSeconds());
+        } catch (Exception ignored) {
+            return 0;
+        }
+    }
+
+    private void setCountdownParts(long remainingSeconds) {
+        long days = remainingSeconds / 86400;
+        long hours = remainingSeconds % 86400 / 3600;
+        long minutes = remainingSeconds % 3600 / 60;
+        long seconds = remainingSeconds % 60;
+
+        countdownDayLabel.setText(formatCountdownPart(days));
+        countdownHourLabel.setText(formatCountdownPart(hours));
+        countdownMinuteLabel.setText(formatCountdownPart(minutes));
+        countdownSecondLabel.setText(formatCountdownPart(seconds));
+    }
+
+    private String formatCountdownPart(long value) {
+        return String.format("%02d", value);
+    }
+
     private void showEmptyState() {
         productNameLabel.setText("No selected item");
-        currentBidLabel.setText("Current Highest Bid: -");
+        currentBidLabel.setText("-");
         countdownLabel.setText("Ends: -");
-        statusLabel.setText("Status: N/A");
+        setCountdownParts(0);
+        statusLabel.setText("No reserve price");
         specsLabel.setText("Please go back to the showroom and choose an auction item.");
         mainImageView.setImage(null);
         thumb1ImageView.setImage(null);
@@ -152,6 +212,18 @@ public class ProductDetailController {
 
         System.out.println("selectedItem id = " + selectedItem.getId());
         SceneManager.goToLiveBidding();
+    }
+    @FXML
+    private void handleToggleFavorite() {
+        favoriteSelected = !favoriteSelected;
+
+        if (favoriteSelected) {
+            detailFavoriteButton.setText("\u2665 " + favoriteCount);
+            detailFavoriteButton.getStyleClass().add("detail-favorite-active");
+        } else {
+            detailFavoriteButton.setText("\u2661 " + favoriteCount);
+            detailFavoriteButton.getStyleClass().remove("detail-favorite-active");
+        }
     }
     @FXML
     private void handlePlaceBid() {
