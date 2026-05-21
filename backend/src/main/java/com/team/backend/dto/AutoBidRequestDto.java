@@ -12,4 +12,12 @@ public class AutoBidRequestDto {
 
     @Positive
     public double maxAmount;
+
+    public double getMaxAmount() {
+        return maxAmount;
+    }
+
+    public void setMaxAmount(double maxAmount) {
+        this.maxAmount = maxAmount;
+    }
 }

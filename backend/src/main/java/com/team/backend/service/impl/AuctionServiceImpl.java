@@ -13,7 +13,6 @@ import com.team.backend.repository.BidRepository;
 import com.team.backend.repository.ItemRepository;
 import com.team.backend.service.AuctionHelper;
 import com.team.backend.service.AuctionService;
-import com.team.backend.service.FavoriteService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -40,7 +39,6 @@ public class AuctionServiceImpl implements AuctionService {
     private final AuctionRepository auctionRepository;
     private final ItemRepository itemRepository;
     private final BidRepository bidRepository;
-    private final FavoriteService favoriteService;
     private final AuctionHelper auctionHelper;
 
     private static final double DEFAULT_MIN_INCREMENT = 1.0;
@@ -48,12 +46,10 @@ public class AuctionServiceImpl implements AuctionService {
     public AuctionServiceImpl(AuctionRepository auctionRepository,
                               ItemRepository itemRepository,
                               BidRepository bidRepository,
-                              FavoriteService favoriteService,
                               AuctionHelper auctionHelper) {
         this.auctionRepository = auctionRepository;
         this.itemRepository = itemRepository;
         this.bidRepository = bidRepository;
-        this.favoriteService = favoriteService;
         this.auctionHelper = auctionHelper;
     }
 

@@ -3,6 +3,7 @@ package com.team.backend.service.impl;
 import com.team.backend.dto.AuctionRealtimeEvent;
 import com.team.backend.service.AuctionHelper;
 import com.team.backend.service.EventPublisher;
+import org.springframework.context.annotation.Primary;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
@@ -10,6 +11,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Component
+@Primary
 public class StompEventPublisher implements EventPublisher {
 
     private final SimpMessagingTemplate template;
