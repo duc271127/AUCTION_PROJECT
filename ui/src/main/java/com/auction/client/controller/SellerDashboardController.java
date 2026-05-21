@@ -298,6 +298,7 @@ public class SellerDashboardController {
 
     @FXML
     private void handleLogout() {
+        SessionManager.clear();
         SceneManager.goToAuth();
     }
 

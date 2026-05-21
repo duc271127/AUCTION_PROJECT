@@ -8,14 +8,6 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-/**
- * AutoBid - cấu trúc lưu cấu hình đặt giá tự động cho mỗi bidder trên mỗi auction.
- * - Có constructor tiện lợi, builder-style, equals/hashCode, toString.
- * - Có trường updatedAt/createdAt và @PrePersist/@PreUpdate để tự động cập nhật thời gian.
- * - Có @Version để hỗ trợ optimistic locking nếu cần.
- *
- * Lưu ý: giữ kiểu tiền tệ là double theo yêu cầu dự án.
- */
 @Entity
 @Table(
         name = "auto_bids",
@@ -26,15 +18,15 @@ public class AutoBid implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Id
-    @Column(columnDefinition = "uuid")
+    @Column(nullable = false)
     private UUID id = UUID.randomUUID();
 
     @NotNull
-    @Column(name = "auction_id", nullable = false, columnDefinition = "uuid")
+    @Column(name = "auction_id", nullable = false)
     private UUID auctionId;
 
     @NotNull
-    @Column(name = "bidder_id", nullable = false, columnDefinition = "uuid")
+    @Column(name = "bidder_id", nullable = false)
     private UUID bidderId;
 
     @Positive
@@ -52,10 +44,6 @@ public class AutoBid implements Serializable {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 
-    /**
-     * Phiên bản để hỗ trợ optimistic locking (tùy chọn).
-     * Nếu bạn không muốn optimistic locking, có thể xóa trường này.
-     */
     @Version
     @Column(name = "version")
     private Long version;
@@ -72,12 +60,10 @@ public class AutoBid implements Serializable {
         this.updatedAt = Instant.now();
     }
 
-    // Factory method tiện lợi
     public static AutoBid of(UUID auctionId, UUID bidderId, double maxAmount) {
         return new AutoBid(auctionId, bidderId, maxAmount);
     }
 
-    // Builder-style setters (tuỳ chọn, giúp test/khởi tạo nhanh)
     public AutoBid withMaxAmount(double maxAmount) {
         this.maxAmount = maxAmount;
         return this;
@@ -88,7 +74,6 @@ public class AutoBid implements Serializable {
         return this;
     }
 
-    // Getters / Setters
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
 
@@ -126,31 +111,15 @@ public class AutoBid implements Serializable {
         updatedAt = Instant.now();
     }
 
-    // equals/hashCode dựa trên id (UUID) để phù hợp với entity identity
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof AutoBid)) return false;
-        AutoBid autoBid = (AutoBid) o;
+        if (!(o instanceof AutoBid autoBid)) return false;
         return Objects.equals(id, autoBid.id);
     }
 
     @Override
     public int hashCode() {
         return Objects.hashCode(id);
-    }
-
-    @Override
-    public String toString() {
-        return "AutoBid{" +
-                "id=" + id +
-                ", auctionId=" + auctionId +
-                ", bidderId=" + bidderId +
-                ", maxAmount=" + maxAmount +
-                ", active=" + active +
-                ", createdAt=" + createdAt +
-                ", updatedAt=" + updatedAt +
-                ", version=" + version +
-                '}';
     }
 }

@@ -4,6 +4,7 @@ import com.auction.client.dto.request.CreateAuctionRequest;
 import com.auction.client.model.AdminApprovalItem;
 import com.auction.client.navigation.SceneManager;
 import com.auction.client.service.AdminApiService;
+import com.auction.client.session.SessionManager;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -129,6 +130,7 @@ public class AdminDashboardController {
 
     @FXML
     private void handleLogout() {
+        SessionManager.clear();
         SceneManager.goToAuth();
     }
 

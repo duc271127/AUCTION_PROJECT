@@ -34,22 +34,8 @@ public class BidController {
             @RequestHeader("X-User-Id") UUID userId,
             @Valid @RequestBody PlaceBidRequest req
     ) {
-        if (userId == null) {
-            throw new BusinessRuleException("Header X-User-Id (bidderId) là bắt buộc");
-        }
-        if (req == null || req.amount <= 0.0) {
-            throw new BusinessRuleException("Số tiền phải lớn hơn 0");
-        }
-
-        log.debug("Yêu cầu đặt giá: auctionId={}, userId={}, amount={}", auctionId, userId, req.amount);
-
-        BidTransaction b = bidService.placeBid(
-                auctionId,
-                userId,
-                req.amount
-        );
-
-        return ResponseEntity.ok(b);
+        BidTransaction bid = placeBidInternal(auctionId, userId, req);
+        return ResponseEntity.ok(bid);
     }
 
     @GetMapping("/history")
@@ -57,12 +43,10 @@ public class BidController {
             @PathVariable UUID auctionId,
             @RequestParam(value = "limit", required = false) @Min(1) Integer limit
     ) {
-        List<BidHistoryDto> history;
-        if (limit == null) {
-            history = bidService.getBidHistory(auctionId);
-        } else {
-            history = bidService.getBidHistory(auctionId, limit);
-        }
+        List<BidHistoryDto> history = limit == null
+                ? bidService.getBidHistory(auctionId)
+                : bidService.getBidHistory(auctionId, limit);
+
         return ResponseEntity.ok(history);
     }
 
@@ -76,25 +60,26 @@ public class BidController {
         return ResponseEntity.ok(tx.getId());
     }
 
-    // Helper nội bộ để tái sử dụng logic đặt giá (validate + logging)
     private BidTransaction placeBidInternal(UUID auctionId, UUID userId, PlaceBidRequest req) {
         if (userId == null) {
-            throw new BusinessRuleException("Header X-User-Id (bidderId) là bắt buộc");
+            throw new BusinessRuleException("Header X-User-Id (bidderId) is required");
         }
         if (req == null || req.amount <= 0.0) {
-            throw new BusinessRuleException("Số tiền phải lớn hơn 0");
+            throw new BusinessRuleException("Bid amount must be greater than 0");
         }
+
+        log.debug("Place bid request: auctionId={}, userId={}, amount={}", auctionId, userId, req.amount);
         return bidService.placeBid(auctionId, userId, req.amount);
     }
 
     @GetMapping("/ping")
     public ResponseEntity<String> ping() {
-        return ResponseEntity.ok("endpoint đặt giá hoạt động");
+        return ResponseEntity.ok("bid endpoint is active");
     }
 
     public static class PlaceBidRequest {
 
-        @Min(value = 0, message = "Số tiền phải không âm")
+        @Min(value = 0, message = "Bid amount must be non-negative")
         public double amount;
 
         public PlaceBidRequest() {

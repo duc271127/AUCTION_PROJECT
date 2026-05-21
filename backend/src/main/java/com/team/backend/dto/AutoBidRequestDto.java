@@ -1,17 +1,14 @@
 package com.team.backend.dto;
 
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-
-import java.util.UUID;
+import jakarta.validation.constraints.Min;
 
 public class AutoBidRequestDto {
 
-    @NotNull
-    public UUID bidderId;
+    @Min(value = 1, message = "maxAmount must be >= 1")
+    private double maxAmount;
 
-    @Positive
-    public double maxAmount;
+    public AutoBidRequestDto() {
+    }
 
     public double getMaxAmount() {
         return maxAmount;

@@ -220,6 +220,8 @@ public class ItemServiceImpl implements ItemService {
                 : request.getCategory().trim());
         item.setStartingPrice(request.getStartingPrice());
         item.setReservePrice(request.getReservePrice() == null ? 0.0 : request.getReservePrice());
+        item.setSku(request.getSku() == null ? null : request.getSku().trim());
+        item.setQuantity(request.getQuantity() == null ? 1 : request.getQuantity());
 
         // status: map từ request nếu có, ngược lại mặc định PENDING (enum)
         if (request.getStatus() == null || request.getStatus().isBlank()) {
@@ -295,6 +297,12 @@ public class ItemServiceImpl implements ItemService {
         if (request.getImagePath() != null) {
             item.setImagePath(request.getImagePath());
         }
+        if (request.getSku() != null) {
+            item.setSku(request.getSku().trim());
+        }
+        if (request.getQuantity() != null) {
+            item.setQuantity(request.getQuantity());
+        }
 
         Item saved = itemRepository.save(item);
         return toResponse(saved);
@@ -328,6 +336,9 @@ public class ItemServiceImpl implements ItemService {
         if (item == null) return null;
 
         ItemResponse r = new ItemResponse();
+        r.setSellerId(item.getSellerId());
+        r.setSku(item.getSku());
+        r.setQuantity(item.getQuantity());
         r.setId(item.getId());
         r.setProductName(item.getName());
         r.setDescription(item.getDescription());

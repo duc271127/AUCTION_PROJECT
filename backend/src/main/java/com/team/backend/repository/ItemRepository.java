@@ -11,4 +11,8 @@ public interface ItemRepository extends JpaRepository<Item, UUID> {
     List<Item> findBySellerIdOrderByCreatedAtDesc(UUID sellerId);
 
     List<Item> findByStatus(ItemStatus status);
+
+    long countBySellerId(UUID sellerId);
+
+    long countBySellerIdAndStatus(UUID sellerId, ItemStatus status);
 }

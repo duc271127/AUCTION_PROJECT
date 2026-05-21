@@ -1,5 +1,6 @@
 package com.auction.client.navigation;
 
+import com.auction.client.session.SessionManager;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Parent;
@@ -74,18 +75,30 @@ public class SceneManager {
     }
 
     public static void goToSellerDashboard() {
+        if (!requireRole("SELLER")) {
+            return;
+        }
         switchScene("/fxml/seller_dashboard.fxml", "Auction Project - Seller Dashboard", "/css/seller.css");
     }
 
     public static void goToAdminDashboard() {
+        if (!requireRole("ADMIN")) {
+            return;
+        }
         switchScene("/fxml/admin_dashboard.fxml", "Auction Project - Admin Dashboard", "/css/admin.css");
     }
 
     public static void goToProductDetail() {
+        if (!requireRole("BIDDER")) {
+            return;
+        }
         switchScene("/fxml/product_detail.fxml", "Auction Project - Product Detail", "/css/product_detail.css");
     }
 
     public static void goToShowroom() {
+        if (!requireRole("BIDDER")) {
+            return;
+        }
         switchScene("/fxml/showroom.fxml", "Auction Project - Showroom", "/css/showroom.css");
     }
 
@@ -94,6 +107,20 @@ public class SceneManager {
     }
 
     public static void goToLiveBidding() {
+        if (!requireRole("BIDDER")) {
+            return;
+        }
         switchScene("/fxml/live_bidding.fxml", "Auction Project - Live Bidding", "/css/live_bidding.css");
+    }
+
+    private static boolean requireRole(String role) {
+        if (SessionManager.hasRole(role)) {
+            return true;
+        }
+
+        if (primaryStage != null) {
+            switchScene("/fxml/auth.fxml", "Auction Project - Auth", "/css/auth.css");
+        }
+        return false;
     }
 }

@@ -10,12 +10,14 @@ import javafx.fxml.FXML;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TextField;
 
 public class AuthController {
 
     @FXML private Label loginErrorLabel;
     @FXML private Label registerErrorLabel;
+    @FXML private TabPane authTabPane;
 
     @FXML private TextField loginUsernameField;
     @FXML private PasswordField loginPasswordField;
@@ -82,7 +84,10 @@ public class AuthController {
                 return;
             }
 
-            if (!selectedRole.equalsIgnoreCase(response.getRole())) {
+            String selectedNormalizedRole = SessionManager.normalizeRole(selectedRole);
+            String responseNormalizedRole = SessionManager.normalizeRole(response.getRole());
+
+            if (!selectedNormalizedRole.equals(responseNormalizedRole)) {
                 showLoginError("Selected role does not match this account.");
                 return;
             }
@@ -94,18 +99,32 @@ public class AuthController {
             );
 
             SessionManager.setUsername(sessionDisplayName);
-            SessionManager.setRole(response.getRole());
+            SessionManager.setRole(responseNormalizedRole);
             SessionManager.setUserId(response.getId());
 
             if (response.getToken() != null && !response.getToken().isBlank()) {
                 SessionManager.setToken(response.getToken());
             }
 
-            navigateByRole(response.getRole());
+            navigateByRole(responseNormalizedRole);
 
         } catch (Exception e) {
             showLoginError(e.getMessage());
         }
+    }
+
+    @FXML
+    private void showLoginForm() {
+        authTabPane.getSelectionModel().select(0);
+        hideLoginError();
+        hideRegisterError();
+    }
+
+    @FXML
+    private void showRegisterForm() {
+        authTabPane.getSelectionModel().select(1);
+        hideLoginError();
+        hideRegisterError();
     }
 
     @FXML
@@ -168,7 +187,11 @@ public class AuthController {
                     email
             );
 
-            showRegisterSuccess("Register successful: " + identity + " (" + response.getRole() + ")");
+            loginUsernameField.setText(firstNonBlank(email, username));
+            loginPasswordField.clear();
+            loginRoleComboBox.setValue(toDisplayRole(firstNonBlank(response.getRole(), role)));
+            showLoginForm();
+            showLoginSuccess("Register successful: " + identity + ". Please sign in.");
 
         } catch (Exception e) {
             showRegisterError(e.getMessage());
@@ -181,7 +204,7 @@ public class AuthController {
             return;
         }
 
-        switch (role.toUpperCase()) {
+        switch (SessionManager.normalizeRole(role)) {
             case "BIDDER" -> SceneManager.goToShowroom();
             case "SELLER" -> SceneManager.goToSellerDashboard();
             case "ADMIN" -> SceneManager.goToAdminDashboard();
@@ -207,6 +230,11 @@ public class AuthController {
         loginErrorLabel.setStyle("-fx-text-fill: #dc2626;");
     }
 
+    private void showLoginSuccess(String message) {
+        loginErrorLabel.setText(message);
+        loginErrorLabel.setStyle("-fx-text-fill: #16a34a;");
+    }
+
     private void hideLoginError() {
         loginErrorLabel.setText("");
     }
@@ -223,5 +251,13 @@ public class AuthController {
 
     private void hideRegisterError() {
         registerErrorLabel.setText("");
+    }
+
+    private String toDisplayRole(String role) {
+        return switch (SessionManager.normalizeRole(role)) {
+            case "SELLER" -> "Seller";
+            case "ADMIN" -> "Admin";
+            default -> "Bidder";
+        };
     }
 }

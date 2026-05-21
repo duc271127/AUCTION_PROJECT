@@ -1,4 +1,5 @@
 package com.auction.client.session;
+
 import java.util.UUID;
 
 public class SessionManager {
@@ -31,15 +32,39 @@ public class SessionManager {
     }
 
     public static void setRole(String role) {
-        SessionManager.role = role;
+        SessionManager.role = normalizeRole(role);
     }
+
     public static UUID getUserId() {
         return userId;
     }
+
     public static void setUserId(UUID userId) {
         SessionManager.userId = userId;
     }
 
+    public static boolean isAuthenticated() {
+        return role != null && !role.isBlank();
+    }
+
+    public static boolean hasRole(String expectedRole) {
+        String normalizedCurrentRole = normalizeRole(role);
+        String normalizedExpectedRole = normalizeRole(expectedRole);
+        return !normalizedCurrentRole.isBlank()
+                && normalizedCurrentRole.equals(normalizedExpectedRole);
+    }
+
+    public static String normalizeRole(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        String normalized = value.trim().toUpperCase();
+        if (normalized.startsWith("ROLE_")) {
+            normalized = normalized.substring("ROLE_".length());
+        }
+        return normalized;
+    }
 
     public static void clear() {
         token = null;

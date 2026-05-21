@@ -55,17 +55,30 @@ public class RealtimeAuctionService {
 
     public void connect(String auctionId) {
         new Thread(() -> {
-            boolean connected = socketClient.connectBlockingToServer();
+            int maxAttempts = 3;
 
-            if (!connected) {
-                notifyConnectionStatus("DISCONNECTED");
-                notifyError("Socket not connected");
-                return;
+            for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+                notifyConnectionStatus(attempt == 1 ? "CONNECTING" : "RECONNECTING");
+
+                boolean connected = socketClient.connectBlockingToServer();
+
+                if (connected) {
+                    notifyConnectionStatus("SOCKET CONNECTED");
+                    socketClient.subscribeAuction(auctionId);
+                    notifyConnectionStatus("SUBSCRIBED");
+                    return;
+                }
+
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
             }
 
-            notifyConnectionStatus("SOCKET CONNECTED");
-            socketClient.subscribeAuction(auctionId);
-            notifyConnectionStatus("SUBSCRIBED");
+            notifyConnectionStatus("POLLING ONLY");
+            notifyError("Realtime disconnected. Using polling fallback.");
         }).start();
     }
 

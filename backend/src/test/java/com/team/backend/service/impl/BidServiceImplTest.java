@@ -239,6 +239,4 @@ class BidServiceImplTest {
         assertEquals(12.0, auction.getCurrentPrice());
         assertEquals(bidderId, auction.getLeaderId());
     }
-
-
 }

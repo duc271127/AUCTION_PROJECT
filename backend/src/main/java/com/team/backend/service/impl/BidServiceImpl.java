@@ -1,4 +1,5 @@
 package com.team.backend.service.impl;
+import com.team.backend.dto.BidHistoryDto;
 
 import com.team.backend.dto.BidHistoryDto;
 import com.team.backend.entity.Auction;

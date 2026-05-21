@@ -10,10 +10,10 @@ import java.util.UUID;
 public class Auction {
 
     @Id
-    @Column(columnDefinition = "uuid")
+    @Column(nullable = false)
     private UUID id = UUID.randomUUID();
 
-    @Column(name = "item_id", columnDefinition = "uuid", nullable = false)
+    @Column(name = "item_id", nullable = false)
     private UUID itemId;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -54,7 +54,7 @@ public class Auction {
     @Column(name = "leader_id", columnDefinition = "uuid")
     private UUID leaderId;
 
-    @Column(name = "winner_id", columnDefinition = "uuid")
+    @Column(name = "winner_id")
     private UUID winnerId;
 
     @Column(name = "created_at", nullable = false)
@@ -171,7 +171,6 @@ public class Auction {
 
     public Long getVersion() { return version; }
     public void setVersion(Long version) { this.version = version; }
-
     public Integer getBidCount() { return bidCount; }
     public void setBidCount(Integer bidCount) { this.bidCount = bidCount; }
 

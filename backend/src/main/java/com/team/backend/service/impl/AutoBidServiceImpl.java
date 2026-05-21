@@ -1,4 +1,5 @@
 package com.team.backend.service.impl;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.team.backend.entity.AutoBid;
 import com.team.backend.entity.Auction;
@@ -12,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;

@@ -15,5 +15,4 @@ public interface BidService {
     Map<String, Object> getAuctionSummary(UUID auctionId);
     UUID getCurrentLeader(UUID auctionId);
     double getMinIncrement();
-
 }

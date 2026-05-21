@@ -22,6 +22,7 @@ public class BidHistoryDto {
     public UUID getBidderId() {
         return bidderId;
     }
+
     public void setBidderId(UUID bidderId) {
         this.bidderId = bidderId;
     }
@@ -32,6 +33,7 @@ public class BidHistoryDto {
     public double getAmount() {
         return amount;
     }
+
     public void setAmount(double amount) {
         this.amount = amount;
     }
@@ -39,6 +41,7 @@ public class BidHistoryDto {
     public Instant getCreatedAt() {
         return createdAt;
     }
+
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
     }

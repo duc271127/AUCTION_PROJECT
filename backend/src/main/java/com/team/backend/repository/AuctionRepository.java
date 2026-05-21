@@ -37,4 +37,9 @@ public interface AuctionRepository extends JpaRepository<Auction, UUID> {
     Optional<Auction> findByIdForUpdate(@Param("id") UUID id);
 
     Page<Auction> findByCategoryContainingIgnoreCaseAndTitleContainingIgnoreCase(String category, String q, Pageable pageable);
+
+    @Query("select count(a) from Auction a where a.item.sellerId = :sellerId and a.state = :state")
+    long countBySellerIdAndState(@Param("sellerId") UUID sellerId, @Param("state") AuctionState state);
+
+    boolean existsByItemId(UUID itemId);
 }

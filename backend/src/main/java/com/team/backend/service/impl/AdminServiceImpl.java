@@ -8,7 +8,11 @@ import com.team.backend.entity.ItemStatus;
 import com.team.backend.exception.BusinessRuleException;
 import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.ItemRepository;
+
 import com.team.backend.service.AdminService;
+import com.team.backend.dto.AdminStatsDto;
+import com.team.backend.repository.UserRepository;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -34,9 +38,16 @@ public class AdminServiceImpl implements AdminService {
     private final ItemRepository itemRepository;
     private final AuctionRepository auctionRepository;
 
-    public AdminServiceImpl(ItemRepository itemRepository, AuctionRepository auctionRepository) {
+    private final UserRepository userRepository;
+
+    public AdminServiceImpl(
+            ItemRepository itemRepository,
+            AuctionRepository auctionRepository,
+            UserRepository userRepository
+    ) {
         this.itemRepository = itemRepository;
         this.auctionRepository = auctionRepository;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -110,6 +121,7 @@ public class AdminServiceImpl implements AdminService {
 
         Auction auction = new Auction();
         auction.setItem(item);
+        auction.setItemId(item.getId());
         auction.setStartTime(start == null ? Instant.now() : start);
         auction.setEndTime(end == null ? Instant.now().plusSeconds(3600) : end);
         auction.setCreatedBy(adminId);
@@ -146,5 +158,58 @@ public class AdminServiceImpl implements AdminService {
         d.startDate = item.getStartTime() == null ? null : item.getStartTime().toString();
         d.endDate = item.getEndTime() == null ? null : item.getEndTime().toString();
         return d;
+    }
+
+    @Override
+    @Transactional
+    public Item rejectItem(UUID itemId, UUID adminId) {
+        if (itemId == null) throw new BusinessRuleException("itemId is required");
+        if (adminId == null) throw new BusinessRuleException("adminId is required");
+
+        Item item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new BusinessRuleException("Item not found: " + itemId));
+
+        item.setStatus(ItemStatus.REJECTED);
+        return itemRepository.save(item);
+    }
+
+    @Override
+    @Transactional
+    public void deleteItem(UUID itemId) {
+        if (itemId == null) throw new BusinessRuleException("itemId is required");
+
+        if (auctionRepository.existsByItemId(itemId)) {
+            throw new BusinessRuleException("Cannot delete item because it already has auction");
+        }
+
+        Item item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new BusinessRuleException("Item not found: " + itemId));
+
+        itemRepository.delete(item);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PendingItemDto> listReportedItems() {
+        return itemRepository.findByStatus(ItemStatus.REJECTED)
+                .stream()
+                .map(this::toPendingDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminStatsDto getStats() {
+        long totalUsers = userRepository.count();
+        long activeSellers = userRepository.findByRole("SELLER").size();
+        long totalAuctions = auctionRepository.count();
+
+        double revenue = auctionRepository.findByState(AuctionState.FINISHED)
+                .stream()
+                .filter(a -> a.getWinnerId() != null)
+                .mapToDouble(Auction::getCurrentPrice)
+                .sum();
+
+        return new AdminStatsDto(totalUsers, activeSellers, totalAuctions, revenue);
     }
 }

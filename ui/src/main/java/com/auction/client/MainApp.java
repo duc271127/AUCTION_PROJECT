@@ -9,7 +9,7 @@ public class MainApp extends Application {
     @Override
     public void start(Stage primaryStage) {
         SceneManager.setPrimaryStage(primaryStage);
-        SceneManager.goToHome();
+        SceneManager.goToAuth();
     }
     public static void main(String[] args) {
         launch(args);

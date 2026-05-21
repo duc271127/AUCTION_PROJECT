@@ -3,8 +3,12 @@ package com.auction.client.service;
 import com.auction.client.dto.request.BidRequest;
 import com.auction.client.dto.response.AuctionListResponse;
 import com.auction.client.exception.ApiException;
+import com.auction.client.dto.request.AutoBidRequest;
+import com.auction.client.dto.response.BidResponse;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -45,6 +49,25 @@ public class AuctionApiService {
             return objectMapper.readValue(responseBody, AuctionListResponse.class);
         } catch (Exception e) {
             throw new ApiException("Place bid failed: " + e.getMessage(), e);
+        }
+    }
+    public void setAutoBid(String auctionId, AutoBidRequest request) {
+        try {
+            String jsonBody = objectMapper.writeValueAsString(request);
+            apiClient.post("/api/auctions/" + auctionId + "/auto-bid", jsonBody);
+        } catch (Exception e) {
+            throw new ApiException("Enable auto-bid failed: " + e.getMessage(), e);
+        }
+    }
+    public List<BidResponse> getBidHistory(String auctionId) {
+        try {
+            String responseBody = apiClient.get("/api/auctions/" + auctionId + "/bids");
+            return objectMapper.readValue(
+                    responseBody,
+                    new TypeReference<List<BidResponse>>() {}
+            );
+        } catch (Exception e) {
+            throw new ApiException("Load bid history failed: " + e.getMessage(), e);
         }
     }
 }

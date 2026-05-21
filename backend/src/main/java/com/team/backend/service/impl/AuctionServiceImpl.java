@@ -58,6 +58,7 @@ public class AuctionServiceImpl implements AuctionService {
     @Override
     @Transactional
     public Auction createAuction(Auction auction) {
+
         if (auction == null) {
             throw new BusinessRuleException("Auction payload là bắt buộc");
         }
@@ -216,6 +217,7 @@ public class AuctionServiceImpl implements AuctionService {
     @Override
     @Transactional
     public Auction updateAuction(Auction auction) {
+
         if (auction == null || auction.getId() == null) {
             throw new BusinessRuleException("Auction và auction id là bắt buộc");
         }
@@ -245,10 +247,12 @@ public class AuctionServiceImpl implements AuctionService {
     @Override
     @Transactional
     public void closeAuction(UUID auctionId) {
+
         Auction a = getAuction(auctionId);
         if (a.getState() == AuctionState.FINISHED || a.getState() == AuctionState.CANCELLED) {
             throw new BusinessRuleException("Auction đã kết thúc hoặc bị hủy");
         }
+
         a.setState(AuctionState.FINISHED);
         if (a.getLeaderId() != null) a.setWinnerId(a.getLeaderId());
         a.setUpdatedAt(Instant.now());
@@ -259,10 +263,13 @@ public class AuctionServiceImpl implements AuctionService {
     @Override
     @Transactional
     public void startAuction(UUID auctionId) {
+
         Auction a = getAuction(auctionId);
+
         if (a.getState() != AuctionState.SCHEDULED) {
             throw new BusinessRuleException("Auction không ở trạng thái SCHEDULED");
         }
+
         a.setState(AuctionState.ACTIVE);
         a.setUpdatedAt(Instant.now());
         auctionRepository.save(a);
@@ -272,11 +279,13 @@ public class AuctionServiceImpl implements AuctionService {
     @Override
     @Transactional
     public void refreshStates() {
+
         Instant now = Instant.now();
 
         // Bắt đầu các auction đã đến giờ
         List<Auction> toStart = auctionRepository.findByStateAndStartTimeBefore(AuctionState.SCHEDULED, now);
         for (Auction a : toStart) {
+
             a.setState(AuctionState.ACTIVE);
             a.setUpdatedAt(now);
             auctionRepository.save(a);
@@ -286,6 +295,7 @@ public class AuctionServiceImpl implements AuctionService {
         // Kết thúc các auction đã quá giờ
         List<Auction> toFinish = auctionRepository.findByStateAndEndTimeBefore(AuctionState.ACTIVE, now);
         for (Auction a : toFinish) {
+
             a.setState(AuctionState.FINISHED);
             a.setWinnerId(a.getLeaderId());
             a.setUpdatedAt(now);

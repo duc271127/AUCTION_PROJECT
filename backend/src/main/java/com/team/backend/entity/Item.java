@@ -9,14 +9,20 @@ import java.util.UUID;
 public class Item {
 
     @Id
-    @Column(columnDefinition = "uuid")
+    @Column(nullable = false)
     private UUID id = UUID.randomUUID();
 
-    @Column(name = "seller_id", nullable = false, columnDefinition = "uuid")
+    @Column(name = "seller_id", nullable = false)
     private UUID sellerId;
 
+    @Column(name = "sku", length = 100)
+    private String sku;
+
+    @Column(name = "quantity")
+    private Integer quantity = 1;
+
     @Column(name = "name", nullable = false)
-    private String name; // maps to productName
+    private String name;
 
     @Column(name = "description", columnDefinition = "text")
     private String description;
@@ -30,8 +36,8 @@ public class Item {
     @Column(name = "reserve_price")
     private Double reservePrice;
 
-    @Column(name = "status")
     @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private ItemStatus status = ItemStatus.PENDING;
 
     @Column(name = "start_time")
@@ -52,7 +58,12 @@ public class Item {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    // getters / setters
+    public String getSku() { return sku; }
+    public void setSku(String sku) { this.sku = sku; }
+
+    public Integer getQuantity() { return quantity; }
+    public void setQuantity(Integer quantity) { this.quantity = quantity; }
+
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
 
@@ -83,15 +94,15 @@ public class Item {
     public Instant getEndTime() { return endTime; }
     public void setEndTime(Instant endTime) { this.endTime = endTime; }
 
-    public String getImagePath() { return imagePath; }
-    public void setImagePath(String imagePath) { this.imagePath = imagePath; }
-
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
-
     public UUID getApprovedBy() { return approvedBy; }
     public void setApprovedBy(UUID approvedBy) { this.approvedBy = approvedBy; }
 
     public Instant getApprovedAt() { return approvedAt; }
     public void setApprovedAt(Instant approvedAt) { this.approvedAt = approvedAt; }
+
+    public String getImagePath() { return imagePath; }
+    public void setImagePath(String imagePath) { this.imagePath = imagePath; }
+
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 }

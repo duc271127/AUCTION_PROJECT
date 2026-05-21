@@ -11,4 +11,3 @@ public interface AutoBidService {
     List<AutoBid> listAutoBidsForAuction(UUID auctionId);
     List<AutoBid> listAutoBidsByUser(UUID bidderId);
 }
-
