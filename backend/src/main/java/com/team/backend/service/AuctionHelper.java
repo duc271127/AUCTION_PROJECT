@@ -4,7 +4,9 @@ import com.team.backend.dto.BidHistoryDto;
 import com.team.backend.entity.Auction;
 import com.team.backend.entity.BidTransaction;
 import com.team.backend.repository.AuctionRepository;
+import com.team.backend.repository.AutoBidRepository;
 import com.team.backend.repository.BidRepository;
+import com.team.backend.repository.UserRepository;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -13,69 +15,92 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * AuctionHelper - helper nhỏ để:
- * - lookup user display name (stub / tích hợp user service)
- * - compute remaining seconds cho auction
- * - chuyển BidTransaction -> BidHistoryItem
- *
- * Tùy chỉnh lookupUserName để gọi user service thực tế trong hệ thống của bạn.
- */
 @Component
 public class AuctionHelper {
 
     private final AuctionRepository auctionRepository;
     private final BidRepository bidRepository;
+    private final AutoBidRepository autoBidRepository;
+    private final UserRepository userRepository;
 
-    public AuctionHelper(AuctionRepository auctionRepository, BidRepository bidRepository) {
+    public AuctionHelper(AuctionRepository auctionRepository,
+                         BidRepository bidRepository,
+                         AutoBidRepository autoBidRepository,
+                         UserRepository userRepository) {
         this.auctionRepository = auctionRepository;
         this.bidRepository = bidRepository;
+        this.autoBidRepository = autoBidRepository;
+        this.userRepository = userRepository;
     }
 
-    /**
-     * Tra cứu tên hiển thị của user.
-     * Hiện tại trả fallback dạng "Người dùng-{shortId}" nếu không có service user.
-     * Thay bằng call tới user service khi tích hợp thực tế.
-     */
     public String lookupUserName(UUID userId) {
-        if (userId == null) return null;
-        // TODO: tích hợp user service ở đây
-        String shortId = userId.toString().replace("-", "");
-        if (shortId.length() > 8) shortId = shortId.substring(0, 8);
-        return "Người dùng-" + shortId;
+        if (userId == null) {
+            return null;
+        }
+
+        return userRepository.findById(userId)
+                .map(user -> {
+                    if (user.getDisplayName() != null && !user.getDisplayName().isBlank()) {
+                        return user.getDisplayName();
+                    }
+                    if (user.getUsername() != null && !user.getUsername().isBlank()) {
+                        return user.getUsername();
+                    }
+                    if (user.getEmail() != null && !user.getEmail().isBlank()) {
+                        return user.getEmail();
+                    }
+                    return shortId(userId);
+                })
+                .orElseGet(() -> shortId(userId));
     }
 
-    /**
-     * Tính số giây còn lại cho auction (nếu endTime null => 0).
-     */
     public long computeRemainingSeconds(UUID auctionId) {
-        if (auctionId == null) return 0L;
+        if (auctionId == null) {
+            return 0L;
+        }
+
         Optional<Auction> opt = auctionRepository.findById(auctionId);
-        if (opt.isEmpty()) return 0L;
-        Auction a = opt.get();
-        Instant now = Instant.now();
-        if (a.getEndTime() == null) return 0L;
-        long seconds = Duration.between(now, a.getEndTime()).getSeconds();
+        if (opt.isEmpty()) {
+            return 0L;
+        }
+
+        Auction auction = opt.get();
+        if (auction.getEndTime() == null) {
+            return 0L;
+        }
+
+        long seconds = Duration.between(Instant.now(), auction.getEndTime()).getSeconds();
         return Math.max(0L, seconds);
     }
 
-    /**
-     * Lấy danh sách lịch sử bid (dùng khi cần chuyển sang DTO).
-     */
     public List<BidHistoryDto> toBidHistoryItems(UUID auctionId) {
-        List<BidTransaction> txs = bidRepository.findByAuctionIdOrderByCreatedAtAsc(auctionId);
-        return txs.stream().map(tx -> toBidHistoryItem(tx.getBidderId(), tx.getAmount(), tx.getCreatedAt())).toList();
+        return bidRepository.findByAuctionIdOrderByCreatedAtAsc(auctionId)
+                .stream()
+                .map(this::toBidHistoryItem)
+                .toList();
     }
 
-    /**
-     * Tạo 1 BidHistoryItem từ dữ liệu cơ bản.
-     */
     public BidHistoryDto toBidHistoryItem(UUID bidderId, double amount, Instant createdAt) {
-        BidHistoryDto h = new BidHistoryDto();
-        h.setBidderId(bidderId);
-        h.setBidderName(lookupUserName(bidderId));
-        h.setAmount(amount);
-        h.setCreatedAt(createdAt);
-        return h;
+        BidHistoryDto dto = new BidHistoryDto();
+        dto.setBidderId(bidderId);
+        dto.setBidderName(lookupUserName(bidderId));
+        dto.setAmount(amount);
+        dto.setCreatedAt(createdAt);
+        return dto;
+    }
+
+    public BidHistoryDto toBidHistoryItem(BidTransaction tx) {
+        BidHistoryDto dto = toBidHistoryItem(tx.getBidderId(), tx.getAmount(), tx.getCreatedAt());
+        dto.setBidId(tx.getId());
+        dto.setAuctionId(tx.getAuctionId());
+        boolean autoBid = autoBidRepository.existsByAuctionIdAndBidderIdAndActiveTrue(tx.getAuctionId(), tx.getBidderId());
+        dto.setAutoBid(autoBid);
+        dto.setSource(autoBid ? "AUTO_BID" : "MANUAL_BID");
+        return dto;
+    }
+
+    private String shortId(UUID userId) {
+        String value = userId.toString().replace("-", "");
+        return value.length() > 8 ? value.substring(0, 8) : value;
     }
 }

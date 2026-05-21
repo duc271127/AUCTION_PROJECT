@@ -1,6 +1,5 @@
 package com.team.backend.dto;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -8,8 +7,17 @@ public class AuctionDto {
     public UUID id;
     public UUID itemId;
     public String itemName;
+    public String title;
+    public String description;
+    public String imageUrl;
+    public String category;
+    public UUID sellerId;
+    public String sellerName;
     public double currentPrice;
+    public int bidCount;
+    public double minNextBid;
     public UUID leaderId;
+    public String leaderName;
     public Instant startTime;
     public Instant endTime;
     public String state;

@@ -1,6 +1,6 @@
 package com.team.backend.service.impl;
-import com.team.backend.dto.BidHistoryDto;
 
+import com.team.backend.dto.AuctionSummaryResponse;
 import com.team.backend.dto.BidHistoryDto;
 import com.team.backend.entity.Auction;
 import com.team.backend.entity.AuctionState;
@@ -10,10 +10,12 @@ import com.team.backend.exception.AuctionClosedException;
 import com.team.backend.exception.InvalidBidException;
 import com.team.backend.exception.ResourceNotFoundException;
 import com.team.backend.repository.AuctionRepository;
-import com.team.backend.repository.BidRepository;
 import com.team.backend.repository.AutoBidRepository;
+import com.team.backend.repository.BidRepository;
+import com.team.backend.service.AuctionHelper;
 import com.team.backend.service.BidService;
 import com.team.backend.service.EventPublisher;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,13 +25,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.HashMap;
-import java.util.stream.Collectors;
 
 @Service
 public class BidServiceImpl implements BidService {
@@ -40,20 +39,42 @@ public class BidServiceImpl implements BidService {
     private final BidRepository bidRepository;
     private final AutoBidRepository autoBidRepository;
     private final BidTransactionalService bidTransactionalService;
+    private final AuctionHelper auctionHelper;
     private final ConcurrentHashMap<UUID, ReentrantLock> lockMap = new ConcurrentHashMap<>();
 
     private final double minIncrement;
     private final long antiSnipingThresholdSeconds;
     private final long antiSnipingExtendSeconds;
     private final int maxRetries;
-
-    // Nếu bạn muốn giữ eventPublisher là nullable, có thể lưu dưới dạng null hoặc Optional
     private final EventPublisher eventPublisher;
 
     public BidServiceImpl(AuctionRepository auctionRepository,
                           BidRepository bidRepository,
                           AutoBidRepository autoBidRepository,
                           BidTransactionalService bidTransactionalService,
+                          double minIncrement,
+                          long antiSnipingThresholdSeconds,
+                          long antiSnipingExtendSeconds,
+                          int maxRetries,
+                          Optional<EventPublisher> eventPublisherOptional) {
+        this(auctionRepository,
+                bidRepository,
+                autoBidRepository,
+                bidTransactionalService,
+                null,
+                minIncrement,
+                antiSnipingThresholdSeconds,
+                antiSnipingExtendSeconds,
+                maxRetries,
+                eventPublisherOptional);
+    }
+
+    @Autowired
+    public BidServiceImpl(AuctionRepository auctionRepository,
+                          BidRepository bidRepository,
+                          AutoBidRepository autoBidRepository,
+                          BidTransactionalService bidTransactionalService,
+                          AuctionHelper auctionHelper,
                           @Value("${auction.bid.min-increment:1.0}") double minIncrement,
                           @Value("${auction.anti-sniping.threshold-seconds:30}") long antiSnipingThresholdSeconds,
                           @Value("${auction.anti-sniping.extend-seconds:60}") long antiSnipingExtendSeconds,
@@ -63,6 +84,7 @@ public class BidServiceImpl implements BidService {
         this.bidRepository = bidRepository;
         this.autoBidRepository = autoBidRepository;
         this.bidTransactionalService = bidTransactionalService;
+        this.auctionHelper = auctionHelper;
         this.minIncrement = minIncrement;
         this.antiSnipingThresholdSeconds = antiSnipingThresholdSeconds;
         this.antiSnipingExtendSeconds = antiSnipingExtendSeconds;
@@ -70,144 +92,154 @@ public class BidServiceImpl implements BidService {
         this.eventPublisher = eventPublisherOptional.orElse(null);
     }
 
-    private ReentrantLock getLock(UUID auctionId) {
-        return lockMap.computeIfAbsent(auctionId, id -> new ReentrantLock());
-    }
-
-    /**
-     * Public entry point để đặt giá.
-     * Thực hiện retry khi gặp xung đột optimistic/pessimistic.
-     * Nếu quá nhiều lỗi lock, fallback sang in-memory lock (chỉ an toàn cho single-instance).
-     */
     @Override
     public BidTransaction placeBid(UUID auctionId, UUID bidderId, double amount) {
         if (auctionId == null || bidderId == null) {
-            throw new InvalidBidException("auctionId và bidderId là bắt buộc");
+            throw new InvalidBidException("auctionId and bidderId are required");
         }
         if (amount <= 0.0) {
-            throw new InvalidBidException("Số tiền đặt phải lớn hơn 0");
+            throw new InvalidBidException("Bid amount must be greater than 0");
         }
 
         for (int attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-                // Ủy quyền cho transactional service (đảm bảo @Transactional hoạt động)
-                BidTransaction tx = bidTransactionalService.placeBidTransactionalAttempt(
-                        auctionId, bidderId, amount, minIncrement, antiSnipingThresholdSeconds, antiSnipingExtendSeconds, eventPublisher);
-                log.info("Đặt giá thành công (transactional): auction={}, bidder={}, amount={}", auctionId, bidderId, amount);
-                return tx;
+                return bidTransactionalService.placeBidTransactionalAttempt(
+                        auctionId,
+                        bidderId,
+                        amount,
+                        minIncrement,
+                        antiSnipingThresholdSeconds,
+                        antiSnipingExtendSeconds,
+                        eventPublisher
+                );
             } catch (ObjectOptimisticLockingFailureException ex) {
-                log.warn("Xung đột optimistic attempt {} cho auction {}: {}", attempt, auctionId, ex.getMessage());
                 if (attempt >= maxRetries) {
-                    throw new InvalidBidException("Xung đột đồng thời, vui lòng thử lại sau");
+                    throw new InvalidBidException("Concurrent bid conflict. Please try again.");
                 }
                 backoffSleep(attempt);
             } catch (PessimisticLockingFailureException ex) {
-                log.warn("Pessimistic lock failure attempt {} cho auction {}: {}", attempt, auctionId, ex.getMessage());
                 if (attempt >= maxRetries) {
-                    log.info("Chuyển sang khóa trong bộ nhớ cho auction {}", auctionId);
                     return placeBidWithInMemoryLock(auctionId, bidderId, amount);
                 }
                 backoffSleep(attempt);
             } catch (ResourceNotFoundException | InvalidBidException | AuctionClosedException ex) {
-                // lỗi nghiệp vụ: ném ngay
                 throw ex;
             } catch (RuntimeException ex) {
-                // lỗi bất ngờ: fallback sang in-memory lock
-                log.warn("Lỗi bất ngờ ở attempt {} cho auction {}: {}, chuyển sang in-memory lock", attempt, auctionId, ex.getMessage());
+                log.warn("Falling back to in-memory bid lock for auction {}", auctionId, ex);
                 return placeBidWithInMemoryLock(auctionId, bidderId, amount);
             }
         }
 
-        throw new InvalidBidException("Không thể đặt giá, vui lòng thử lại sau");
+        throw new InvalidBidException("Could not place bid");
     }
 
-    private void backoffSleep(int attempt) {
-        try {
-            Thread.sleep(50L * attempt);
-        } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
-        }
+    @Override
+    public List<BidHistoryDto> getBidHistory(UUID auctionId) {
+        return bidRepository.findByAuctionIdOrderByCreatedAtDesc(auctionId)
+                .stream()
+                .map(this::toBidHistoryItem)
+                .toList();
     }
 
-    /**
-     * Fallback: sử dụng ReentrantLock trong bộ nhớ cho mỗi auction.
-     * Chỉ an toàn cho môi trường single-instance hoặc testing.
-     */
+    @Override
+    public List<BidHistoryDto> getBidHistory(UUID auctionId, int limit) {
+        int safeLimit = limit <= 0 ? 50 : limit;
+        return bidRepository.findByAuctionIdOrderByCreatedAtDesc(auctionId)
+                .stream()
+                .limit(safeLimit)
+                .map(this::toBidHistoryItem)
+                .toList();
+    }
+
+    @Override
+    public AuctionSummaryResponse getAuctionSummary(UUID auctionId) {
+        Auction auction = auctionRepository.findById(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));
+
+        AuctionSummaryResponse response = new AuctionSummaryResponse();
+        response.setAuctionId(auction.getId());
+        response.setCurrentPrice(auction.getCurrentPrice());
+        response.setMinNextBid(auction.getCurrentPrice() + minIncrement);
+        response.setBidCount(bidRepository.findByAuctionIdOrderByCreatedAtAsc(auctionId).size());
+        response.setLeaderId(auction.getLeaderId());
+        response.setLeaderName(resolveUserName(auction.getLeaderId()));
+        response.setEndTime(auction.getEndTime());
+        response.setTimeRemainingSeconds(resolveRemainingSeconds(auctionId, auction));
+        response.setState(auction.getState() == null ? null : auction.getState().name());
+        return response;
+    }
+
+    @Override
+    public UUID getCurrentLeader(UUID auctionId) {
+        Auction auction = auctionRepository.findById(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));
+        return auction.getLeaderId();
+    }
+
+    @Override
+    public double getMinIncrement() {
+        return minIncrement;
+    }
+
     protected BidTransaction placeBidWithInMemoryLock(UUID auctionId, UUID bidderId, double amount) {
-        ReentrantLock lock = getLock(auctionId);
+        ReentrantLock lock = lockMap.computeIfAbsent(auctionId, id -> new ReentrantLock());
         lock.lock();
         try {
             Auction auction = auctionRepository.findById(auctionId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy auction: " + auctionId));
+                    .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));
 
-            // validate trạng thái và thời gian
             validateAuctionForBid(auction);
 
             double minAllowed = auction.getCurrentPrice() + minIncrement;
             if (amount < minAllowed) {
-                throw new InvalidBidException("Giá đặt phải lớn hơn hoặc bằng " + minAllowed);
+                throw new InvalidBidException("Bid must be at least " + minAllowed);
             }
 
-            // anti-sniping: kéo dài nếu cần
+            UUID previousLeader = auction.getLeaderId();
             extendAuctionIfNeeded(auction);
-
             auction.setCurrentPrice(amount);
             auction.setLeaderId(bidderId);
             auctionRepository.save(auction);
 
-            BidTransaction tx = new BidTransaction(auctionId, bidderId, amount, Instant.now());
-            BidTransaction saved = bidRepository.save(tx);
-
-            // áp dụng auto-bid đồng bộ (cùng instance)
+            BidTransaction saved = bidRepository.save(new BidTransaction(auctionId, bidderId, amount, Instant.now()));
             applyAutoBidIfNeeded(auction, bidderId);
 
-            // publish event best-effort (không có afterCommit ở fallback)
             if (eventPublisher != null) {
                 try {
-                    eventPublisher.publishBidPlaced(auctionId, bidderId, amount, null, Instant.now());
+                    eventPublisher.publishBidPlaced(auctionId, bidderId, amount, previousLeader, Instant.now());
                 } catch (Exception e) {
-                    log.warn("EventPublisher thất bại trong fallback path: {}", e.getMessage());
+                    log.warn("Failed to publish fallback bid event for auction {}", auctionId, e);
                 }
             }
 
-            log.debug("Đã đặt giá (in-memory lock): auction={}, bidder={}, amount={}", auctionId, bidderId, amount);
             return saved;
         } finally {
             lock.unlock();
         }
     }
 
-    /**
-     * Validate auction trước khi chấp nhận bid (dùng cho fallback path).
-     */
     private void validateAuctionForBid(Auction auction) {
         if (auction == null) {
-            throw new ResourceNotFoundException("Auction là null");
+            throw new ResourceNotFoundException("Auction is missing");
         }
         if (auction.getState() == AuctionState.FINISHED || auction.getState() == AuctionState.CANCELLED) {
-            throw new AuctionClosedException("Auction đã đóng");
+            throw new AuctionClosedException("Auction is closed");
         }
+
         Instant now = Instant.now();
         if (auction.getStartTime() != null && now.isBefore(auction.getStartTime())) {
-            throw new InvalidBidException("Auction chưa bắt đầu");
+            throw new InvalidBidException("Auction has not started");
         }
         if (auction.getEndTime() != null && now.isAfter(auction.getEndTime())) {
-            // đánh dấu finished và persist
             auction.setState(AuctionState.FINISHED);
             auction.setWinnerId(auction.getLeaderId());
             auctionRepository.save(auction);
-            throw new AuctionClosedException("Auction đã kết thúc");
+            throw new AuctionClosedException("Auction has ended");
         }
     }
 
-    /**
-     * Auto-bid logic cho fallback path (đồng bộ).
-     * Nếu auto-bid đã được xử lý trong transactional path thì đây sẽ là no-op trong luồng bình thường.
-     */
     private void applyAutoBidIfNeeded(Auction auction, UUID triggeringBidderId) {
-        List<AutoBid> autoBids = autoBidRepository
-                .findByAuctionIdAndActiveTrueOrderByMaxAmountDescCreatedAtAsc(auction.getId());
-
+        List<AutoBid> autoBids = autoBidRepository.findByAuctionIdAndActiveTrueOrderByMaxAmountDescCreatedAtAsc(auction.getId());
         AutoBid best = null;
         double secondBestLimit = auction.getCurrentPrice();
 
@@ -226,94 +258,82 @@ public class BidServiceImpl implements BidService {
             }
         }
 
-        if (best == null) return;
+        if (best == null) {
+            return;
+        }
 
         double autoAmount = Math.min(best.getMaxAmount(), secondBestLimit + minIncrement);
-        if (autoAmount <= auction.getCurrentPrice()) return;
+        if (autoAmount <= auction.getCurrentPrice()) {
+            return;
+        }
 
+        UUID previousLeader = auction.getLeaderId();
         auction.setCurrentPrice(autoAmount);
         auction.setLeaderId(best.getBidderId());
         auctionRepository.save(auction);
+        bidRepository.save(new BidTransaction(auction.getId(), best.getBidderId(), autoAmount, Instant.now()));
 
-        BidTransaction autoTx = new BidTransaction(auction.getId(), best.getBidderId(), autoAmount, Instant.now());
-        bidRepository.save(autoTx);
-
-        // best-effort publish
         if (eventPublisher != null) {
             try {
-                eventPublisher.publishBidPlaced(auction.getId(), best.getBidderId(), autoAmount, null, Instant.now());
+                eventPublisher.publishAutoBidPlaced(auction.getId(), best.getBidderId(), autoAmount, previousLeader, Instant.now());
             } catch (Exception e) {
-                log.warn("EventPublisher thất bại khi publish auto-bid: {}", e.getMessage());
+                log.warn("Failed to publish auto-bid fallback event for auction {}", auction.getId(), e);
             }
         }
     }
 
-    /**
-     * Anti-sniping: kéo dài endTime nếu thời gian còn lại <= threshold.
-     * Dùng cho fallback path; transactional path xử lý bên trong transaction.
-     */
     private void extendAuctionIfNeeded(Auction auction) {
         Instant now = Instant.now();
-        if (auction.getEndTime() == null || !auction.getEndTime().isAfter(now)) return;
+        if (auction.getEndTime() == null || !auction.getEndTime().isAfter(now)) {
+            return;
+        }
+
         long secondsLeft = java.time.Duration.between(now, auction.getEndTime()).getSeconds();
         if (secondsLeft <= antiSnipingThresholdSeconds) {
             auction.setEndTime(auction.getEndTime().plusSeconds(antiSnipingExtendSeconds));
-            log.debug("Anti-sniping: đã kéo dài auction {} thêm {} giây", auction.getId(), antiSnipingExtendSeconds);
         }
     }
 
-    /**
-     * Lấy lịch sử bid (trả DTO BidHistoryDto, không trả entity thô).
-     * Trả về danh sách theo thứ tự mới nhất trước (desc).
-     */
-    @Override
-    public List<BidHistoryDto> getBidHistory(UUID auctionId) {
-
-        List<BidTransaction> transactions =
-                bidRepository.findByAuctionIdOrderByCreatedAtDesc(auctionId);
-
-        return transactions.stream()
-                .map(tx -> new BidHistoryDto(
-                        tx.getBidderId(),
-                        tx.getAmount(),
-                        tx.getCreatedAt()
-                ))
-                .toList();
+    private void backoffSleep(int attempt) {
+        try {
+            Thread.sleep(50L * attempt);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
     }
 
-    @Override
-    public List<BidHistoryDto> getBidHistory(UUID auctionId, int limit) {
-        if (limit <= 0) limit = 50;
-        List<BidTransaction> transactions = bidRepository.findByAuctionIdOrderByCreatedAtDesc(auctionId);
-        return transactions.stream()
-                .limit(limit)
-                .map(tx -> new BidHistoryDto(tx.getBidderId(), tx.getAmount(), tx.getCreatedAt()))
-                .collect(Collectors.toList());
+    private BidHistoryDto toBidHistoryItem(BidTransaction tx) {
+        if (auctionHelper != null) {
+            return auctionHelper.toBidHistoryItem(tx);
+        }
+
+        BidHistoryDto dto = new BidHistoryDto();
+        dto.setBidId(tx.getId());
+        dto.setAuctionId(tx.getAuctionId());
+        dto.setBidderId(tx.getBidderId());
+        dto.setBidderName(resolveUserName(tx.getBidderId()));
+        dto.setAmount(tx.getAmount());
+        dto.setCreatedAt(tx.getCreatedAt());
+        boolean autoBid = autoBidRepository.existsByAuctionIdAndBidderIdAndActiveTrue(tx.getAuctionId(), tx.getBidderId());
+        dto.setAutoBid(autoBid);
+        dto.setSource(autoBid ? "AUTO_BID" : "MANUAL_BID");
+        return dto;
     }
 
-    @Override
-    public Map<String, Object> getAuctionSummary(UUID auctionId) {
-        Auction a = auctionRepository.findById(auctionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy auction: " + auctionId));
-        Map<String, Object> m = new HashMap<>();
-        m.put("auctionId", a.getId());
-        m.put("currentPrice", a.getCurrentPrice());
-        m.put("minNext", a.getCurrentPrice() + minIncrement);
-        m.put("leaderId", a.getLeaderId());
-        m.put("endTime", a.getEndTime());
-        return m;
+    private String resolveUserName(UUID userId) {
+        if (auctionHelper != null) {
+            return auctionHelper.lookupUserName(userId);
+        }
+        return userId == null ? null : userId.toString();
     }
 
-    @Override
-    public UUID getCurrentLeader(UUID auctionId) {
-        Auction a = auctionRepository.findById(auctionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy auction: " + auctionId));
-        return a.getLeaderId();
+    private long resolveRemainingSeconds(UUID auctionId, Auction auction) {
+        if (auctionHelper != null) {
+            return auctionHelper.computeRemainingSeconds(auctionId);
+        }
+        if (auction == null || auction.getEndTime() == null) {
+            return 0L;
+        }
+        return Math.max(0L, java.time.Duration.between(Instant.now(), auction.getEndTime()).getSeconds());
     }
-
-    @Override
-    public double getMinIncrement() {
-        return minIncrement;
-    }
-
 }

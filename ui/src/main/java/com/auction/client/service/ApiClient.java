@@ -260,7 +260,6 @@ public class ApiClient {
 
             builder.header("X-Seller-Id", userId);
             builder.header("X-Admin-Id", userId);
-            builder.header("X-User-Id", userId);
         }
     }
 }

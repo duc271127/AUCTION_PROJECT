@@ -1,35 +1,53 @@
 package com.team.backend.controller;
 
 import com.team.backend.dto.AuctionCreateDto;
+import com.team.backend.dto.AuctionDetailResponse;
 import com.team.backend.dto.AuctionDto;
+import com.team.backend.dto.AuctionPageResponse;
+import com.team.backend.dto.AuctionSummaryResponse;
 import com.team.backend.dto.AutoBidRequestDto;
+import com.team.backend.dto.AutoBidResponse;
 import com.team.backend.dto.BidHistoryDto;
+import com.team.backend.dto.BidPlacementResponse;
 import com.team.backend.dto.BidRequestDto;
-
 import com.team.backend.entity.Auction;
+import com.team.backend.entity.AuctionState;
 import com.team.backend.entity.AutoBid;
-
+import com.team.backend.entity.BidTransaction;
+import com.team.backend.entity.User;
 import com.team.backend.exception.BusinessRuleException;
-
 import com.team.backend.realtime.RealtimeEvent;
 import com.team.backend.realtime.RealtimeEventFactory;
 import com.team.backend.realtime.RealtimeNotifier;
-
+import com.team.backend.service.AuctionHelper;
 import com.team.backend.service.AuctionService;
 import com.team.backend.service.AutoBidService;
 import com.team.backend.service.BidService;
-
+import com.team.backend.service.UserService;
 import jakarta.validation.Valid;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
 import java.util.List;
-import java.util.Map;
+import java.util.Locale;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/auctions")
@@ -40,290 +58,258 @@ public class AuctionController {
     private final BidService bidService;
     private final AutoBidService autoBidService;
     private final RealtimeNotifier realtimeNotifier;
+    private final UserService userService;
+    private final AuctionHelper auctionHelper;
 
-    public AuctionController(
-            AuctionService auctionService,
-            BidService bidService,
-            AutoBidService autoBidService,
-            RealtimeNotifier realtimeNotifier
-    ) {
+    public AuctionController(AuctionService auctionService,
+                             BidService bidService,
+                             AutoBidService autoBidService,
+                             RealtimeNotifier realtimeNotifier,
+                             UserService userService,
+                             AuctionHelper auctionHelper) {
         this.auctionService = auctionService;
         this.bidService = bidService;
         this.autoBidService = autoBidService;
         this.realtimeNotifier = realtimeNotifier;
+        this.userService = userService;
+        this.auctionHelper = auctionHelper;
     }
 
-    // =========================
-    // CREATE AUCTION
-    // =========================
+    @PostMapping
+    @PreAuthorize("hasAnyRole('SELLER','ADMIN')")
+    public ResponseEntity<AuctionDto> createAuction(@Valid @RequestBody AuctionCreateDto dto) {
+        UUID sellerId = resolveCurrentUserId();
+        Auction created = auctionService.createAuction(dto, sellerId);
+        return ResponseEntity.created(URI.create("/api/auctions/" + created.getId())).body(toDto(created));
+    }
 
     @PostMapping("/seller/{sellerId}")
-    public ResponseEntity<AuctionDto> createAuction(
-            @PathVariable UUID sellerId,
-            @Valid @RequestBody AuctionCreateDto dto
-    ) {
+    @PreAuthorize("hasAnyRole('SELLER','ADMIN')")
+    public ResponseEntity<AuctionDto> createAuctionForSeller(@PathVariable UUID sellerId,
+                                                             @Valid @RequestBody AuctionCreateDto dto) {
+        UUID currentUserId = resolveCurrentUserId();
+        if (!currentUserId.equals(sellerId) && !currentUserHasRole("ADMIN")) {
+            throw new AccessDeniedException("You cannot create auctions for another seller");
+        }
 
-        Auction created =
-                auctionService.createAuction(dto, sellerId);
-
-        URI location =
-                URI.create("/api/auctions/" + created.getId());
-
-        return ResponseEntity
-                .created(location)
-                .body(toDto(created));
+        Auction created = auctionService.createAuction(dto, sellerId);
+        return ResponseEntity.created(URI.create("/api/auctions/" + created.getId())).body(toDto(created));
     }
-
-    // =========================
-    // PLACE BID
-    // =========================
 
     @PostMapping("/{id}/bids")
-    public ResponseEntity<AuctionDto> placeBid(
-            @PathVariable UUID id,
-            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
-            @Valid @RequestBody BidRequestDto dto
-    ) {
-
-        UUID bidderId =
-                userId != null ? userId : dto.bidderId;
-
-        if (bidderId == null) {
-            throw new BusinessRuleException("bidderId is required");
-        }
-
-        Auction beforeBid =
-                auctionService.getAuction(id);
-
-        var oldEndTime =
-                beforeBid.getEndTime();
-
-        bidService.placeBid(
-                id,
-                bidderId,
-                dto.amount
-        );
-
-        Auction updated =
-                auctionService.getAuction(id);
-
-        RealtimeEvent bidEvent =
-                RealtimeEventFactory.bidPlaced(
-                        id,
-                        bidderId,
-                        updated.getCurrentPrice(),
-                        updated.getEndTime()
-                );
-
-        realtimeNotifier.broadcastToAuction(
-                id,
-                bidEvent
-        );
-
-        if (oldEndTime != null
-                && updated.getEndTime() != null
-                && updated.getEndTime().isAfter(oldEndTime)) {
-
-            RealtimeEvent extendedEvent =
-                    RealtimeEventFactory.auctionExtended(
-                            id,
-                            bidderId,
-                            updated.getCurrentPrice(),
-                            updated.getEndTime()
-                    );
-
-            realtimeNotifier.broadcastToAuction(
-                    id,
-                    extendedEvent
-            );
-        }
-
-        return ResponseEntity.ok(
-                toDto(updated)
-        );
+    @PreAuthorize("hasRole('BIDDER')")
+    public ResponseEntity<BidPlacementResponse> placeBid(@PathVariable UUID id,
+                                                         @Valid @RequestBody BidRequestDto dto) {
+        UUID bidderId = resolveCurrentUserId();
+        BidTransaction bid = bidService.placeBid(id, bidderId, dto.amount);
+        Auction updated = auctionService.getAuction(id);
+        return ResponseEntity.ok(toBidPlacementResponse(bid, updated));
     }
 
-    // =========================
-    // AUTO BID
-    // =========================
-
     @PostMapping("/{id}/auto-bid")
-    public ResponseEntity<AutoBid> setAutoBid(
-            @PathVariable UUID id,
-            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
-            @Valid @RequestBody AutoBidRequestDto dto
-    ) {
-
-        UUID bidderId = userId;
-
-        if (bidderId == null) {
-            throw new BusinessRuleException("bidderId is required");
-        }
-
-        AutoBid autoBid =
-                autoBidService.setAutoBid(
-                        id,
-                        bidderId,
-                        dto.getMaxAmount()
-                );
-
-        return ResponseEntity.ok(autoBid);
+    @PreAuthorize("hasRole('BIDDER')")
+    public ResponseEntity<AutoBidResponse> setAutoBid(@PathVariable UUID id,
+                                                      @Valid @RequestBody AutoBidRequestDto dto) {
+        UUID bidderId = resolveCurrentUserId();
+        AutoBid autoBid = autoBidService.setAutoBid(id, bidderId, dto.getMaxAmount());
+        return ResponseEntity.ok(toAutoBidResponse(autoBid, auctionService.getAuction(id)));
     }
 
     @DeleteMapping("/{id}/auto-bid")
-    public ResponseEntity<Void> cancelAutoBid(
-            @PathVariable UUID id,
-            @RequestHeader(value = "X-User-Id", required = false) UUID userId
-    ) {
-        UUID bidderId = userId;
-        if (bidderId == null) {
-            throw new BusinessRuleException("bidderId is required");
-        }
-
-        autoBidService.cancelAutoBid(id, bidderId);
+    @PreAuthorize("hasRole('BIDDER')")
+    public ResponseEntity<Void> cancelAutoBid(@PathVariable UUID id) {
+        autoBidService.cancelAutoBid(id, resolveCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}/auto-bids")
-    public ResponseEntity<List<AutoBid>> listAutoBidsForAuction(
-            @PathVariable UUID id
-    ) {
-        List<AutoBid> list = autoBidService.listAutoBidsForAuction(id);
-        return ResponseEntity.ok(list);
+    @PreAuthorize("hasAnyRole('BIDDER','ADMIN')")
+    public ResponseEntity<List<AutoBidResponse>> listAutoBidsForAuction(@PathVariable UUID id) {
+        Auction auction = auctionService.getAuction(id);
+        return ResponseEntity.ok(autoBidService.listAutoBidsForAuction(id)
+                .stream()
+                .map(autoBid -> toAutoBidResponse(autoBid, auction))
+                .toList());
     }
 
     @GetMapping("/me/auto-bids")
-    public ResponseEntity<List<AutoBid>> listMyAutoBids(
-            @RequestHeader(value = "X-User-Id", required = false) UUID userId
-    ) {
-        if (userId == null) {
-            throw new BusinessRuleException("bidderId is required");
-        }
-        List<AutoBid> list = autoBidService.listAutoBidsByUser(userId);
-        return ResponseEntity.ok(list);
+    @PreAuthorize("hasRole('BIDDER')")
+    public ResponseEntity<List<AutoBidResponse>> listMyAutoBids() {
+        return ResponseEntity.ok(autoBidService.listAutoBidsByUser(resolveCurrentUserId())
+                .stream()
+                .map(autoBid -> toAutoBidResponse(autoBid, auctionService.getAuction(autoBid.getAuctionId())))
+                .toList());
     }
-
-    // =========================
-    // GET ALL AUCTIONS
-    // =========================
 
     @GetMapping
-    public ResponseEntity<List<AuctionDto>> listAuctions() {
+    public ResponseEntity<AuctionPageResponse> listAuctions(@RequestParam(value = "category", required = false) String category,
+                                                            @RequestParam(value = "q", required = false) String q,
+                                                            @RequestParam(value = "state", required = false) String state,
+                                                            @RequestParam(value = "page", defaultValue = "0") int page,
+                                                            @RequestParam(value = "size", defaultValue = "12") int size,
+                                                            @RequestParam(value = "sort", defaultValue = "endTime,asc") String sort) {
+        Sort sortSpec = parseSort(sort);
+        PageRequest pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), sortSpec);
+        Page<Auction> result = auctionService.searchCatalog(category, q, parseState(state), pageable);
 
-        List<AuctionDto> result =
-                auctionService.listAuctions()
-                        .stream()
-                        .map(this::toDto)
-                        .collect(Collectors.toList());
-
-        return ResponseEntity.ok(result);
+        AuctionPageResponse response = new AuctionPageResponse();
+        response.setItems(result.getContent().stream().map(this::toDto).toList());
+        response.setPage(result.getNumber());
+        response.setSize(result.getSize());
+        response.setTotalElements(result.getTotalElements());
+        response.setTotalPages(result.getTotalPages());
+        return ResponseEntity.ok(response);
     }
 
-    // =========================
-    // GET AUCTION
-    // =========================
+    @GetMapping("/{id}/detail")
+    public ResponseEntity<AuctionDetailResponse> getAuctionDetail(@PathVariable UUID id) {
+        return ResponseEntity.ok(auctionService.getDetail(id));
+    }
 
     @GetMapping("/{id}")
-    public ResponseEntity<AuctionDto> getAuction(
-            @PathVariable UUID id
-    ) {
-
-        return ResponseEntity.ok(
-                toDto(
-                        auctionService.getAuction(id)
-                )
-        );
+    public ResponseEntity<AuctionDto> getAuction(@PathVariable UUID id) {
+        return ResponseEntity.ok(toDto(auctionService.getAuction(id)));
     }
-
-    // =========================
-    // BID HISTORY
-    // =========================
 
     @GetMapping("/{id}/bids")
-    public ResponseEntity<List<BidHistoryDto>> getBidHistory(
-            @PathVariable UUID id,
-            @RequestParam(value = "limit", required = false) Integer limit
-    ) {
-        if (limit == null) {
-            return ResponseEntity.ok(
-                    bidService.getBidHistory(id)
-            );
-        } else {
-            return ResponseEntity.ok(
-                    bidService.getBidHistory(id, limit)
-            );
-        }
+    public ResponseEntity<List<BidHistoryDto>> getBidHistory(@PathVariable UUID id,
+                                                             @RequestParam(value = "limit", required = false) Integer limit) {
+        return ResponseEntity.ok(limit == null ? bidService.getBidHistory(id) : bidService.getBidHistory(id, limit));
     }
 
-    // =========================
-    // AUCTION SUMMARY / METADATA
-    // =========================
-
     @GetMapping("/{id}/summary")
-    public ResponseEntity<Map<String, Object>> getAuctionSummary(
-            @PathVariable UUID id
-    ) {
-        Map<String, Object> summary = bidService.getAuctionSummary(id);
-        return ResponseEntity.ok(summary);
+    public ResponseEntity<AuctionSummaryResponse> getAuctionSummary(@PathVariable UUID id) {
+        return ResponseEntity.ok(bidService.getAuctionSummary(id));
     }
 
     @GetMapping("/{id}/leader")
-    public ResponseEntity<UUID> getCurrentLeader(
-            @PathVariable UUID id
-    ) {
-        UUID leader = bidService.getCurrentLeader(id);
-        return ResponseEntity.ok(leader);
+    public ResponseEntity<UUID> getCurrentLeader(@PathVariable UUID id) {
+        return ResponseEntity.ok(bidService.getCurrentLeader(id));
     }
 
     @GetMapping("/config/min-increment")
     public ResponseEntity<Double> getMinIncrement() {
-        double min = bidService.getMinIncrement();
-        return ResponseEntity.ok(min);
+        return ResponseEntity.ok(bidService.getMinIncrement());
     }
-
-    // =========================
-    // CLOSE AUCTION
-    // =========================
 
     @PostMapping("/{id}/close")
-    public ResponseEntity<Void> closeAuction(
-            @PathVariable UUID id
-    ) {
-
+    @PreAuthorize("hasAnyRole('ADMIN','SELLER')")
+    public ResponseEntity<Void> closeAuction(@PathVariable UUID id) {
         auctionService.closeAuction(id);
-
+        Auction auction = auctionService.getAuction(id);
+        RealtimeEvent event = RealtimeEventFactory.auctionClosed(
+                id,
+                auction.getLeaderId(),
+                auctionHelper.lookupUserName(auction.getLeaderId()),
+                auction.getCurrentPrice(),
+                auction.getState() == null ? null : auction.getState().name(),
+                auctionHelper.computeRemainingSeconds(id),
+                auction.getEndTime(),
+                auction.getLeaderId() == null ? "Auction closed." : "Auction closed. Winner: " + auctionHelper.lookupUserName(auction.getLeaderId())
+        );
+        realtimeNotifier.broadcastToAuction(id, event);
         return ResponseEntity.noContent().build();
     }
-    // =========================
-    // DTO MAPPER
-    // =========================
 
-    private AuctionDto toDto(Auction a) {
-
-        if (a == null) {
+    private AuctionDto toDto(Auction auction) {
+        if (auction == null) {
             return null;
         }
 
-        AuctionDto d = new AuctionDto();
+        AuctionDto dto = new AuctionDto();
+        dto.id = auction.getId();
+        dto.itemId = auction.getItemId();
+        dto.itemName = auction.getTitle();
+        dto.title = auction.getTitle();
+        dto.description = auction.getDescription();
+        dto.imageUrl = auction.getImageUrl();
+        dto.category = auction.getCategory();
+        dto.sellerId = auction.getSellerId() != null ? auction.getSellerId() : auction.getCreatedBy();
+        dto.sellerName = auction.getSellerName() != null ? auction.getSellerName() : auctionHelper.lookupUserName(dto.sellerId);
+        dto.currentPrice = auction.getCurrentPrice();
+        dto.bidCount = auction.getBidCount() == null ? 0 : auction.getBidCount();
+        dto.minNextBid = auction.getMinNextBid() == null ? auction.getCurrentPrice() + bidService.getMinIncrement() : auction.getMinNextBid();
+        dto.leaderId = auction.getLeaderId();
+        dto.leaderName = auctionHelper.lookupUserName(auction.getLeaderId());
+        dto.startTime = auction.getStartTime();
+        dto.endTime = auction.getEndTime();
+        dto.state = auction.getState() == null ? null : auction.getState().name();
+        return dto;
+    }
 
-        d.id = a.getId();
+    private BidPlacementResponse toBidPlacementResponse(BidTransaction bid, Auction auction) {
+        BidPlacementResponse response = new BidPlacementResponse();
+        response.setAuctionId(auction.getId());
+        response.setBidId(bid.getId());
+        response.setBidderId(bid.getBidderId());
+        response.setBidderDisplay(auctionHelper.lookupUserName(bid.getBidderId()));
+        response.setLeaderId(auction.getLeaderId());
+        response.setLeaderName(auctionHelper.lookupUserName(auction.getLeaderId()));
+        response.setCurrentPrice(auction.getCurrentPrice());
+        response.setMinNextBid(auction.getMinNextBid() == null ? auction.getCurrentPrice() + bidService.getMinIncrement() : auction.getMinNextBid());
+        response.setState(auction.getState() == null ? null : auction.getState().name());
+        response.setEndTime(auction.getEndTime());
+        return response;
+    }
 
-        if (a.getItem() != null) {
+    private AutoBidResponse toAutoBidResponse(AutoBid autoBid, Auction auction) {
+        AutoBidResponse response = new AutoBidResponse();
+        response.setAutoBidId(autoBid.getId());
+        response.setAuctionId(autoBid.getAuctionId());
+        response.setBidderId(autoBid.getBidderId());
+        response.setBidderName(auctionHelper.lookupUserName(autoBid.getBidderId()));
+        response.setMaxAmount(autoBid.getMaxAmount());
+        response.setActive(autoBid.isActive());
+        response.setAuctionState(auction.getState() == null ? null : auction.getState().name());
+        response.setEndTime(auction.getEndTime());
+        response.setCreatedAt(autoBid.getCreatedAt());
+        response.setUpdatedAt(autoBid.getUpdatedAt());
+        return response;
+    }
 
-            d.itemId = a.getItem().getId();
-            d.itemName = a.getItem().getName();
+    private UUID resolveCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null || auth.getName().isBlank()) {
+            throw new AuthenticationCredentialsNotFoundException("Authenticated user is required");
         }
 
-        d.currentPrice = a.getCurrentPrice();
-        d.leaderId = a.getLeaderId();
-        d.startTime = a.getStartTime();
-        d.endTime = a.getEndTime();
+        User user = userService.findByUsername(auth.getName());
+        if (user == null) {
+            throw new AuthenticationCredentialsNotFoundException("Authenticated user not found: " + auth.getName());
+        }
+        return user.getId();
+    }
 
-        d.state =
-                a.getState() == null
-                        ? null
-                        : a.getState().name();
+    private boolean currentUserHasRole(String role) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getAuthorities() == null) {
+            return false;
+        }
+        String expected = "ROLE_" + role.toUpperCase(Locale.ROOT);
+        return auth.getAuthorities().stream().anyMatch(authority -> expected.equals(authority.getAuthority()));
+    }
 
-        return d;
+    private AuctionState parseState(String state) {
+        if (state == null || state.isBlank()) {
+            return null;
+        }
+        try {
+            return AuctionState.valueOf(state.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessRuleException("Unsupported auction state: " + state);
+        }
+    }
+
+    private Sort parseSort(String sort) {
+        String safeSort = sort == null || sort.isBlank() ? "endTime,asc" : sort;
+        String[] parts = safeSort.split(",", 2);
+        String property = switch (parts[0].trim()) {
+            case "currentPrice", "title", "startTime", "endTime", "state", "category", "createdAt" -> parts[0].trim();
+            default -> "endTime";
+        };
+        Sort.Direction direction = parts.length > 1 && "desc".equalsIgnoreCase(parts[1].trim())
+                ? Sort.Direction.DESC
+                : Sort.Direction.ASC;
+        return Sort.by(direction, property);
     }
 }
