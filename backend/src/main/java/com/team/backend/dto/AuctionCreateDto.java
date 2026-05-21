@@ -10,12 +10,9 @@ import jakarta.validation.constraints.NotNull;
  * Otherwise itemName + startPrice will be used to create a new item.
  */
 public class AuctionCreateDto {
-    // backward fields (Phase1)
     public String itemName;
     public String itemDescription;
     public double startPrice;
-
-    // new Phase2 field
     public UUID itemId;
 
     @NotNull
@@ -23,4 +20,23 @@ public class AuctionCreateDto {
 
     @NotNull
     public Instant endTime;
+
+    public String getItemName() { return itemName; }
+    public void setItemName(String itemName) { this.itemName = itemName; }
+
+    public String getItemDescription() { return itemDescription; }
+    public void setItemDescription(String itemDescription) { this.itemDescription = itemDescription; }
+
+    public double getStartPrice() { return startPrice; }
+    public void setStartPrice(double startPrice) { this.startPrice = startPrice; }
+
+    public UUID getItemId() { return itemId; }
+    public void setItemId(UUID itemId) { this.itemId = itemId; }
+
+    public Instant getStartTime() { return startTime; }
+    public void setStartTime(Instant startTime) { this.startTime = startTime; }
+
+    public Instant getEndTime() { return endTime; }
+    public void setEndTime(Instant endTime) { this.endTime = endTime; }
+
 }

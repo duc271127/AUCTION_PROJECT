@@ -92,7 +92,7 @@ class BidServiceImplTest {
                 30,
                 60,
                 3,
-                eventPublisher
+                Optional.of(eventPublisher)
         );
     }
 
@@ -239,8 +239,4 @@ class BidServiceImplTest {
         assertEquals(12.0, auction.getCurrentPrice());
         assertEquals(bidderId, auction.getLeaderId());
     }
-
-
 }
-
-

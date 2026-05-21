@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -169,6 +170,39 @@ public class AuctionController {
         return ResponseEntity.ok(autoBid);
     }
 
+    @DeleteMapping("/{id}/auto-bid")
+    public ResponseEntity<Void> cancelAutoBid(
+            @PathVariable UUID id,
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId
+    ) {
+        UUID bidderId = userId;
+        if (bidderId == null) {
+            throw new BusinessRuleException("bidderId is required");
+        }
+
+        autoBidService.cancelAutoBid(id, bidderId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/auto-bids")
+    public ResponseEntity<List<AutoBid>> listAutoBidsForAuction(
+            @PathVariable UUID id
+    ) {
+        List<AutoBid> list = autoBidService.listAutoBidsForAuction(id);
+        return ResponseEntity.ok(list);
+    }
+
+    @GetMapping("/me/auto-bids")
+    public ResponseEntity<List<AutoBid>> listMyAutoBids(
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId
+    ) {
+        if (userId == null) {
+            throw new BusinessRuleException("bidderId is required");
+        }
+        List<AutoBid> list = autoBidService.listAutoBidsByUser(userId);
+        return ResponseEntity.ok(list);
+    }
+
     // =========================
     // GET ALL AUCTIONS
     // =========================
@@ -207,12 +241,44 @@ public class AuctionController {
 
     @GetMapping("/{id}/bids")
     public ResponseEntity<List<BidHistoryDto>> getBidHistory(
+            @PathVariable UUID id,
+            @RequestParam(value = "limit", required = false) Integer limit
+    ) {
+        if (limit == null) {
+            return ResponseEntity.ok(
+                    bidService.getBidHistory(id)
+            );
+        } else {
+            return ResponseEntity.ok(
+                    bidService.getBidHistory(id, limit)
+            );
+        }
+    }
+
+    // =========================
+    // AUCTION SUMMARY / METADATA
+    // =========================
+
+    @GetMapping("/{id}/summary")
+    public ResponseEntity<Map<String, Object>> getAuctionSummary(
             @PathVariable UUID id
     ) {
+        Map<String, Object> summary = bidService.getAuctionSummary(id);
+        return ResponseEntity.ok(summary);
+    }
 
-        return ResponseEntity.ok(
-                bidService.getBidHistory(id)
-        );
+    @GetMapping("/{id}/leader")
+    public ResponseEntity<UUID> getCurrentLeader(
+            @PathVariable UUID id
+    ) {
+        UUID leader = bidService.getCurrentLeader(id);
+        return ResponseEntity.ok(leader);
+    }
+
+    @GetMapping("/config/min-increment")
+    public ResponseEntity<Double> getMinIncrement() {
+        double min = bidService.getMinIncrement();
+        return ResponseEntity.ok(min);
     }
 
     // =========================
@@ -228,7 +294,6 @@ public class AuctionController {
 
         return ResponseEntity.noContent().build();
     }
-
     // =========================
     // DTO MAPPER
     // =========================

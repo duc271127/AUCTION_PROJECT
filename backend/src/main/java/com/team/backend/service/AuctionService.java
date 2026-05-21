@@ -1,6 +1,7 @@
 package com.team.backend.service;
 
 import com.team.backend.dto.AuctionCreateDto;
+import com.team.backend.dto.AuctionDetailResponse;
 import com.team.backend.entity.Auction;
 import com.team.backend.entity.AuctionState;
 
@@ -16,7 +17,7 @@ public interface AuctionService {
     Auction updateAuction(Auction auction);
     void closeAuction(UUID auctionId);
     void startAuction(UUID auctionId);
-    void refreshStates(); // scan and update states based on time
+    void refreshStates();
     void validateAuctionOpenForBidding(UUID auctionId);
-
+    AuctionDetailResponse getDetail(UUID auctionId);
 }

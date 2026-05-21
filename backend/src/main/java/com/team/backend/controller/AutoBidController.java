@@ -25,7 +25,6 @@ public class AutoBidController {
             @RequestHeader("X-User-Id") UUID bidderId,
             @Valid @RequestBody AutoBidRequestDto dto
     ) {
-
         AutoBid autoBid = autoBidService.setAutoBid(
                 auctionId,
                 bidderId,
@@ -40,9 +39,7 @@ public class AutoBidController {
             @PathVariable UUID auctionId,
             @RequestHeader("X-User-Id") UUID bidderId
     ) {
-
         autoBidService.cancelAutoBid(auctionId, bidderId);
-
         return ResponseEntity.noContent().build();
     }
 }

@@ -48,8 +48,7 @@ public class AutoBid implements Serializable {
     @Column(name = "version")
     private Long version;
 
-    public AutoBid() {
-    }
+    public AutoBid() {}
 
     public AutoBid(UUID auctionId, UUID bidderId, double maxAmount) {
         this.id = UUID.randomUUID();

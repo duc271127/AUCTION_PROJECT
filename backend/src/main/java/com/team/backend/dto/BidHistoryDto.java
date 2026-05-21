@@ -6,6 +6,7 @@ import java.util.UUID;
 public class BidHistoryDto {
 
     private UUID bidderId;
+    private String bidderName;
     private double amount;
     private Instant createdAt;
 
@@ -25,6 +26,9 @@ public class BidHistoryDto {
     public void setBidderId(UUID bidderId) {
         this.bidderId = bidderId;
     }
+
+    public String getBidderName() { return bidderName; }
+    public void setBidderName(String bidderName) { this.bidderName = bidderName; }
 
     public double getAmount() {
         return amount;

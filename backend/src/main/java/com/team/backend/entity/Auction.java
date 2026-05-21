@@ -2,6 +2,7 @@ package com.team.backend.entity;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -19,6 +20,18 @@ public class Auction {
     @JoinColumn(name = "item_id", insertable = false, updatable = false)
     private Item item;
 
+    @Column(name = "title", nullable = false)
+    private String title;
+
+    @Column(name = "description", columnDefinition = "text")
+    private String description;
+
+    @Column(name = "image_url")
+    private String imageUrl;
+
+    @Column(name = "category")
+    private String category;
+
     @Column(name = "start_time", nullable = false)
     private Instant startTime;
 
@@ -35,7 +48,10 @@ public class Auction {
     @Column(name = "reserve_price")
     private Double reservePrice = 0.0;
 
-    @Column(name = "leader_id")
+    @Column(name = "seller_id", columnDefinition = "uuid")
+    private UUID sellerId;
+
+    @Column(name = "leader_id", columnDefinition = "uuid")
     private UUID leaderId;
 
     @Column(name = "winner_id")
@@ -44,16 +60,61 @@ public class Auction {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
-    @Column(name = "created_by")
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt = Instant.now();
+
+    @Column(name = "created_by", columnDefinition = "uuid")
     private UUID createdBy;
 
     @Version
     private Long version;
 
+    @Transient
+    private Integer bidCount;
+
+    @Transient
+    private Double minNextBid;
+
+    @Transient
+    private String sellerName;
+
     public Auction() {
         this.id = UUID.randomUUID();
     }
 
+    // Convenience constructor for creation
+    public Auction(UUID itemId, String title, String description, String imageUrl, String category,
+                   Instant startTime, Instant endTime, double currentPrice, Double reservePrice, UUID createdBy) {
+        this.id = UUID.randomUUID();
+        this.itemId = itemId;
+        this.title = title;
+        this.description = description;
+        this.imageUrl = imageUrl;
+        this.category = category;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.currentPrice = currentPrice;
+        this.reservePrice = reservePrice;
+        this.createdBy = createdBy;
+        this.state = AuctionState.DRAFT;
+        this.createdAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        if (id == null) id = UUID.randomUUID();
+        Instant now = Instant.now();
+        if (createdAt == null) createdAt = now;
+        updatedAt = now;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = Instant.now();
+    }
+
+    // Getters / Setters
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
 
@@ -62,6 +123,18 @@ public class Auction {
 
     public Item getItem() { return item; }
     public void setItem(Item item) { this.item = item; }
+
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
 
     public Instant getStartTime() { return startTime; }
     public void setStartTime(Instant startTime) { this.startTime = startTime; }
@@ -78,6 +151,9 @@ public class Auction {
     public Double getReservePrice() { return reservePrice; }
     public void setReservePrice(Double reservePrice) { this.reservePrice = reservePrice; }
 
+    public UUID getSellerId() { return sellerId; }
+    public void setSellerId(UUID sellerId) { this.sellerId = sellerId; }
+
     public UUID getLeaderId() { return leaderId; }
     public void setLeaderId(UUID leaderId) { this.leaderId = leaderId; }
 
@@ -87,9 +163,58 @@ public class Auction {
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
+    public Instant getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+
     public UUID getCreatedBy() { return createdBy; }
     public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
 
     public Long getVersion() { return version; }
     public void setVersion(Long version) { this.version = version; }
+    public Integer getBidCount() { return bidCount; }
+    public void setBidCount(Integer bidCount) { this.bidCount = bidCount; }
+
+    public Double getMinNextBid() { return minNextBid; }
+    public void setMinNextBid(Double minNextBid) { this.minNextBid = minNextBid; }
+
+    public String getSellerName() { return sellerName; }
+    public void setSellerName(String sellerName) { this.sellerName = sellerName; }
+
+    // Helper: compute default minNextBid if not set (business rule: +1.0)
+    public double computeMinNextBid(double increment) {
+        if (minNextBid != null) return minNextBid;
+        return this.currentPrice + increment;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Auction)) return false;
+        Auction auction = (Auction) o;
+        return Objects.equals(id, auction.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
+    }
+
+    @Override
+    public String toString() {
+        return "Auction{" +
+                "id=" + id +
+                ", itemId=" + itemId +
+                ", title='" + title + '\'' +
+                ", category='" + category + '\'' +
+                ", startTime=" + startTime +
+                ", endTime=" + endTime +
+                ", state=" + state +
+                ", currentPrice=" + currentPrice +
+                ", leaderId=" + leaderId +
+                ", winnerId=" + winnerId +
+                ", createdAt=" + createdAt +
+                ", createdBy=" + createdBy +
+                ", version=" + version +
+                '}';
+    }
 }
