@@ -15,6 +15,7 @@ import com.team.backend.repository.BidRepository;
 import com.team.backend.service.AuctionHelper;
 import com.team.backend.service.BidService;
 import com.team.backend.service.EventPublisher;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -68,6 +69,7 @@ public class BidServiceImpl implements BidService {
                 eventPublisherOptional);
     }
 
+    @Autowired
     public BidServiceImpl(AuctionRepository auctionRepository,
                           BidRepository bidRepository,
                           AutoBidRepository autoBidRepository,
