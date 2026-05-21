@@ -60,13 +60,8 @@ public class AutoBid implements Serializable {
     @Column(name = "version")
     private Long version;
 
-    public AutoBid() {
-        // JPA
-    }
+    public AutoBid() {}
 
-    /**
-     * Constructor tiện lợi.
-     */
     public AutoBid(UUID auctionId, UUID bidderId, double maxAmount) {
         this.id = UUID.randomUUID();
         this.auctionId = auctionId;

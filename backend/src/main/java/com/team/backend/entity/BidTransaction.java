@@ -14,7 +14,7 @@ public class BidTransaction {
 
     @Id
     @Column(columnDefinition = "uuid")
-    private UUID id;
+    private UUID id = UUID.randomUUID();
 
     @Column(name = "auction_id", nullable = false, columnDefinition = "uuid")
     private UUID auctionId;
@@ -26,11 +26,9 @@ public class BidTransaction {
     private double amount;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    private Instant createdAt = Instant.now();
 
-    public BidTransaction() {
-        this.id = UUID.randomUUID();
-    }
+    public BidTransaction() {}
 
     public BidTransaction(UUID auctionId, UUID bidderId, double amount, Instant createdAt) {
         this();
