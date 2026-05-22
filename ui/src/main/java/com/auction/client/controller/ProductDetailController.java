@@ -8,13 +8,28 @@ import com.auction.client.service.AuctionApiService;
 import com.auction.client.session.SessionManager;
 import com.auction.client.service.ItemApiService;
 import com.auction.client.util.MockData;
+import com.auction.client.dto.response.WalletBalanceResponse;
+import com.auction.client.service.WalletApiService;
+import com.auction.client.dto.response.BidPlacementResponse;
+import com.auction.client.dto.response.AutoBidResponse;
+
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.control.Button;
 
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
@@ -39,19 +54,30 @@ public class ProductDetailController {
     @FXML private Label bidMessageLabel;
     @FXML private Label detailUsernameLabel;
     @FXML private Label topUsernameLabel;
+    @FXML private Label balanceValueLabel;
+    @FXML private Label aboutProductLabel;
+    @FXML private Label lotIdValueLabel;
+    @FXML private Label categoryValueLabel;
+    @FXML private Label conditionValueLabel;
+    @FXML private Label estimatedValueLabel;
 
     @FXML private TextField bidAmountField;
     @FXML private Button detailFavoriteButton;
 
     private final AuctionApiService auctionApiService = new AuctionApiService();
     private final ItemApiService itemApiService = new ItemApiService();
+    private final WalletApiService walletApiService = new WalletApiService();
+
     private AuctionItem selectedItem;
+    private AuctionListResponse currentAuction;
+    private PublicItemDetailResponse currentItemDetail;
     private boolean favoriteSelected = false;
     private int favoriteCount = 36;
 
     @FXML
     public void initialize() {
         bindSessionUsername();
+        loadWalletBalance();
         selectedItem = MockData.getSelectedItem();
 
         if (selectedItem == null) {
@@ -63,10 +89,10 @@ public class ProductDetailController {
         loadAuctionDetail();
         hideBidMessage();
     }
-
     private void loadAuctionDetail() {
         try {
             AuctionListResponse response = auctionApiService.getAuctionById(selectedItem.getId());
+            currentAuction = response;
 
             try {
                 auctionApiService.trackView(selectedItem.getId());
@@ -82,15 +108,37 @@ public class ProductDetailController {
     }
 
     private void bindDetailFromApi(AuctionListResponse response) {
-        productNameLabel.setText(
-                response.getItemName() == null || response.getItemName().isBlank()
-                        ? "Unnamed Item"
-                        : response.getItemName()
+        String title = firstNonBlank(
+                response.getTitle(),
+                response.getItemName(),
+                "Unnamed Auction"
         );
 
-        currentBidLabel.setText("\u20ac " + String.format("%,.0f", response.getCurrentPrice()));
+        productNameLabel.setText(title);
+        currentBidLabel.setText(formatMoney(response.getCurrentPrice()));
         updateCountdown(response.getEndTime());
-        statusLabel.setText("No reserve price");
+
+        String sellerName = firstNonBlank(response.getSellerName(), SessionManager.getUsername(), "Seller");
+        detailUsernameLabel.setText(sellerName);
+
+        long count = response.getFavoriteCount() > 0 ? response.getFavoriteCount() : favoriteCount;
+        favoriteCount = (int) count;
+        detailFavoriteButton.setText((favoriteSelected ? "\u2665 " : "\u2661 ") + favoriteCount);
+
+        statusLabel.setText(firstNonBlank(response.getState(), "No reserve price"));
+
+        double low = response.getCurrentPrice();
+        double high = response.getMinNextBid() > low ? response.getMinNextBid() : low + 100;
+        estimatedValueLabel.setText(formatMoney(low) + " - " + formatMoney(high));
+
+        lotIdValueLabel.setText(shortId(response.getId() == null ? null : response.getId().toString()));
+        categoryValueLabel.setText(firstNonBlank(response.getCategory(), "Collectibles"));
+        conditionValueLabel.setText("Good");
+
+        aboutProductLabel.setText(firstNonBlank(
+                response.getDescription(),
+                "A beautiful collection item presented for live auction."
+        ));
 
         bindPublicItemDetail(response);
     }
@@ -121,10 +169,29 @@ public class ProductDetailController {
 
         try {
             PublicItemDetailResponse item = itemApiService.getPublicItemDetail(auction.getItemId().toString());
+            currentItemDetail = item;
 
             if (item.getProductName() != null && !item.getProductName().isBlank()) {
                 productNameLabel.setText(item.getProductName());
             }
+
+            aboutProductLabel.setText(firstNonBlank(
+                    item.getDescription(),
+                    auction.getDescription(),
+                    "A beautiful collection item presented for live auction."
+            ));
+
+            categoryValueLabel.setText(firstNonBlank(
+                    item.getCategory(),
+                    auction.getCategory(),
+                    "Collectibles"
+            ));
+
+            lotIdValueLabel.setText(shortId(
+                    item.getId() == null ? auction.getId().toString() : item.getId().toString()
+            ));
+
+            conditionValueLabel.setText(firstNonBlank(item.getStatus(), "Good"));
 
             specsLabel.setText(
                     "Item Detail:\n" +
@@ -135,7 +202,9 @@ public class ProductDetailController {
                             "- Seller ID: " + safeText(item.getSellerId() == null ? null : item.getSellerId().toString(), "N/A") + "\n\n" +
                             auctionSpecs(auction)
             );
+
             setUploadedImages(item);
+
         } catch (Exception e) {
             bindAuctionSpecsOnly(auction);
             setDefaultImages(selectedItem.getImagePath());
@@ -179,10 +248,23 @@ public class ProductDetailController {
 
     private void setDefaultImages(String imagePath) {
         try {
+            if (imagePath != null && (
+                    imagePath.startsWith("http://")
+                            || imagePath.startsWith("https://")
+                            || imagePath.startsWith("/uploads")
+                            || imagePath.startsWith("uploads/")
+            )) {
+                setRemoteImage(mainImageView, imagePath);
+                setRemoteImage(thumb1ImageView, imagePath);
+                setRemoteImage(thumb2ImageView, imagePath);
+                return;
+            }
+
             Image image = new Image(getClass().getResourceAsStream(imagePath));
             mainImageView.setImage(image);
             thumb1ImageView.setImage(image);
             thumb2ImageView.setImage(image);
+
         } catch (Exception e) {
             mainImageView.setImage(null);
             thumb1ImageView.setImage(null);
@@ -196,15 +278,18 @@ public class ProductDetailController {
             return "N/A";
         }
 
+        try {
+            return DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+                    .withZone(ZoneId.systemDefault())
+                    .format(Instant.parse(value));
+        } catch (Exception ignored) {
+        }
+
         if (value.length() >= 16) {
             return value.substring(0, 16).replace("T", " ");
         }
 
         return value;
-    }
-
-    private String safeText(String value, String fallback) {
-        return (value == null || value.isBlank()) ? fallback : value;
     }
 
     private void bindSessionUsername() {
@@ -221,6 +306,12 @@ public class ProductDetailController {
     private long resolveRemainingSeconds(String endTime) {
         if (endTime == null || endTime.isBlank()) {
             return 0;
+        }
+
+        try {
+            Instant auctionEnd = Instant.parse(endTime);
+            return Math.max(0, java.time.Duration.between(Instant.now(), auctionEnd).getSeconds());
+        } catch (Exception ignored) {
         }
 
         try {
@@ -282,6 +373,207 @@ public class ProductDetailController {
         System.out.println("selectedItem id = " + selectedItem.getId());
         SceneManager.goToLiveBidding();
     }
+
+    @FXML
+    private void handleOpenBidDialog() {
+        if (selectedItem == null || currentAuction == null) {
+            showBidMessage("Auction data is unavailable.");
+            return;
+        }
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/bid_dialog.fxml"));
+            Parent root = loader.load();
+
+            Stage stage = new Stage();
+            stage.setTitle("Place bid");
+            stage.initModality(Modality.WINDOW_MODAL);
+
+            if (productNameLabel != null && productNameLabel.getScene() != null) {
+                stage.initOwner(productNameLabel.getScene().getWindow());
+            }
+
+            Scene scene = new Scene(root);
+            addDialogStyles(scene);
+
+            BidDialogController controller = loader.getController();
+            controller.setDialogStage(stage);
+            controller.setAuction(currentAuction, this::applyBidPlacementToDetail);
+
+            stage.setScene(scene);
+            stage.setResizable(false);
+            stage.showAndWait();
+
+        } catch (Exception e) {
+            showBidMessage("Cannot open bid dialog: " + e.getMessage());
+        }
+    }
+
+    private AuctionListResponse resolveAuctionForDialog() {
+        if (currentAuction != null) {
+            return currentAuction;
+        }
+
+        AuctionListResponse demoAuction = new AuctionListResponse();
+        demoAuction.setTitle(selectedItem == null ? "Demo Auction" : selectedItem.getName());
+
+        double currentPrice = parseMoneyForDialog(
+                currentBidLabel == null ? "0" : currentBidLabel.getText()
+        );
+
+        demoAuction.setCurrentPrice(currentPrice);
+        demoAuction.setMinNextBid(currentPrice + 50);
+
+        return demoAuction;
+    }
+
+    private void applyAutoBidToDetail(AutoBidResponse response) {
+        if (response == null) {
+            return;
+        }
+
+        showBidSuccess("Auto-Bid is running up to " + formatMoney(response.getMaxAmount()) + ".");
+    }
+
+    private void applyBidPlacementToDetail(BidPlacementResponse response) {
+        if (response == null) {
+            return;
+        }
+
+        if (currentAuction != null) {
+            currentAuction.setCurrentPrice(response.getCurrentPrice());
+            currentAuction.setMinNextBid(response.getMinNextBid());
+            currentAuction.setState(response.getState());
+            currentAuction.setEndTime(response.getEndTime());
+        }
+
+        currentBidLabel.setText(formatMoney(response.getCurrentPrice()));
+        statusLabel.setText(firstNonBlank(response.getState(), "Bid placed"));
+
+        if (response.getEndTime() != null && !response.getEndTime().isBlank()) {
+            updateCountdown(response.getEndTime());
+        }
+
+        double low = response.getCurrentPrice();
+        double high = response.getMinNextBid() > low ? response.getMinNextBid() : low + 100;
+        estimatedValueLabel.setText(formatMoney(low) + " - " + formatMoney(high));
+
+        showBidSuccess("Bid placed successfully.");
+    }
+
+    @FXML
+    private void handleGoToForYou() {
+        SceneManager.goToShowroom();
+    }
+
+    @FXML
+    private void handleGoToTrending() {
+        SceneManager.goToTrending();
+    }
+
+    @FXML
+    private void handleOpenWallet() {
+        SceneManager.goToWallet();
+    }
+
+    @FXML
+    private void handleGoToArt() {
+        SceneManager.goToCategory("Art");
+    }
+
+    @FXML
+    private void handleGoToJewellery() {
+        SceneManager.goToCategory("Jewellery");
+    }
+
+    @FXML
+    private void handleGoToWatches() {
+        SceneManager.goToCategory("Watches");
+    }
+
+    @FXML
+    private void handleGoToFashion() {
+        SceneManager.goToCategory("Fashion");
+    }
+
+    @FXML
+    private void handleOpenAutoBid() {
+        if (selectedItem == null) {
+            showBidMessage("No selected auction.");
+            return;
+        }
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/auto_bid_dialog.fxml"));
+            Parent root = loader.load();
+
+            Stage stage = new Stage();
+            stage.setTitle("Auto-Bid");
+            stage.initModality(Modality.WINDOW_MODAL);
+
+            if (productNameLabel != null && productNameLabel.getScene() != null) {
+                stage.initOwner(productNameLabel.getScene().getWindow());
+            }
+
+            Scene scene = new Scene(root);
+            addDialogStyles(scene);
+
+            AutoBidDialogController controller = loader.getController();
+
+            AuctionListResponse auctionForDialog = resolveAuctionForDialog();
+            boolean demoMode = currentAuction == null || currentAuction.getId() == null;
+
+            controller.setDialogStage(stage);
+            controller.setAuction(auctionForDialog, demoMode, this::applyAutoBidToDetail);
+
+            stage.setScene(scene);
+            stage.setResizable(false);
+            stage.showAndWait();
+
+        } catch (Exception e) {
+            showBidMessage("Cannot open auto-bid dialog: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handleViewChart() {
+        if (selectedItem == null) {
+            showBidMessage("No selected auction.");
+            return;
+        }
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/bid_history_dialog.fxml"));
+            Parent root = loader.load();
+
+            Stage stage = new Stage();
+            stage.setTitle("Bid History");
+            stage.initModality(Modality.WINDOW_MODAL);
+
+            if (productNameLabel != null && productNameLabel.getScene() != null) {
+                stage.initOwner(productNameLabel.getScene().getWindow());
+            }
+
+            Scene scene = new Scene(root);
+            addDialogStyles(scene);
+
+            BidHistoryDialogController controller = loader.getController();
+
+            AuctionListResponse auctionForDialog = resolveAuctionForDialog();
+            boolean demoMode = currentAuction == null || currentAuction.getId() == null;
+
+            controller.setDialogStage(stage);
+            controller.setAuction(auctionForDialog, demoMode);
+
+            stage.setScene(scene);
+            stage.setResizable(false);
+            stage.showAndWait();
+
+        } catch (Exception e) {
+            showBidMessage("Cannot open bid history: " + e.getMessage());
+        }
+    }
+
     @FXML
     private void handleToggleFavorite() {
         favoriteSelected = !favoriteSelected;
@@ -328,6 +620,90 @@ public class ProductDetailController {
         }
 
         showBidSuccess("Quick bid validation passed (detail screen only). Real bid will be in Block 5.");
+    }
+
+    private void loadWalletBalance() {
+        if (balanceValueLabel == null) {
+            return;
+        }
+
+        if (!SessionManager.isAuthenticated()) {
+            balanceValueLabel.setText(formatMoney(BigDecimal.ZERO));
+            return;
+        }
+
+        try {
+            WalletBalanceResponse balance = walletApiService.getBalance();
+            balanceValueLabel.setText(formatMoney(balance.getBalance()));
+        } catch (Exception e) {
+            balanceValueLabel.setText(formatMoney(BigDecimal.ZERO));
+        }
+    }
+
+    private String formatMoney(double value) {
+        return "\u20ac " + String.format("%,.0f", value);
+    }
+
+    private String formatMoney(BigDecimal value) {
+        return "\u20ac " + (value == null ? "0" : String.format("%,.0f", value.doubleValue()));
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return "";
+        }
+
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+
+        return "";
+    }
+
+    private String safeText(String value, String fallback) {
+        return (value == null || value.isBlank()) ? fallback : value;
+    }
+
+    private String shortId(String id) {
+        if (id == null || id.isBlank()) {
+            return "N/A";
+        }
+
+        return id.length() > 8 ? id.substring(0, 8) : id;
+    }
+
+    private void addDialogStyles(Scene scene) {
+        addStylesheet(scene, "/css/app.css");
+        addStylesheet(scene, "/css/components.css");
+        addStylesheet(scene, "/css/product_detail.css");
+    }
+
+    private void addStylesheet(Scene scene, String path) {
+        try {
+            String css = getClass().getResource(path).toExternalForm();
+            scene.getStylesheets().add(css);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private double parseMoneyForDialog(String text) {
+        if (text == null || text.isBlank()) {
+            return 0;
+        }
+
+        String normalized = text.replaceAll("[^0-9.]", "");
+
+        if (normalized.isBlank()) {
+            return 0;
+        }
+
+        try {
+            return Double.parseDouble(normalized);
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private void showBidMessage(String message) {
