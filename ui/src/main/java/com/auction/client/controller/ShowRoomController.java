@@ -82,14 +82,28 @@ public class ShowRoomController {
     private void loadAuctionList() {
         try {
             List<AuctionListResponse> responses = auctionApiService.getAuctions().getItems();
+
             items.clear();
+
             for (int i = 0; i < Math.min(3, responses.size()); i++) {
                 items.add(mapToAuctionItem(responses.get(i), i));
             }
+
+            if (items.isEmpty()) {
+                loadMockAuctionsForDemo();
+            }
+
             bindCards();
+
         } catch (Exception e) {
-            showFallbackState("Cannot load auctions.");
+            loadMockAuctionsForDemo();
+            bindCards();
         }
+    }
+
+    private void loadMockAuctionsForDemo() {
+        items.clear();
+        items.addAll(MockData.getMockAuctionItems());
     }
 
     private AuctionItem mapToAuctionItem(AuctionListResponse response, int index) {

@@ -29,20 +29,20 @@
 
                     <MenuButton focusTraversable="false" styleClass="market-category-menu" text="Categories">
                         <items>
-                            <MenuItem text="Art" />
-                            <MenuItem text="Jewellery" />
-                            <MenuItem text="Watches" />
-                            <MenuItem text="Fashion" />
+                            <MenuItem text="Art" onAction="#handleGoToArt" />
+                            <MenuItem text="Jewellery" onAction="#handleGoToJewellery" />
+                            <MenuItem text="Watches" onAction="#handleGoToWatches" />
+                            <MenuItem text="Fashion" onAction="#handleGoToFashion" />
                         </items>
                     </MenuButton>
 
-                    <Button focusTraversable="false" onAction="#handleBack" styleClass="market-nav-link" text="For you" />
+                    <Button focusTraversable="false" onAction="#handleGoToForYou" styleClass="market-nav-link" text="For you" />
 
-                    <Button focusTraversable="false" styleClass="market-nav-link" text="Trending" />
+                    <Button focusTraversable="false" onAction="#handleGoToTrending" styleClass="market-nav-link" text="Trending" />
 
                     <TextField focusTraversable="false" promptText="Search jewelry, watches, art ..." styleClass="market-search" HBox.hgrow="ALWAYS" />
 
-                    <Button focusTraversable="false" styleClass="market-wallet-button" text="Wallet" />
+                    <Button focusTraversable="false" onAction="#handleOpenWallet" styleClass="market-wallet-button" text="Wallet" />
 
                     <Button focusTraversable="false" styleClass="market-icon-button" text="♡" />
 
@@ -97,7 +97,7 @@
                                         <Label styleClass="detail-mini-label" text="YOUR BALANCE" />
 
                                         <HBox alignment="CENTER_LEFT">
-                                            <Label styleClass="detail-balance-value" text="€ 5,000" HBox.hgrow="ALWAYS" />
+                                            <Label fx:id="balanceValueLabel" styleClass="detail-balance-value" text="€ 0" HBox.hgrow="ALWAYS" />
 
                                             <Label styleClass="detail-wallet-icon" text="▣" />
                                         </HBox>
@@ -143,7 +143,7 @@
 
                                         <Label styleClass="detail-mini-label" text="ESTIMATED" />
 
-                                        <Label styleClass="detail-estimated-value" text="€ 800 - € 1,200" />
+                                        <Label fx:id="estimatedValueLabel" styleClass="detail-estimated-value" text="€ 0 - € 0" />
                                     </VBox>
 
                                     <Label fx:id="specsLabel" managed="false" styleClass="detail-specs" text="Estimated price and auction metadata" visible="false" wrapText="true" />
@@ -156,11 +156,26 @@
 
                                     <VBox spacing="8.0" styleClass="detail-actions">
 
-                                        <Button maxWidth="Infinity" onAction="#handleJoinLiveBidding" prefHeight="35.0" prefWidth="360.0" styleClass="detail-place-button detail-action-button" text="Place Bid" />
+                                        <Button maxWidth="Infinity"
+                                                onAction="#handleOpenBidDialog"
+                                                prefHeight="35.0"
+                                                prefWidth="360.0"
+                                                styleClass="detail-place-button detail-action-button"
+                                                text="Place Bid" />
 
-                                        <Button maxWidth="Infinity" onAction="#handleJoinLiveBidding" prefHeight="35.0" prefWidth="360.0" styleClass="detail-auto-button detail-action-button" text="⚡ Auto-Bid" />
+                                        <Button maxWidth="Infinity"
+                                                onAction="#handleOpenAutoBid"
+                                                prefHeight="35.0"
+                                                prefWidth="360.0"
+                                                styleClass="detail-auto-button detail-action-button"
+                                                text="⚡ Auto-Bid" />
 
-                                        <Button maxWidth="Infinity" onAction="#handleJoinLiveBidding" prefHeight="35.0" prefWidth="360.0" styleClass="detail-chart-button detail-action-button" text="↗ View Chart" />
+                                        <Button maxWidth="Infinity"
+                                                onAction="#handleViewChart"
+                                                prefHeight="35.0"
+                                                prefWidth="360.0"
+                                                styleClass="detail-chart-button detail-action-button"
+                                                text="↗ View Chart" />
                                     </VBox>
 
                                     <Label fx:id="bidMessageLabel" styleClass="detail-bid-message" text="" wrapText="true" />
@@ -173,7 +188,10 @@
                             <VBox spacing="10.0" styleClass="detail-about-section">
                                 <Label styleClass="detail-section-title" text="About this product" />
 
-                                <Label styleClass="detail-body-text" text="A beautiful collection item presented for live auction. Description from backend will be shown here when detail API returns full product information." wrapText="true" />
+                                <Label fx:id="aboutProductLabel"
+                                       styleClass="detail-body-text"
+                                       text="A beautiful collection item presented for live auction."
+                                       wrapText="true" />
 
                             </VBox>
 
@@ -189,9 +207,11 @@
                                     </VBox>
 
                                     <VBox spacing="8.0">
-                                        <Label styleClass="detail-detail-value" text="N/A" />
-                                        <Label styleClass="detail-detail-value" text="N/A" />
-                                        <Label styleClass="detail-detail-value" text="Good" />
+                                        <VBox spacing="8.0">
+                                            <Label fx:id="lotIdValueLabel" styleClass="detail-detail-value" text="N/A" />
+                                            <Label fx:id="categoryValueLabel" styleClass="detail-detail-value" text="N/A" />
+                                            <Label fx:id="conditionValueLabel" styleClass="detail-detail-value" text="Good" />
+                                        </VBox>
                                     </VBox>
                                 </HBox>
 

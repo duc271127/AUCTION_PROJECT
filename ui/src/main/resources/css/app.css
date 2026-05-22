@@ -1,55 +1,126 @@
 .root {
-    -bw-primary: #0a66c2;
-    -bw-primary-hover: #004f9f;
-    -bw-primary-soft: #e8f2ff;
-    -bw-secondary: #111827;
-    -bw-background: #f5f7fb;
-    -bw-surface: #ffffff;
-    -bw-surface-soft: #f3f4f6;
-    -bw-border: #d8dde8;
-    -bw-border-strong: #aeb7c8;
-    -bw-text: #111827;
-    -bw-text-muted: #5f6b7a;
-    -bw-text-soft: #8a94a6;
-    -bw-danger: #dc2626;
-    -bw-danger-soft: #fee2e2;
-    -bw-success: #15803d;
-    -bw-success-soft: #dcfce7;
-    -bw-warning: #b45309;
-    -bw-warning-soft: #fef3c7;
-    -bw-info: #1d4ed8;
-    -bw-info-soft: #dbeafe;
-    -bw-shadow-color: rgba(15, 23, 42, 0.10);
-    -fx-font-family: "Segoe UI", "Arial", sans-serif;
-    -fx-text-fill: -bw-text;
+    -auction-primary: #0047ff;
+    -auction-primary-hover: #003bd6;
+    -auction-primary-soft: #eef4ff;
+
+    -auction-bg: #fafafa;
+    -auction-bg-soft: #f5f6f8;
+    -auction-surface: #ffffff;
+    -auction-surface-soft: #f2f2f2;
+
+    -auction-text: #222222;
+    -auction-text-strong: #111111;
+    -auction-text-muted: #8a8a8a;
+    -auction-text-soft: #a3a3a3;
+
+    -auction-border: #e5e7eb;
+    -auction-border-strong: #d1d5db;
+
+    -auction-success: #16a34a;
+    -auction-success-soft: #dcfce7;
+
+    -auction-warning: #ca8a04;
+    -auction-warning-soft: #fef9c3;
+
+    -auction-danger: #dc2626;
+    -auction-danger-soft: #fee2e2;
+
+    -auction-info: #2563eb;
+    -auction-info-soft: #dbeafe;
+
+    -auction-shadow: rgba(15, 23, 42, 0.08);
+
+    /* Alias cũ để các màn hiện tại không bị vỡ */
+    -bw-primary: -auction-primary;
+    -bw-primary-hover: -auction-primary-hover;
+    -bw-primary-soft: -auction-primary-soft;
+    -bw-secondary: -auction-text;
+    -bw-background: -auction-bg;
+    -bw-surface: -auction-surface;
+    -bw-surface-soft: -auction-surface-soft;
+    -bw-border: -auction-border;
+    -bw-border-strong: -auction-border-strong;
+    -bw-text: -auction-text;
+    -bw-text-muted: -auction-text-muted;
+    -bw-text-soft: -auction-text-soft;
+    -bw-danger: -auction-danger;
+    -bw-danger-soft: -auction-danger-soft;
+    -bw-success: -auction-success;
+    -bw-success-soft: -auction-success-soft;
+    -bw-warning: -auction-warning;
+    -bw-warning-soft: -auction-warning-soft;
+    -bw-info: -auction-info;
+    -bw-info-soft: -auction-info-soft;
+    -bw-shadow-color: -auction-shadow;
+
+    -fx-font-family: "Inter", "Segoe UI", "Arial", sans-serif;
+    -fx-text-fill: -auction-text;
+    -fx-background-color: -auction-bg;
 }
 
-.root-pane {
-    -fx-background-color: linear-gradient(to bottom right, #14213d, #2d4f9f);
-}
+/* =========================
+   Page base
+========================= */
 
+.root-pane,
 .app-background {
-    -fx-background-color: -bw-background;
+    -fx-background-color: -auction-bg;
 }
 
 .surface {
-    -fx-background-color: -bw-surface;
+    -fx-background-color: -auction-surface;
 }
+
+.page-container {
+    -fx-background-color: -auction-surface;
+    -fx-padding: 32;
+}
+
+.page-title {
+    -fx-text-fill: -auction-text;
+    -fx-font-size: 32px;
+    -fx-font-weight: 800;
+}
+
+.page-subtitle {
+    -fx-text-fill: -auction-text-muted;
+    -fx-font-size: 14px;
+}
+
+.section-title {
+    -fx-text-fill: -auction-text;
+    -fx-font-size: 22px;
+    -fx-font-weight: 800;
+}
+
+.section-subtitle {
+    -fx-text-fill: -auction-text-muted;
+    -fx-font-size: 14px;
+}
+
+.muted-text {
+    -fx-text-fill: -auction-text-muted;
+    -fx-font-size: 13px;
+}
+
+/* =========================
+   Form controls
+========================= */
 
 .text-field,
 .password-field,
 .text-area,
 .combo-box,
 .date-picker {
-    -fx-background-color: -bw-surface-soft;
-    -fx-background-radius: 8;
-    -fx-border-radius: 8;
+    -fx-background-color: -auction-surface-soft;
+    -fx-background-radius: 7;
+    -fx-border-radius: 7;
     -fx-border-color: transparent;
     -fx-border-width: 1;
-    -fx-padding: 10 12;
-    -fx-font-size: 14px;
-    -fx-text-fill: -bw-text;
-    -fx-prompt-text-fill: -bw-text-soft;
+    -fx-padding: 9 12;
+    -fx-font-size: 13px;
+    -fx-text-fill: -auction-text;
+    -fx-prompt-text-fill: -auction-text-soft;
 }
 
 .text-field:hover,
@@ -57,7 +128,7 @@
 .text-area:hover,
 .combo-box:hover,
 .date-picker:hover {
-    -fx-border-color: -bw-border;
+    -fx-border-color: -auction-border;
 }
 
 .text-field:focused,
@@ -65,144 +136,158 @@
 .text-area:focused,
 .combo-box:focused,
 .date-picker:focused {
-    -fx-background-color: -bw-surface;
-    -fx-border-color: -bw-primary;
+    -fx-background-color: -auction-surface;
+    -fx-border-color: -auction-primary;
 }
 
 .text-area .content {
     -fx-background-color: transparent;
-    -fx-background-radius: 8;
+    -fx-background-radius: 7;
 }
 
 .combo-box > .list-cell {
     -fx-padding: 0 12;
     -fx-alignment: CENTER_LEFT;
-    -fx-text-fill: -bw-text;
+    -fx-text-fill: -auction-text;
 }
+
+.field-label {
+    -fx-text-fill: -auction-text;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+}
+
+.form-title {
+    -fx-text-fill: -auction-text;
+    -fx-font-size: 28px;
+    -fx-font-weight: 800;
+}
+
+.form-subtitle {
+    -fx-text-fill: -auction-text-muted;
+    -fx-font-size: 14px;
+}
+
+/* =========================
+   Buttons
+========================= */
 
 .button {
     -fx-cursor: hand;
 }
 
 .primary-button {
-    -fx-background-color: -bw-primary;
+    -fx-background-color: -auction-primary;
     -fx-text-fill: white;
-    -fx-font-size: 14px;
-    -fx-font-weight: 700;
-    -fx-background-radius: 999;
-    -fx-border-radius: 999;
+    -fx-font-size: 13px;
+    -fx-font-weight: 800;
+    -fx-background-radius: 7;
+    -fx-border-radius: 7;
     -fx-border-color: transparent;
-    -fx-padding: 11 20;
+    -fx-padding: 10 18;
 }
 
 .primary-button:hover {
-    -fx-background-color: -bw-primary-hover;
+    -fx-background-color: -auction-primary-hover;
 }
 
 .primary-button:disabled {
     -fx-opacity: 1;
-    -fx-background-color: #e5e7eb;
-    -fx-text-fill: #8b95a5;
+    -fx-background-color: #f1f1f1;
+    -fx-text-fill: #9ca3af;
 }
 
-.secondary-button {
-    -fx-background-color: -bw-surface;
-    -fx-text-fill: -bw-secondary;
-    -fx-font-size: 14px;
-    -fx-font-weight: 700;
-    -fx-background-radius: 999;
-    -fx-border-radius: 999;
-    -fx-border-color: -bw-border-strong;
+.secondary-button,
+.outline-button {
+    -fx-background-color: -auction-surface;
+    -fx-text-fill: -auction-text;
+    -fx-font-size: 13px;
+    -fx-font-weight: 800;
+    -fx-background-radius: 7;
+    -fx-border-radius: 7;
+    -fx-border-color: -auction-border;
     -fx-border-width: 1;
-    -fx-padding: 10 18;
+    -fx-padding: 9 16;
 }
 
-.secondary-button:hover {
-    -fx-background-color: -bw-surface-soft;
+.secondary-button:hover,
+.outline-button:hover {
+    -fx-background-color: -auction-bg-soft;
+    -fx-border-color: -auction-primary;
+    -fx-text-fill: -auction-primary;
+}
+
+.ghost-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: -auction-primary;
+    -fx-font-size: 13px;
+    -fx-font-weight: 800;
+    -fx-background-radius: 7;
+    -fx-padding: 8 12;
+}
+
+.ghost-button:hover {
+    -fx-background-color: -auction-primary-soft;
 }
 
 .danger-button {
-    -fx-background-color: -bw-danger;
+    -fx-background-color: -auction-danger;
     -fx-text-fill: white;
-    -fx-font-size: 14px;
-    -fx-font-weight: 700;
-    -fx-background-radius: 999;
-    -fx-border-radius: 999;
+    -fx-font-size: 13px;
+    -fx-font-weight: 800;
+    -fx-background-radius: 7;
+    -fx-border-radius: 7;
     -fx-border-color: transparent;
-    -fx-padding: 10 18;
+    -fx-padding: 9 16;
 }
 
 .danger-button:hover {
     -fx-background-color: #b91c1c;
 }
 
-.ghost-button {
+.icon-button {
     -fx-background-color: transparent;
-    -fx-text-fill: -bw-primary;
-    -fx-font-size: 14px;
-    -fx-font-weight: 700;
+    -fx-text-fill: -auction-primary;
+    -fx-font-size: 18px;
+    -fx-font-weight: 800;
+    -fx-padding: 5 8;
+}
+
+.icon-button:hover {
+    -fx-background-color: -auction-primary-soft;
     -fx-background-radius: 999;
-    -fx-padding: 8 12;
 }
 
-.ghost-button:hover {
-    -fx-background-color: -bw-primary-soft;
-}
-
-.field-label {
-    -fx-text-fill: -bw-text-muted;
-    -fx-font-size: 13px;
-    -fx-font-weight: 700;
-}
+/* =========================
+   Labels
+========================= */
 
 .error-label {
-    -fx-text-fill: -bw-danger;
+    -fx-text-fill: -auction-danger;
     -fx-font-size: 13px;
     -fx-wrap-text: true;
 }
 
 .success-label {
-    -fx-text-fill: -bw-success;
+    -fx-text-fill: -auction-success;
     -fx-font-size: 13px;
     -fx-font-weight: 700;
     -fx-wrap-text: true;
 }
 
+.info-label {
+    -fx-text-fill: -auction-primary;
+    -fx-font-size: 13px;
+    -fx-wrap-text: true;
+}
+
 .title-label {
-    -fx-text-fill: white;
+    -fx-text-fill: -auction-text;
     -fx-font-size: 32px;
     -fx-font-weight: 800;
 }
 
 .subtitle-label {
-    -fx-text-fill: #dbeafe;
+    -fx-text-fill: -auction-text-muted;
     -fx-font-size: 16px;
-}
-
-.form-title {
-    -fx-text-fill: -bw-text;
-    -fx-font-size: 28px;
-    -fx-font-weight: 800;
-}
-
-.form-subtitle {
-    -fx-text-fill: -bw-text-muted;
-    -fx-font-size: 14px;
-}
-
-.section-title {
-    -fx-text-fill: -bw-text;
-    -fx-font-size: 22px;
-    -fx-font-weight: 800;
-}
-
-.page-title {
-    -fx-text-fill: -bw-text;
-    -fx-font-size: 30px;
-    -fx-font-weight: 800;
-}
-
-.page-subtitle {
-    -fx-text-fill: -bw-text-muted;
-    -fx-font-size: 14px;
 }
