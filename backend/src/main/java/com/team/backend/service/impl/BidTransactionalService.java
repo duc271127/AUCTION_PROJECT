@@ -10,6 +10,7 @@ import com.team.backend.exception.ResourceNotFoundException;
 import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.AutoBidRepository;
 import com.team.backend.repository.BidRepository;
+import com.team.backend.repository.WalletRepository;
 import com.team.backend.service.EventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -32,16 +34,19 @@ public class BidTransactionalService {
     private final AuctionRepository auctionRepository;
     private final BidRepository bidRepository;
     private final AutoBidRepository autoBidRepository;
+    private final WalletRepository walletRepository;
 
     public BidTransactionalService(AuctionRepository auctionRepository,
                                    BidRepository bidRepository,
-                                   AutoBidRepository autoBidRepository) {
+                                   AutoBidRepository autoBidRepository,
+                                   WalletRepository walletRepository) {
         this.auctionRepository = auctionRepository;
         this.bidRepository = bidRepository;
         this.autoBidRepository = autoBidRepository;
+        this.walletRepository = walletRepository;
     }
 
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(isolation = Isolation.READ_COMMITTED, noRollbackFor = AuctionClosedException.class)
     public BidTransaction placeBidTransactionalAttempt(UUID auctionId,
                                                        UUID bidderId,
                                                        double amount,
@@ -52,15 +57,9 @@ public class BidTransactionalService {
         Auction auction = auctionRepository.findByIdForUpdate(auctionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));
 
-        validateAuctionForBidTransactional(auction);
+        validateAuctionForBidTransactional(auction, bidderId, amount, eventPublisher);
 
         Instant now = Instant.now();
-        if (auction.getEndTime() != null && now.isAfter(auction.getEndTime())) {
-            auction.setState(AuctionState.FINISHED);
-            auction.setWinnerId(auction.getLeaderId());
-            auctionRepository.save(auction);
-            throw new AuctionClosedException("Auction has ended");
-        }
 
         double minAllowed = auction.getCurrentPrice() + minIncrement;
         if (amount < minAllowed) {
@@ -120,7 +119,10 @@ public class BidTransactionalService {
         return savedManualTx;
     }
 
-    private void validateAuctionForBidTransactional(Auction auction) {
+    private void validateAuctionForBidTransactional(Auction auction,
+                                                    UUID bidderId,
+                                                    double amount,
+                                                    EventPublisher eventPublisher) {
         if (auction == null) {
             throw new ResourceNotFoundException("Auction is missing");
         }
@@ -130,8 +132,31 @@ public class BidTransactionalService {
         if (auction.getState() == AuctionState.FINISHED || auction.getState() == AuctionState.CANCELLED) {
             throw new AuctionClosedException("Auction is closed");
         }
-        if (auction.getStartTime() != null && Instant.now().isBefore(auction.getStartTime())) {
+
+        UUID sellerId = auction.getSellerId() != null ? auction.getSellerId() : auction.getCreatedBy();
+        if (sellerId != null && sellerId.equals(bidderId)) {
+            throw new InvalidBidException("Seller cannot bid on their own auction");
+        }
+
+        ensureSufficientBalance(bidderId, amount);
+
+        Instant now = Instant.now();
+        if (auction.getStartTime() != null && now.isBefore(auction.getStartTime())) {
             throw new InvalidBidException("Auction has not started");
+        }
+        if (auction.getEndTime() != null && !now.isBefore(auction.getEndTime())) {
+            auction.setState(AuctionState.FINISHED);
+            auction.setWinnerId(auction.getLeaderId());
+            auctionRepository.save(auction);
+            registerAuctionClosedAfterCommit(auction, eventPublisher);
+            throw new AuctionClosedException("Auction has ended");
+        }
+        if (auction.getState() == AuctionState.SCHEDULED && auction.getStartTime() != null && !now.isBefore(auction.getStartTime())) {
+            auction.setState(AuctionState.ACTIVE);
+            auctionRepository.save(auction);
+        }
+        if (auction.getState() != AuctionState.ACTIVE) {
+            throw new InvalidBidException("Auction is not active");
         }
     }
 
@@ -198,5 +223,38 @@ public class BidTransactionalService {
         }
 
         return true;
+    }
+
+    private void ensureSufficientBalance(UUID bidderId, double amount) {
+        BigDecimal required = BigDecimal.valueOf(amount);
+        BigDecimal balance = walletRepository.findByUserId(bidderId)
+                .map(wallet -> wallet.getBalance() == null ? BigDecimal.ZERO : wallet.getBalance())
+                .orElse(BigDecimal.ZERO);
+
+        if (balance.compareTo(required) < 0) {
+            throw new InvalidBidException("Insufficient wallet balance for this bid");
+        }
+    }
+
+    private void registerAuctionClosedAfterCommit(Auction auction, EventPublisher eventPublisher) {
+        if (eventPublisher == null || auction == null || !TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+
+        final UUID eventAuctionId = auction.getId();
+        final UUID eventWinnerId = auction.getWinnerId();
+        final double eventFinalPrice = auction.getCurrentPrice();
+        final Instant eventTimestamp = Instant.now();
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    eventPublisher.publishAuctionClosed(eventAuctionId, eventWinnerId, eventFinalPrice, eventTimestamp);
+                } catch (Exception e) {
+                    log.warn("Failed to publish auction closed event for auction {}", eventAuctionId, e);
+                }
+            }
+        });
     }
 }

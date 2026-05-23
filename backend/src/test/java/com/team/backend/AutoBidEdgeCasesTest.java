@@ -7,6 +7,7 @@ import com.team.backend.entity.BidTransaction;
 import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.AutoBidRepository;
 import com.team.backend.repository.BidRepository;
+import com.team.backend.repository.WalletRepository;
 import com.team.backend.service.impl.BidTransactionalService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,14 +33,17 @@ class AutoBidEdgeCasesTest {
     private BidRepository bidRepository;
     private AutoBidRepository autoBidRepository;
     private BidTransactionalService bidTransactionalService;
+    private WalletRepository walletRepository;
 
     @BeforeEach
     void setUp() {
         auctionRepository = mock(AuctionRepository.class);
         bidRepository = mock(BidRepository.class);
         autoBidRepository = mock(AutoBidRepository.class);
+        walletRepository = mock(WalletRepository.class);
 
-        bidTransactionalService = new BidTransactionalService(auctionRepository, bidRepository, autoBidRepository);
+        bidTransactionalService = new BidTransactionalService(auctionRepository, bidRepository, autoBidRepository, walletRepository);
+        when(walletRepository.findByUserId(any(UUID.class))).thenReturn(Optional.of(walletWithBalance("1000.00")));
     }
 
     @Test
@@ -101,5 +105,11 @@ class AutoBidEdgeCasesTest {
         // final leader should be high bidder and price should be <= high.maxAmount
         assertEquals(high.getBidderId(), auction.getLeaderId());
         assertTrue(auction.getCurrentPrice() <= high.getMaxAmount());
+    }
+
+    private com.team.backend.entity.Wallet walletWithBalance(String balance) {
+        com.team.backend.entity.Wallet wallet = new com.team.backend.entity.Wallet();
+        wallet.setBalance(new java.math.BigDecimal(balance));
+        return wallet;
     }
 }

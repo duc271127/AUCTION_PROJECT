@@ -14,6 +14,7 @@ import com.team.backend.exception.InvalidBidException;
 import com.team.backend.exception.ResourceNotFoundException;
 import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.BidRepository;
+import com.team.backend.repository.WalletRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,6 +44,7 @@ class BidServiceImplTest {
     private AutoBidRepository autoBidRepository;
     private BidTransactionalService bidTransactionalService;
     private EventPublisher eventPublisher;
+    private WalletRepository walletRepository;
 
 
     @BeforeEach
@@ -51,11 +53,13 @@ class BidServiceImplTest {
         bidRepository = mock(BidRepository.class);
         autoBidRepository = mock(AutoBidRepository.class);
         eventPublisher = mock(EventPublisher.class);
+        walletRepository = mock(WalletRepository.class);
 
         BidTransactionalService realTransactionalService = new BidTransactionalService(
                 auctionRepository,
                 bidRepository,
-                autoBidRepository
+                autoBidRepository,
+                walletRepository
         );
 
         Object transactionalLock = new Object();
@@ -87,6 +91,7 @@ class BidServiceImplTest {
                 auctionRepository,
                 bidRepository,
                 autoBidRepository,
+                walletRepository,
                 bidTransactionalService,
                 minIncrement,
                 30,
@@ -94,6 +99,8 @@ class BidServiceImplTest {
                 3,
                 Optional.of(eventPublisher)
         );
+
+        lenient().when(walletRepository.findByUserId(any(UUID.class))).thenReturn(Optional.of(walletWithBalance("1000.00")));
     }
 
     @Test
@@ -238,5 +245,11 @@ class BidServiceImplTest {
         assertTrue(auction.getEndTime().isAfter(originalEndTime));
         assertEquals(12.0, auction.getCurrentPrice());
         assertEquals(bidderId, auction.getLeaderId());
+    }
+
+    private com.team.backend.entity.Wallet walletWithBalance(String balance) {
+        com.team.backend.entity.Wallet wallet = new com.team.backend.entity.Wallet();
+        wallet.setBalance(new java.math.BigDecimal(balance));
+        return wallet;
     }
 }

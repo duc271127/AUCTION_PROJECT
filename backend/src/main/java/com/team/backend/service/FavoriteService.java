@@ -32,6 +32,8 @@ public class FavoriteService {
             throw new BusinessRuleException("userId and auctionId are required");
         }
 
+        auctionService.getAuction(auctionId);
+
         if (favoriteRepository.existsByUserIdAndAuctionId(userId, auctionId)) {
             return;
         }

@@ -2,8 +2,10 @@ package com.team.backend;
 
 import com.team.backend.entity.Auction;
 import com.team.backend.entity.AuctionState;
+import com.team.backend.entity.Wallet;
 import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.BidRepository;
+import com.team.backend.repository.WalletRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,6 +47,9 @@ public class BidConcurrencyIT {
     private BidRepository bidRepository;
 
     @Autowired
+    private WalletRepository walletRepository;
+
+    @Autowired
     private com.team.backend.service.BidService bidService;
 
     private UUID auctionId;
@@ -65,6 +70,7 @@ public class BidConcurrencyIT {
     void cleanup() {
         bidRepository.deleteAll();
         auctionRepository.deleteAll();
+        walletRepository.deleteAll();
     }
 
     @Test
@@ -82,7 +88,12 @@ public class BidConcurrencyIT {
                 futures[i] = ex.submit(() -> {
                     start.await();
                     try {
-                        bidService.placeBid(auctionId, UUID.randomUUID(), bids[idx]);
+                        UUID bidderId = UUID.randomUUID();
+                        Wallet wallet = new Wallet();
+                        wallet.setUserId(bidderId);
+                        wallet.setBalance(new java.math.BigDecimal("1000.00"));
+                        walletRepository.save(wallet);
+                        bidService.placeBid(auctionId, bidderId, bids[idx]);
                         return true;
                     } catch (Exception exx) {
                         return false;

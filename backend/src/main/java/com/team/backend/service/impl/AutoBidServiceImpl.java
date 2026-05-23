@@ -1,11 +1,13 @@
 package com.team.backend.service.impl;
 
 import com.team.backend.entity.Auction;
+import com.team.backend.entity.AuctionState;
 import com.team.backend.entity.AutoBid;
 import com.team.backend.exception.InvalidBidException;
 import com.team.backend.exception.ResourceNotFoundException;
 import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.AutoBidRepository;
+import com.team.backend.repository.WalletRepository;
 import com.team.backend.service.AutoBidService;
 import com.team.backend.service.EventPublisher;
 import org.slf4j.Logger;
@@ -14,6 +16,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -25,14 +28,15 @@ public class AutoBidServiceImpl implements AutoBidService {
 
     private final AutoBidRepository autoBidRepository;
     private final AuctionRepository auctionRepository;
-    private final EventPublisher eventPublisher;
+    private final WalletRepository walletRepository;
 
     public AutoBidServiceImpl(AutoBidRepository autoBidRepository,
                               AuctionRepository auctionRepository,
+                              WalletRepository walletRepository,
                               ObjectProvider<EventPublisher> eventPublisherProvider) {
         this.autoBidRepository = autoBidRepository;
         this.auctionRepository = auctionRepository;
-        this.eventPublisher = eventPublisherProvider.getIfAvailable();
+        this.walletRepository = walletRepository;
     }
 
     @Override
@@ -57,6 +61,23 @@ public class AutoBidServiceImpl implements AutoBidService {
                         || "CANCELLED".equalsIgnoreCase(auction.getState().name()))) {
             throw new InvalidBidException("Cannot enable auto-bid on a closed auction");
         }
+        if (auction.getState() != AuctionState.ACTIVE && auction.getState() != AuctionState.SCHEDULED) {
+            throw new InvalidBidException("Auto-bid can only be enabled on an active or scheduled auction");
+        }
+        UUID sellerId = auction.getSellerId() != null ? auction.getSellerId() : auction.getCreatedBy();
+        if (sellerId != null && sellerId.equals(bidderId)) {
+            throw new InvalidBidException("Seller cannot enable auto-bid on their own auction");
+        }
+        double minAllowed = auction.getCurrentPrice() + 1.0;
+        if (maxAmount < minAllowed) {
+            throw new InvalidBidException("Auto-bid maximum must be at least " + minAllowed);
+        }
+        BigDecimal balance = walletRepository.findByUserId(bidderId)
+                .map(wallet -> wallet.getBalance() == null ? BigDecimal.ZERO : wallet.getBalance())
+                .orElse(BigDecimal.ZERO);
+        if (balance.compareTo(BigDecimal.valueOf(maxAmount)) < 0) {
+            throw new InvalidBidException("Insufficient wallet balance for this auto-bid limit");
+        }
 
         List<AutoBid> existing = autoBidRepository.findByAuctionIdAndBidderId(auctionId, bidderId);
         AutoBid autoBid;
@@ -71,15 +92,7 @@ public class AutoBidServiceImpl implements AutoBidService {
             autoBid.setUpdatedAt(now);
         }
 
-        AutoBid saved = autoBidRepository.save(autoBid);
-        if (eventPublisher != null) {
-            try {
-                eventPublisher.publishAutoBidPlaced(auctionId, bidderId, saved.getMaxAmount(), auction.getLeaderId(), Instant.now());
-            } catch (Exception e) {
-                log.warn("Failed to publish auto-bid setup event for auction {}", auctionId, e);
-            }
-        }
-        return saved;
+        return autoBidRepository.save(autoBid);
     }
 
     @Override

@@ -133,6 +133,25 @@ public class StompEventPublisher implements EventPublisher {
         }
     }
 
+    @Override
+    public void publishAuctionClosed(UUID auctionId, UUID winnerId, double finalPrice, Instant timestamp) {
+        Auction auction = loadAuction(auctionId);
+        UUID resolvedWinnerId = winnerId != null ? winnerId : auction.getWinnerId();
+        String winnerName = auctionHelper.lookupUserName(resolvedWinnerId);
+
+        RealtimeEvent event = RealtimeEventFactory.auctionClosed(
+                auctionId,
+                resolvedWinnerId,
+                winnerName,
+                finalPrice,
+                stateName(auction),
+                auctionHelper.computeRemainingSeconds(auctionId),
+                auction.getEndTime(),
+                resolvedWinnerId == null ? "Auction finished with no winner." : "Auction finished. Winner: " + winnerName
+        );
+        realtimeNotifier.broadcastToAuction(auctionId, event);
+    }
+
     private Auction loadAuction(UUID auctionId) {
         return auctionRepository.findById(auctionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));

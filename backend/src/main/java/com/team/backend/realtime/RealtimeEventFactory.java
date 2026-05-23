@@ -64,7 +64,7 @@ public final class RealtimeEventFactory {
                                               long remainingSeconds,
                                               Instant endTime,
                                               String message) {
-        RealtimeEvent event = baseEvent(RealtimeEventType.AUCTION_CLOSED, auctionId, null, null, leaderId, leaderName, currentPrice, state, remainingSeconds, endTime, null);
+        RealtimeEvent event = baseEvent(RealtimeEventType.AUCTION_FINISHED, auctionId, null, null, leaderId, leaderName, currentPrice, state, remainingSeconds, endTime, null);
         event.setMessage(message);
         return event;
     }
