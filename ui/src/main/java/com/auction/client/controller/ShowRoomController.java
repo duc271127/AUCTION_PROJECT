@@ -10,48 +10,41 @@ import com.auction.client.service.ItemApiService;
 import com.auction.client.session.SessionManager;
 import com.auction.client.util.MockData;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.TilePane;
+import javafx.scene.layout.VBox;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
+import javafx.geometry.Pos;
+
 
 public class ShowRoomController {
-
-    @FXML private Label item1NameLabel;
-    @FXML private Label item1BidLabel;
-    @FXML private Label item1TimeLabel;
-    @FXML private Label item1StatusLabel;
-    @FXML private ImageView item1ImageView;
-    @FXML private Button item1FavoriteButton;
-
-    @FXML private Label item2NameLabel;
-    @FXML private Label item2BidLabel;
-    @FXML private Label item2TimeLabel;
-    @FXML private Label item2StatusLabel;
-    @FXML private ImageView item2ImageView;
-    @FXML private Button item2FavoriteButton;
-
-    @FXML private Label item3NameLabel;
-    @FXML private Label item3BidLabel;
-    @FXML private Label item3TimeLabel;
-    @FXML private Label item3StatusLabel;
-    @FXML private ImageView item3ImageView;
-    @FXML private Button item3FavoriteButton;
 
     @FXML private Label usernameLabel;
     @FXML private Button wishlistButton;
     @FXML private Label savedAuctionsCountLabel;
+    @FXML private TilePane auctionGrid;
+    @FXML private Button allFilterButton;
+    @FXML private Button endingSoonFilterButton;
+    @FXML private Button newListingsFilterButton;
+    @FXML private Button highDemandFilterButton;
 
     private final AuctionApiService auctionApiService = new AuctionApiService();
     private final FavoriteApiService favoriteApiService = new FavoriteApiService();
     private final ItemApiService itemApiService = new ItemApiService();
     private final List<AuctionItem> items = new ArrayList<>();
     private final Set<String> favoriteAuctionIds = new LinkedHashSet<>();
+    private ForYouFilter selectedFilter = ForYouFilter.ALL;
 
     @FXML
     public void initialize() {
@@ -81,11 +74,12 @@ public class ShowRoomController {
 
     private void loadAuctionList() {
         try {
-            List<AuctionListResponse> responses = auctionApiService.getAuctions().getItems();
+            List<AuctionListResponse> responses =
+                    auctionApiService.getForYouAuctions(null, null, null, 0, 12).getItems();
 
             items.clear();
 
-            for (int i = 0; i < Math.min(3, responses.size()); i++) {
+            for (int i = 0; i < responses.size(); i++) {
                 items.add(mapToAuctionItem(responses.get(i), i));
             }
 
@@ -93,11 +87,11 @@ public class ShowRoomController {
                 loadMockAuctionsForDemo();
             }
 
-            bindCards();
+            renderAuctionGrid();
 
         } catch (Exception e) {
             loadMockAuctionsForDemo();
-            bindCards();
+            renderAuctionGrid();
         }
     }
 
@@ -136,41 +130,6 @@ public class ShowRoomController {
         return endTime.length() >= 16 ? endTime.substring(0, 16).replace("T", " ") : endTime;
     }
 
-    private void bindCards() {
-        bindSingleCard(0, item1NameLabel, item1BidLabel, item1TimeLabel, item1StatusLabel, item1ImageView, item1FavoriteButton);
-        bindSingleCard(1, item2NameLabel, item2BidLabel, item2TimeLabel, item2StatusLabel, item2ImageView, item2FavoriteButton);
-        bindSingleCard(2, item3NameLabel, item3BidLabel, item3TimeLabel, item3StatusLabel, item3ImageView, item3FavoriteButton);
-    }
-
-    private void bindSingleCard(int index,
-                                Label nameLabel,
-                                Label bidLabel,
-                                Label timeLabel,
-                                Label statusLabel,
-                                ImageView imageView,
-                                Button favoriteButton) {
-        if (index >= items.size()) {
-            nameLabel.setText("No auction");
-            bidLabel.setText("Current Bid: -");
-            timeLabel.setText("Ends: -");
-            statusLabel.setText("N/A");
-            imageView.setImage(null);
-            favoriteButton.setDisable(true);
-            favoriteButton.setText("\u2661");
-            favoriteButton.getStyleClass().remove("favorite-button-active");
-            return;
-        }
-
-        AuctionItem item = items.get(index);
-        nameLabel.setText(item.getName());
-        bidLabel.setText("Current Bid: " + item.getCurrentBid());
-        timeLabel.setText("Ends: " + item.getTimeLeft());
-        statusLabel.setText(item.getStatus());
-        bindCardImage(imageView, item.getImagePath());
-        favoriteButton.setDisable(false);
-        updateFavoriteButton(favoriteButton, item);
-    }
-
     private void bindCardImage(ImageView imageView, String imagePath) {
         try {
             if (imagePath != null && (imagePath.startsWith("http://") || imagePath.startsWith("https://") || imagePath.startsWith("/uploads") || imagePath.startsWith("uploads/"))) {
@@ -183,31 +142,6 @@ public class ShowRoomController {
         }
     }
 
-    private void showFallbackState(String message) {
-        item1NameLabel.setText(message);
-        item1BidLabel.setText("Current Bid: -");
-        item1TimeLabel.setText("Ends: -");
-        item1StatusLabel.setText("ERROR");
-        item1ImageView.setImage(null);
-        item1FavoriteButton.setDisable(true);
-
-        item2NameLabel.setText("No auction");
-        item2BidLabel.setText("Current Bid: -");
-        item2TimeLabel.setText("Ends: -");
-        item2StatusLabel.setText("N/A");
-        item2ImageView.setImage(null);
-        item2FavoriteButton.setDisable(true);
-
-        item3NameLabel.setText("No auction");
-        item3BidLabel.setText("Current Bid: -");
-        item3TimeLabel.setText("Ends: -");
-        item3StatusLabel.setText("N/A");
-        item3ImageView.setImage(null);
-        item3FavoriteButton.setDisable(true);
-
-        updateWishlistUi();
-    }
-
     @FXML
     private void handleLogout() {
         SessionManager.clear();
@@ -215,33 +149,23 @@ public class ShowRoomController {
     }
 
     @FXML
-    private void handleToggleFavorite1() {
-        toggleFavoriteAtIndex(0);
+    private void handleFilterAll() {
+        applyFilter(ForYouFilter.ALL);
     }
 
     @FXML
-    private void handleToggleFavorite2() {
-        toggleFavoriteAtIndex(1);
+    private void handleFilterEndingSoon() {
+        applyFilter(ForYouFilter.ENDING_SOON);
     }
 
     @FXML
-    private void handleToggleFavorite3() {
-        toggleFavoriteAtIndex(2);
+    private void handleFilterNewListings() {
+        applyFilter(ForYouFilter.NEW_LISTINGS);
     }
 
     @FXML
-    private void handleViewDetails1() {
-        openDetailAtIndex(0);
-    }
-
-    @FXML
-    private void handleViewDetails2() {
-        openDetailAtIndex(1);
-    }
-
-    @FXML
-    private void handleViewDetails3() {
-        openDetailAtIndex(2);
+    private void handleFilterHighDemand() {
+        applyFilter(ForYouFilter.HIGH_DEMAND);
     }
 
     @FXML
@@ -286,33 +210,169 @@ public class ShowRoomController {
         SceneManager.goToCategory("Fashion");
     }
 
-    private void openDetailAtIndex(int index) {
-        if (index < 0 || index >= items.size()) {
+    private void renderAuctionGrid() {
+        if (auctionGrid == null) {
             return;
         }
-        MockData.setSelectedItem(items.get(index));
+
+        auctionGrid.getChildren().clear();
+
+        List<AuctionItem> visibleItems = getVisibleItems();
+
+        if (visibleItems.isEmpty()) {
+            auctionGrid.getChildren().add(createEmptyState());
+            return;
+        }
+
+        for (AuctionItem item : visibleItems) {
+            auctionGrid.getChildren().add(createAuctionCard(item));
+        }
+    }
+
+    private VBox createAuctionCard(AuctionItem item) {
+        ImageView imageView = new ImageView();
+        imageView.setFitWidth(320);
+        imageView.setFitHeight(230);
+        imageView.setPreserveRatio(false);
+        imageView.getStyleClass().add("auction-card-image");
+        bindCardImage(imageView, item.getImagePath());
+
+        Button favoriteButton = new Button();
+        favoriteButton.getStyleClass().add("favorite-floating-button");
+        favoriteButton.setFocusTraversable(false);
+        updateFavoriteButton(favoriteButton, item);
+        favoriteButton.setOnAction(event -> toggleFavorite(item, favoriteButton));
+
+        StackPane media = new StackPane(imageView, favoriteButton);
+        StackPane.setAlignment(favoriteButton, Pos.TOP_RIGHT);
+        StackPane.setMargin(favoriteButton, new Insets(8, 8, 0, 0));
+
+        Label statusLabel = new Label(item.getStatus());
+        statusLabel.getStyleClass().add("auction-seller-label");
+
+        Label titleLabel = new Label(item.getName());
+        titleLabel.getStyleClass().add("auction-card-title");
+
+        Label bidLabel = new Label("Current Bid: " + item.getCurrentBid());
+        bidLabel.getStyleClass().add("auction-price-label");
+
+        Label endLabel = new Label("Ends: " + item.getTimeLeft());
+        endLabel.getStyleClass().add("auction-ending-label");
+
+        Button viewButton = new Button("View Details");
+        viewButton.setMaxWidth(Double.MAX_VALUE);
+        viewButton.getStyleClass().add("ghost-button");
+        viewButton.setOnAction(event -> openDetail(item));
+
+        VBox card = new VBox(8, media, statusLabel, titleLabel, bidLabel, endLabel, viewButton);
+        card.getStyleClass().add("for-you-auction-card");
+        card.setPrefWidth(320);
+        card.setMaxWidth(320);
+
+        return card;
+    }
+
+    private VBox createEmptyState() {
+        Label title = new Label("No auctions match this filter.");
+        title.getStyleClass().add("auction-card-title");
+
+        Label subtitle = new Label("Try All to see the current For You demo auctions.");
+        subtitle.getStyleClass().add("page-subtitle");
+
+        VBox emptyState = new VBox(8, title, subtitle);
+        emptyState.getStyleClass().add("for-you-empty-state");
+        return emptyState;
+    }
+
+    private void openDetail(AuctionItem item) {
+        MockData.setSelectedItem(item);
         SceneManager.goToProductDetail();
     }
 
-    private void toggleFavoriteAtIndex(int index) {
-        if (index < 0 || index >= items.size()) {
-            return;
+    private void toggleFavorite(AuctionItem item, Button button) {
+        boolean wasFavorite = favoriteAuctionIds.contains(item.getId());
+
+        if (wasFavorite) {
+            favoriteAuctionIds.remove(item.getId());
+        } else {
+            favoriteAuctionIds.add(item.getId());
         }
 
-        AuctionItem item = items.get(index);
         try {
-            if (favoriteAuctionIds.contains(item.getId())) {
+            if (wasFavorite) {
                 favoriteApiService.removeFavorite(item.getId());
-                favoriteAuctionIds.remove(item.getId());
             } else {
                 favoriteApiService.addFavorite(item.getId());
-                favoriteAuctionIds.add(item.getId());
             }
         } catch (Exception ignored) {
         }
 
-        bindCards();
+        updateFavoriteButton(button, item);
         updateWishlistUi();
+    }
+
+    private void applyFilter(ForYouFilter filter) {
+        selectedFilter = filter;
+        updateFilterButtons();
+        renderAuctionGrid();
+    }
+
+    private List<AuctionItem> getVisibleItems() {
+        List<AuctionItem> visibleItems = new ArrayList<>(items);
+
+        switch (selectedFilter) {
+            case ENDING_SOON -> visibleItems.removeIf(item -> !hasEndingSoonStatus(item));
+            case NEW_LISTINGS -> visibleItems.removeIf(item -> !hasNewListingStatus(item));
+            case HIGH_DEMAND -> visibleItems.sort(Comparator.comparingDouble(this::parseBidAmount).reversed());
+            case ALL -> {
+            }
+        }
+
+        return visibleItems;
+    }
+
+    private boolean hasEndingSoonStatus(AuctionItem item) {
+        String status = normalize(item.getStatus());
+        String timeLeft = normalize(item.getTimeLeft());
+        return status.contains("ending") || timeLeft.contains("h") && !timeLeft.contains("d");
+    }
+
+    private boolean hasNewListingStatus(AuctionItem item) {
+        String status = normalize(item.getStatus());
+        return status.contains("upcoming") || status.contains("new") || status.contains("scheduled");
+    }
+
+    private double parseBidAmount(AuctionItem item) {
+        String bid = item.getCurrentBid();
+        if (bid == null || bid.isBlank()) {
+            return 0;
+        }
+
+        try {
+            return Double.parseDouble(bid.replaceAll("[^0-9.]", ""));
+        } catch (Exception ignored) {
+            return 0;
+        }
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT);
+    }
+
+    private void updateFilterButtons() {
+        setFilterButtonState(allFilterButton, selectedFilter == ForYouFilter.ALL);
+        setFilterButtonState(endingSoonFilterButton, selectedFilter == ForYouFilter.ENDING_SOON);
+        setFilterButtonState(newListingsFilterButton, selectedFilter == ForYouFilter.NEW_LISTINGS);
+        setFilterButtonState(highDemandFilterButton, selectedFilter == ForYouFilter.HIGH_DEMAND);
+    }
+
+    private void setFilterButtonState(Button button, boolean active) {
+        if (button == null) {
+            return;
+        }
+
+        button.getStyleClass().removeAll("filter-chip", "filter-chip-active");
+        button.getStyleClass().add(active ? "filter-chip-active" : "filter-chip");
     }
 
     private void updateFavoriteButton(Button button, AuctionItem item) {
@@ -346,5 +406,12 @@ public class ShowRoomController {
             }
         }
         return "";
+    }
+
+    private enum ForYouFilter {
+        ALL,
+        ENDING_SOON,
+        NEW_LISTINGS,
+        HIGH_DEMAND
     }
 }

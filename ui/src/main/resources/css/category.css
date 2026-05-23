@@ -99,3 +99,32 @@
     -fx-padding: 0 10;
 }
 
+.category-card-image {
+    -fx-background-radius: 6 6 0 0;
+}
+
+.category-empty-state {
+    -fx-background-color: #f8fafc;
+    -fx-border-color: #dbe3ef;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 24;
+    -fx-pref-width: 300px;
+}
+
+.category-load-button {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #0047ff;
+    -fx-border-color: #0047ff;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-font-size: 12px;
+    -fx-font-weight: 800;
+    -fx-padding: 12 18;
+    -fx-cursor: hand;
+}
+
+.category-heart-button:hover {
+    -fx-background-color: #0047ff;
+    -fx-text-fill: #ffffff;
+}

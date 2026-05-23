@@ -25,8 +25,6 @@ public class WalletController {
     @FXML private Button withdrawModeButton;
     @FXML private Button primaryActionButton;
 
-    @FXML private VBox paymentMethodBox;
-    @FXML private VBox withdrawInfoBox;
     @FXML private VBox formContentBox;
     @FXML private VBox successBox;
 
@@ -132,12 +130,6 @@ public class WalletController {
 
         amountTitleLabel.setText(deposit ? "Deposit Amount" : "Withdraw Amount");
         primaryActionButton.setText(deposit ? "Deposit Now" : "Withdraw Now");
-
-        paymentMethodBox.setVisible(deposit);
-        paymentMethodBox.setManaged(deposit);
-
-        withdrawInfoBox.setVisible(!deposit);
-        withdrawInfoBox.setManaged(!deposit);
 
         amountField.clear();
         hideMessage();

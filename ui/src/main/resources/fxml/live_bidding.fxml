@@ -11,6 +11,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.Region?>
 
 <AnchorPane prefHeight="900" prefWidth="1400" styleClass="root-pane" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/26" fx:controller="com.auction.client.controller.LiveBiddingController">
 
@@ -66,6 +67,21 @@
 
                         <Label fx:id="outbidAlertLabel" minHeight="32.0" prefHeight="32.0" styleClass="live-alert" text="" wrapText="true" />
 
+                        <VBox fx:id="autoBidBanner"
+                              visible="false"
+                              managed="false"
+                              spacing="4.0"
+                              styleClass="live-auto-bid-banner">
+
+                            <Label fx:id="autoBidBannerTitleLabel"
+                                   text="⚡ Auto-Bid Active"
+                                   styleClass="live-auto-bid-banner-title"/>
+
+                            <Label fx:id="autoBidBannerSubtitleLabel"
+                                   text="Max: € 0"
+                                   styleClass="live-auto-bid-banner-subtitle"/>
+                        </VBox>
+
                         <VBox spacing="12.0" styleClass="bid-entry-card">
 
                             <Label styleClass="panel-title" text="Place Your Bid" />
@@ -89,11 +105,24 @@
 
                             <Label styleClass="live-helper-text" text="Set your maximum amount and let auto-bid raise your bid when needed." wrapText="true" />
 
-                            <TextField fx:id="autoBidMaxInput" promptText="Enter max auto-bid amount" styleClass="live-bid-input" />
+                            <TextField fx:id="autoBidMaxInput"
+                                       visible="false"
+                                       managed="false"
+                                       promptText="Enter max auto-bid amount"
+                                       styleClass="live-bid-input" />
 
-                            <Button fx:id="autoBidButton" maxWidth="Infinity" onAction="#handleEnableAutoBid" prefHeight="37.0" prefWidth="872.0" styleClass="live-auto-bid-button" text="Enable Auto-Bid" />
+                            <Button fx:id="autoBidButton"
+                                    maxWidth="Infinity"
+                                    onAction="#handleOpenAutoBidDialog"
+                                    prefHeight="37.0"
+                                    prefWidth="872.0"
+                                    styleClass="live-auto-bid-button"
+                                    text="⚡ Open Auto-Bid" />
 
-                            <Label fx:id="autoBidStatusLabel" styleClass="auto-bid-status" text="Auto-bid is off" wrapText="true" />
+                            <Label fx:id="autoBidStatusLabel"
+                                   styleClass="auto-bid-status"
+                                   text="Auto-bid is off"
+                                   wrapText="true" />
                         </VBox>
                     </VBox>
 
@@ -102,7 +131,13 @@
                             <Insets bottom="24" left="24" right="24" top="24" />
                         </padding>
 
-                        <Label styleClass="panel-title" text="Price Chart" />
+                        <HBox alignment="CENTER_LEFT" spacing="8.0">
+                            <Label styleClass="panel-title" text="Price Chart" />
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button text="Open Full Chart"
+                                    onAction="#handleOpenBidHistoryDialog"
+                                    styleClass="live-chart-modal-button"/>
+                        </HBox>
 
                         <LineChart fx:id="bidChart" animated="false" createSymbols="true" legendVisible="false" prefHeight="235.0" prefWidth="372.0">
                             <xAxis>
@@ -119,5 +154,30 @@
                 </HBox>
             </content>
         </ScrollPane>
+
+        <VBox fx:id="newBidToast"
+              visible="false"
+              managed="false"
+              spacing="6.0"
+              styleClass="live-toast"
+              AnchorPane.rightAnchor="32.0"
+              AnchorPane.bottomAnchor="32.0">
+
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                <Label text="↗" styleClass="live-toast-icon"/>
+                <VBox spacing="2.0">
+                    <Label fx:id="toastTitleLabel"
+                           text="New bid placed!"
+                           styleClass="live-toast-title"/>
+                    <Label fx:id="toastMessageLabel"
+                           text="by bidder"
+                           styleClass="live-toast-subtitle"/>
+                </VBox>
+            </HBox>
+
+            <Label fx:id="toastPriceLabel"
+                   text="€ 0"
+                   styleClass="live-toast-price"/>
+        </VBox>
     </children>
 </AnchorPane>

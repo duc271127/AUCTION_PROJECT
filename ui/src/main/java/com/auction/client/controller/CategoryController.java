@@ -9,19 +9,24 @@ import com.auction.client.service.AuctionApiService;
 import com.auction.client.service.FavoriteApiService;
 import com.auction.client.session.SessionManager;
 import com.auction.client.util.MockData;
+import com.auction.client.service.ItemApiService;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.TilePane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.ArrayList;
 
 public class CategoryController {
 
@@ -32,10 +37,21 @@ public class CategoryController {
     @FXML private Label endingSoonLabel;
     @FXML private Label activeBiddersLabel;
     @FXML private Label averagePriceLabel;
-    @FXML private FlowPane categoryGrid;
+    @FXML private TilePane categoryGrid;
+    @FXML private Button saveCategoryButton;
+    @FXML private Button loadMoreButton;
+    @FXML private TextField searchField;
 
     private final AuctionApiService auctionApiService = new AuctionApiService();
     private final FavoriteApiService favoriteApiService = new FavoriteApiService();
+    private final ItemApiService itemApiService = new ItemApiService();
+
+    private final List<AuctionListResponse> auctions = new ArrayList<>();
+
+    private int currentPage = 0;
+    private static final int PAGE_SIZE = 12;
+    private boolean categorySaved = false;
+    private String currentQuery = null;
     private final Set<String> favoriteAuctionIds = new HashSet<>();
 
     @FXML
@@ -45,7 +61,8 @@ public class CategoryController {
             return;
         }
         if (usernameLabel != null) {
-            usernameLabel.setText(SessionManager.getUsername());
+            String username = SessionManager.getUsername();
+            usernameLabel.setText(username == null || username.isBlank() ? "Bidder" : username);
         }
         categoryTitleLabel.setText(selectedCategory);
         categoryDescriptionLabel.setText(descriptionForCategory(selectedCategory));
@@ -67,14 +84,55 @@ public class CategoryController {
     }
 
     private void loadCategoryAuctions() {
+        currentPage = 0;
+        auctions.clear();
+
         try {
-            AuctionPageResponse page = auctionApiService.searchAuctions(selectedCategory, null, null, 0, 6, "endTime,asc");
-            List<AuctionListResponse> items = page.getItems();
-            renderStats(items);
-            renderCards(items);
+            AuctionPageResponse page = auctionApiService.searchAuctions(
+                    selectedCategory,
+                    currentQuery,
+                    null,
+                    currentPage,
+                    PAGE_SIZE,
+                    "endTime,asc"
+            );
+
+            if (page.getItems() != null) {
+                auctions.addAll(page.getItems());
+            }
+
+            if (auctions.isEmpty()) {
+                loadMockCategoryAuctions();
+            }
+
         } catch (Exception e) {
-            renderStats(List.of());
-            renderErrorCard();
+            loadMockCategoryAuctions();
+        }
+
+        renderStats(auctions);
+        renderCards(auctions);
+    }
+
+    private void loadMockCategoryAuctions() {
+        auctions.clear();
+
+        int index = 0;
+        for (AuctionItem item : MockData.getMockAuctionItems()) {
+            AuctionListResponse response = new AuctionListResponse();
+            response.setTitle(categoryTitleForMock(item.getName(), index));
+            response.setImageUrl(item.getImagePath());
+            response.setSellerName(mockSellerForCategory(index));
+            response.setCurrentPrice(parseMoney(item.getCurrentBid()));
+            response.setState(item.getStatus());
+            response.setBidCount(8 + index * 3);
+            response.setFavoriteCount(36 + index * 12);
+            response.setViewCount(1200 + index * 250);
+            response.setCategory(selectedCategory);
+            response.setEndTime(item.getTimeLeft());
+            response.setId(null);
+
+            auctions.add(response);
+            index++;
         }
     }
 
@@ -88,9 +146,26 @@ public class CategoryController {
 
     private void renderCards(List<AuctionListResponse> items) {
         categoryGrid.getChildren().clear();
+
+        if (items == null || items.isEmpty()) {
+            categoryGrid.getChildren().add(createEmptyState());
+            return;
+        }
+
         for (AuctionListResponse auction : items) {
             categoryGrid.getChildren().add(createAuctionCard(auction));
         }
+    }
+    private VBox createEmptyState() {
+        Label title = new Label("No auctions in this category yet.");
+        title.getStyleClass().add("category-card-title");
+
+        Label subtitle = new Label("Approved auctions will appear here once sellers and admins publish them.");
+        subtitle.getStyleClass().add("category-ending");
+
+        VBox empty = new VBox(8, title, subtitle);
+        empty.getStyleClass().add("category-empty-state");
+        return empty;
     }
 
     private VBox createAuctionCard(AuctionListResponse auction) {
@@ -98,11 +173,15 @@ public class CategoryController {
         card.setPrefWidth(260.0);
         card.getStyleClass().add("category-card");
 
-        Region media = new Region();
-        media.setPrefHeight(260.0);
-        media.getStyleClass().add("category-card-media");
+        ImageView media = new ImageView();
+        media.setFitWidth(300.0);
+        media.setFitHeight(260.0);
+        media.setPreserveRatio(false);
+        media.getStyleClass().add("category-card-image");
+        bindCardImage(media, auction.getImageUrl());
 
-        Button favoriteButton = new Button(favoriteAuctionIds.contains(auction.getId().toString()) ? "\u2665" : "\u2661");
+        String auctionId = getAuctionId(auction);
+        Button favoriteButton = new Button(favoriteAuctionIds.contains(auctionId) ? "\u2665" : "\u2661");
         favoriteButton.getStyleClass().add("category-heart-button");
         favoriteButton.setFocusTraversable(false);
         favoriteButton.setOnAction(event -> toggleFavorite(auction, favoriteButton));
@@ -139,16 +218,26 @@ public class CategoryController {
     }
 
     private void toggleFavorite(AuctionListResponse auction, Button favoriteButton) {
+        String auctionId = getAuctionId(auction);
+        boolean wasFavorite = favoriteAuctionIds.contains(auctionId);
+
+        if (wasFavorite) {
+            favoriteAuctionIds.remove(auctionId);
+            favoriteButton.setText("\u2661");
+        } else {
+            favoriteAuctionIds.add(auctionId);
+            favoriteButton.setText("\u2665");
+        }
+
+        if (auction.getId() == null) {
+            return;
+        }
+
         try {
-            String auctionId = auction.getId().toString();
-            if (favoriteAuctionIds.contains(auctionId)) {
+            if (wasFavorite) {
                 favoriteApiService.removeFavorite(auctionId);
-                favoriteAuctionIds.remove(auctionId);
-                favoriteButton.setText("\u2661");
             } else {
                 favoriteApiService.addFavorite(auctionId);
-                favoriteAuctionIds.add(auctionId);
-                favoriteButton.setText("\u2665");
             }
         } catch (Exception ignored) {
         }
@@ -183,6 +272,122 @@ public class CategoryController {
             case "Fashion" -> "Discover luxury fashion, archive garments and collectible accessories.";
             default -> "Explore exceptional artworks and collectibles from live auctions in this category.";
         };
+    }
+
+    private String categoryTitleForMock(String fallback, int index) {
+        return switch (selectedCategory) {
+            case "Jewellery" -> switch (index) {
+                case 0 -> "Affordable Silver & Laminated Objects Auction";
+                case 1 -> "Emeralds, Rubies & Sapphires Auction";
+                default -> "Exclusive White Diamonds Auction";
+            };
+            case "Watches" -> switch (index) {
+                case 0 -> "Vintage Rolex Watch";
+                case 1 -> "Rare Chronograph Collection";
+                default -> "Luxury Watch Icons Auction";
+            };
+            case "Fashion" -> switch (index) {
+                case 0 -> "Archive Designer Handbag";
+                case 1 -> "Rare Couture Jacket";
+                default -> "Collectible Fashion Accessories";
+            };
+            default -> switch (index) {
+                case 0 -> "Contemporary Abstract Painting";
+                case 1 -> "Impressionist Landscape Oil";
+                default -> "Digital Art NFT Edition";
+            };
+        };
+    }
+
+    private String mockSellerForCategory(int index) {
+        return switch (index) {
+            case 0 -> "Sarah Mitchell";
+            case 1 -> "Marco Rossi";
+            default -> "Emma Chen";
+        };
+    }
+
+    private double parseMoney(String value) {
+        if (value == null || value.isBlank()) {
+            return 0;
+        }
+
+        try {
+            return Double.parseDouble(value.replaceAll("[^0-9.]", ""));
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private void bindCardImage(ImageView imageView, String imagePath) {
+        try {
+            if (imagePath != null &&
+                    (imagePath.startsWith("http://")
+                            || imagePath.startsWith("https://")
+                            || imagePath.startsWith("/uploads")
+                            || imagePath.startsWith("uploads/"))) {
+                imageView.setImage(new Image(itemApiService.toAbsoluteImageUrl(imagePath), true));
+            } else {
+                imageView.setImage(new Image(getClass().getResourceAsStream(imagePath)));
+            }
+        } catch (Exception e) {
+            imageView.setImage(null);
+        }
+    }
+
+    private String getAuctionId(AuctionListResponse auction) {
+        if (auction.getId() != null) {
+            return auction.getId().toString();
+        }
+
+        String title = auction.getTitle() != null ? auction.getTitle() : auction.getItemName();
+        return "mock-" + selectedCategory + "-" + title;
+    }
+
+    @FXML
+    private void handleBrowseAuctions() {
+        if (categoryGrid != null) {
+            categoryGrid.requestFocus();
+        }
+    }
+
+    @FXML
+    private void handleSaveCategory() {
+        categorySaved = !categorySaved;
+
+        if (saveCategoryButton != null) {
+            saveCategoryButton.setText(categorySaved ? "Saved Category" : "Save Category");
+        }
+    }
+
+    @FXML
+    private void handleSearch() {
+        currentQuery = searchField == null ? null : searchField.getText();
+        loadCategoryAuctions();
+    }
+
+    @FXML
+    private void handleLoadMore() {
+        currentPage++;
+
+        try {
+            AuctionPageResponse page = auctionApiService.searchAuctions(
+                    selectedCategory,
+                    currentQuery,
+                    null,
+                    currentPage,
+                    PAGE_SIZE,
+                    "endTime,asc"
+            );
+
+            if (page.getItems() != null && !page.getItems().isEmpty()) {
+                auctions.addAll(page.getItems());
+            }
+        } catch (Exception ignored) {
+        }
+
+        renderStats(auctions);
+        renderCards(auctions);
     }
 
     @FXML

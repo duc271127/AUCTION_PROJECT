@@ -6,7 +6,7 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.TilePane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
@@ -116,19 +116,19 @@
                                 <HBox spacing="14.0">
                                     <VBox spacing="5.0" styleClass="trending-stat-card" HBox.hgrow="ALWAYS">
                                         <Label text="ACTIVE BIDS" styleClass="trending-stat-label"/>
-                                        <Label text="1,247" styleClass="trending-stat-number"/>
+                                        <Label fx:id= "activeBidsLabel" text="1,247" styleClass="trending-stat-number"/>
                                         <Label text="+23% from last hour" styleClass="trending-stat-positive"/>
                                     </VBox>
 
                                     <VBox spacing="5.0" styleClass="trending-stat-card" HBox.hgrow="ALWAYS">
                                         <Label text="NEW AUCTIONS" styleClass="trending-stat-label"/>
-                                        <Label text="89" styleClass="trending-stat-number"/>
+                                        <Label fx:id="newAuctionsLabel" text="89" styleClass="trending-stat-number"/>
                                         <Label text="+12% from yesterday" styleClass="trending-stat-positive"/>
                                     </VBox>
 
                                     <VBox spacing="5.0" styleClass="trending-stat-card" HBox.hgrow="ALWAYS">
                                         <Label text="TOTAL BIDS PLACED" styleClass="trending-stat-label"/>
-                                        <Label text="5.3K" styleClass="trending-stat-number"/>
+                                        <Label fx:id="totalBidsPlacedLabel" text="5.3K" styleClass="trending-stat-number"/>
                                         <Label text="+34% from last day" styleClass="trending-stat-positive"/>
                                     </VBox>
                                 </HBox>
@@ -136,17 +136,23 @@
 
                             <!-- Filter pills -->
                             <HBox spacing="10.0">
-                                <Button text="Hot Right Now"
+                                <Button fx:id="hotFilterButton"
+                                        text="Hot Right Now"
                                         focusTraversable="false"
-                                        styleClass="trending-filter-active"/>
+                                        styleClass="trending-filter-active"
+                                        onAction="#handleFilterHot"/>
 
-                                <Button text="Most Viewed"
+                                <Button fx:id="hotFilterButton"
+                                        text="Hot Right Now"
                                         focusTraversable="false"
-                                        styleClass="trending-filter-button"/>
+                                        styleClass="trending-filter-active"
+                                        onAction="#handleFilterHot"/>
 
-                                <Button text="Most Saved"
+                                <Button fx:id="savedFilterButton"
+                                        text="Most Saved"
                                         focusTraversable="false"
-                                        styleClass="trending-filter-button"/>
+                                        styleClass="trending-filter-button"
+                                        onAction="#handleFilterMostSaved"/>
                             </HBox>
 
                             <!-- Notice -->
@@ -156,42 +162,18 @@
                                        styleClass="trending-notice-text"/>
                             </HBox>
 
-                            <!-- Cards -->
-                            <FlowPane hgap="18.0"
+                            <TilePane fx:id="trendingGrid"
+                                      hgap="18.0"
                                       vgap="18.0"
-                                      prefWrapLength="1200.0"
-                                      styleClass="trending-grid">
-
-                                <!-- Card 1 -->
-                                <VBox prefWidth="320.0" spacing="8.0" styleClass="trending-card">
-                                    <StackPane>
-                                        <Region prefHeight="250.0" styleClass="trending-card-media"/>
-                                        <Label text="#1 Trending"
-                                               StackPane.alignment="TOP_LEFT"
-                                               styleClass="trending-rank-badge"/>
-                                        <Button text="&#9825;"
-                                                StackPane.alignment="TOP_RIGHT"
-                                                styleClass="trending-heart-button"/>
-                                    </StackPane>
-
-                                    <Label text="CHIARA SCOTTO" styleClass="trending-seller"/>
-                                    <Label text="Affordable Silver and Laminated Objects Auction"
-                                           wrapText="true"
-                                           styleClass="trending-card-title"/>
-
-                                    <HBox spacing="12.0">
-                                        <Label text="1.2K views" styleClass="trending-card-meta"/>
-                                        <Label text="234 saves" styleClass="trending-card-meta"/>
-                                    </HBox>
-                                </VBox>
-
-                                <!-- Copy Card 1 thêm 5 lần -->
-                            </FlowPane>
-
+                                      prefColumns="3"
+                                      prefTileWidth="320.0"
+                                      styleClass="trending-grid"/>
                             <HBox alignment="CENTER">
-                                <Button text="Load More Trending Auctions"
+                                <Button fx:id="loadMoreButton"
+                                        text="Load More Trending Auctions"
                                         focusTraversable="false"
-                                        styleClass="trending-load-button"/>
+                                        styleClass="trending-load-button"
+                                        onAction="#handleLoadMore"/>
                             </HBox>
                         </VBox>
                     </content>

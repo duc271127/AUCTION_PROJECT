@@ -4,6 +4,7 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
@@ -11,8 +12,10 @@
 
 <VBox xmlns:fx="http://javafx.com/fxml"
       fx:controller="com.auction.client.controller.AutoBidDialogController"
-      prefWidth="460"
-      prefHeight="720"
+      prefWidth="430"
+      maxWidth="430"
+      prefHeight="620"
+      maxHeight="620"
       spacing="0"
       styleClass="modal-card">
 
@@ -25,6 +28,12 @@
                 styleClass="modal-close-button"/>
     </HBox>
 
+    <ScrollPane fitToWidth="true"
+                hbarPolicy="NEVER"
+                vbarPolicy="AS_NEEDED"
+                VBox.vgrow="ALWAYS"
+                styleClass="modal-scroll-pane">
+        <content>
     <VBox spacing="18">
         <padding>
             <Insets top="22" right="24" bottom="24" left="24"/>
@@ -132,8 +141,6 @@
                wrapText="true"
                styleClass="error-label"/>
 
-        <Region VBox.vgrow="ALWAYS"/>
-
         <HBox spacing="12">
             <Button text="Cancel"
                     onAction="#handleClose"
@@ -150,4 +157,6 @@
                     styleClass="primary-button"/>
         </HBox>
     </VBox>
+        </content>
+    </ScrollPane>
 </VBox>
