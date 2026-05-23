@@ -346,3 +346,50 @@
 .market-category-menu .menu-item:focused {
     -fx-background-color: #eef4ff;
 }
+
+.for-you-filter-row {
+    -fx-padding: 4 0 2 0;
+}
+
+.filter-chip {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #dbe3ef;
+    -fx-border-radius: 999;
+    -fx-background-radius: 999;
+    -fx-text-fill: #222222;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+    -fx-padding: 8 14;
+    -fx-cursor: hand;
+}
+
+.filter-chip:hover {
+    -fx-background-color: #eef4ff;
+    -fx-text-fill: #0047ff;
+}
+
+.filter-chip-active {
+    -fx-background-color: #0047ff;
+    -fx-border-color: #0047ff;
+    -fx-border-radius: 999;
+    -fx-background-radius: 999;
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 12px;
+    -fx-font-weight: 800;
+    -fx-padding: 8 14;
+    -fx-cursor: hand;
+}
+
+.for-you-auction-grid {
+    -fx-padding: 0;
+    -fx-alignment: top-left;
+}
+
+.for-you-empty-state {
+    -fx-background-color: #f8fafc;
+    -fx-border-color: #dbe3ef;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 24;
+    -fx-pref-width: 320px;
+}

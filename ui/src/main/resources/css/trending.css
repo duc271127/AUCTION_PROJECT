@@ -164,3 +164,16 @@
 .trending-scroll > .viewport {
     -fx-background-color: #ffffff;
 }
+
+.trending-card-image {
+    -fx-background-radius: 6 6 0 0;
+}
+
+.trending-empty-state {
+    -fx-background-color: #f8fafc;
+    -fx-border-color: #dbe3ef;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 24;
+    -fx-pref-width: 320px;
+}

@@ -18,8 +18,12 @@ import javafx.fxml.FXMLLoader;
 
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Color;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
+import javafx.stage.Window;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
@@ -510,13 +514,14 @@ public class ProductDetailController {
             Stage stage = new Stage();
             stage.setTitle("Auto-Bid");
             stage.initModality(Modality.WINDOW_MODAL);
+            stage.initStyle(StageStyle.TRANSPARENT);
 
-            if (productNameLabel != null && productNameLabel.getScene() != null) {
-                stage.initOwner(productNameLabel.getScene().getWindow());
+            Window ownerWindow = resolveDialogOwnerWindow();
+            if (ownerWindow != null) {
+                stage.initOwner(ownerWindow);
             }
 
-            Scene scene = new Scene(root);
-            addDialogStyles(scene);
+            Scene scene = createOverlayDialogScene(root, ownerWindow);
 
             AutoBidDialogController controller = loader.getController();
 
@@ -527,6 +532,7 @@ public class ProductDetailController {
             controller.setAuction(auctionForDialog, demoMode, this::applyAutoBidToDetail);
 
             stage.setScene(scene);
+            positionOverlayDialogStage(stage, ownerWindow);
             stage.setResizable(false);
             stage.showAndWait();
 
@@ -549,13 +555,14 @@ public class ProductDetailController {
             Stage stage = new Stage();
             stage.setTitle("Bid History");
             stage.initModality(Modality.WINDOW_MODAL);
+            stage.initStyle(StageStyle.TRANSPARENT);
 
-            if (productNameLabel != null && productNameLabel.getScene() != null) {
-                stage.initOwner(productNameLabel.getScene().getWindow());
+            Window ownerWindow = resolveDialogOwnerWindow();
+            if (ownerWindow != null) {
+                stage.initOwner(ownerWindow);
             }
 
-            Scene scene = new Scene(root);
-            addDialogStyles(scene);
+            Scene scene = createOverlayDialogScene(root, ownerWindow);
 
             BidHistoryDialogController controller = loader.getController();
 
@@ -566,6 +573,7 @@ public class ProductDetailController {
             controller.setAuction(auctionForDialog, demoMode);
 
             stage.setScene(scene);
+            positionOverlayDialogStage(stage, ownerWindow);
             stage.setResizable(false);
             stage.showAndWait();
 
@@ -678,6 +686,33 @@ public class ProductDetailController {
         addStylesheet(scene, "/css/app.css");
         addStylesheet(scene, "/css/components.css");
         addStylesheet(scene, "/css/product_detail.css");
+    }
+
+    private Window resolveDialogOwnerWindow() {
+        return productNameLabel != null && productNameLabel.getScene() != null
+                ? productNameLabel.getScene().getWindow()
+                : null;
+    }
+
+    private Scene createOverlayDialogScene(Parent dialogCard, Window ownerWindow) {
+        StackPane overlay = new StackPane(dialogCard);
+        overlay.getStyleClass().add("modal-overlay");
+
+        Scene scene = ownerWindow == null
+                ? new Scene(overlay, Color.TRANSPARENT)
+                : new Scene(overlay, ownerWindow.getWidth(), ownerWindow.getHeight(), Color.TRANSPARENT);
+
+        addDialogStyles(scene);
+        return scene;
+    }
+
+    private void positionOverlayDialogStage(Stage stage, Window ownerWindow) {
+        if (ownerWindow == null) {
+            return;
+        }
+
+        stage.setX(ownerWindow.getX());
+        stage.setY(ownerWindow.getY());
     }
 
     private void addStylesheet(Scene scene, String path) {

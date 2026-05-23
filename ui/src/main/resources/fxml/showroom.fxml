@@ -14,6 +14,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.control.MenuButton?>
 <?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.layout.TilePane?>
 
 <AnchorPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.auction.client.controller.ShowRoomController"
@@ -139,76 +140,38 @@
                                 </VBox>
                             </HBox>
 
-                            <HBox spacing="20.0">
-                                <VBox spacing="8.0" styleClass="for-you-auction-card" HBox.hgrow="ALWAYS">
-                                    <StackPane>
-                                        <ImageView fx:id="item1ImageView"
-                                                   fitWidth="320"
-                                                   fitHeight="230"
-                                                   preserveRatio="false"
-                                                   styleClass="auction-card-image"/>
-                                        <Button fx:id="item1FavoriteButton"
-                                                text="&#9825;"
-                                                StackPane.alignment="TOP_RIGHT"
-                                                styleClass="favorite-floating-button"
-                                                onAction="#handleToggleFavorite1"/>
-                                    </StackPane>
-                                    <Label fx:id="item1StatusLabel" text="ACTIVE" styleClass="auction-seller-label"/>
-                                    <Label fx:id="item1NameLabel" text="Item Name" styleClass="auction-card-title"/>
-                                    <Label fx:id="item1BidLabel" text="Current Bid" styleClass="auction-price-label"/>
-                                    <Label fx:id="item1TimeLabel" text="Ending now" styleClass="auction-ending-label"/>
-                                    <Button text="View Details"
-                                            maxWidth="Infinity"
-                                            styleClass="ghost-button"
-                                            onAction="#handleViewDetails1"/>
-                                </VBox>
+                            <HBox spacing="10.0" styleClass="for-you-filter-row">
+                                <Button fx:id="allFilterButton"
+                                        text="All"
+                                        focusTraversable="false"
+                                        styleClass="filter-chip-active"
+                                        onAction="#handleFilterAll"/>
 
-                                <VBox spacing="8.0" styleClass="for-you-auction-card" HBox.hgrow="ALWAYS">
-                                    <StackPane>
-                                        <ImageView fx:id="item2ImageView"
-                                                   fitWidth="320"
-                                                   fitHeight="230"
-                                                   preserveRatio="false"
-                                                   styleClass="auction-card-image"/>
-                                        <Button fx:id="item2FavoriteButton"
-                                                text="&#9825;"
-                                                StackPane.alignment="TOP_RIGHT"
-                                                styleClass="favorite-floating-button"
-                                                onAction="#handleToggleFavorite2"/>
-                                    </StackPane>
-                                    <Label fx:id="item2StatusLabel" text="ACTIVE" styleClass="auction-seller-label"/>
-                                    <Label fx:id="item2NameLabel" text="Item Name" styleClass="auction-card-title"/>
-                                    <Label fx:id="item2BidLabel" text="Current Bid" styleClass="auction-price-label"/>
-                                    <Label fx:id="item2TimeLabel" text="Ending now" styleClass="auction-ending-label"/>
-                                    <Button text="View Details"
-                                            maxWidth="Infinity"
-                                            styleClass="ghost-button"
-                                            onAction="#handleViewDetails2"/>
-                                </VBox>
+                                <Button fx:id="endingSoonFilterButton"
+                                        text="Ending soon"
+                                        focusTraversable="false"
+                                        styleClass="filter-chip"
+                                        onAction="#handleFilterEndingSoon"/>
 
-                                <VBox spacing="8.0" styleClass="for-you-auction-card" HBox.hgrow="ALWAYS">
-                                    <StackPane>
-                                        <ImageView fx:id="item3ImageView"
-                                                   fitWidth="320"
-                                                   fitHeight="230"
-                                                   preserveRatio="false"
-                                                   styleClass="auction-card-image"/>
-                                        <Button fx:id="item3FavoriteButton"
-                                                text="&#9825;"
-                                                StackPane.alignment="TOP_RIGHT"
-                                                styleClass="favorite-floating-button"
-                                                onAction="#handleToggleFavorite3"/>
-                                    </StackPane>
-                                    <Label fx:id="item3StatusLabel" text="ACTIVE" styleClass="auction-seller-label"/>
-                                    <Label fx:id="item3NameLabel" text="Item Name" styleClass="auction-card-title"/>
-                                    <Label fx:id="item3BidLabel" text="Current Bid" styleClass="auction-price-label"/>
-                                    <Label fx:id="item3TimeLabel" text="Ending now" styleClass="auction-ending-label"/>
-                                    <Button text="View Details"
-                                            maxWidth="Infinity"
-                                            styleClass="ghost-button"
-                                            onAction="#handleViewDetails3"/>
-                                </VBox>
+                                <Button fx:id="newListingsFilterButton"
+                                        text="New listings"
+                                        focusTraversable="false"
+                                        styleClass="filter-chip"
+                                        onAction="#handleFilterNewListings"/>
+
+                                <Button fx:id="highDemandFilterButton"
+                                        text="High demand"
+                                        focusTraversable="false"
+                                        styleClass="filter-chip"
+                                        onAction="#handleFilterHighDemand"/>
                             </HBox>
+
+                            <TilePane fx:id="auctionGrid"
+                                      hgap="16.0"
+                                      vgap="16.0"
+                                      prefColumns="3"
+                                      prefTileWidth="320.0"
+                                      styleClass="for-you-auction-grid"/>
                         </VBox>
                     </content>
                 </ScrollPane>
