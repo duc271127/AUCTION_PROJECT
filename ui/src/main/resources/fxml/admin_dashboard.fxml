@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import java.lang.String?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
@@ -7,121 +8,179 @@
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane xmlns:fx="http://javafx.com/fxml"
-            fx:controller="com.auction.client.controller.AdminDashboardController"
-            prefWidth="1400" prefHeight="900"
-            styleClass="admin-root">
-
-    <left>
-        <VBox prefWidth="240.0" spacing="18.0" styleClass="admin-sidebar">
-            <padding>
-                <Insets top="28" right="20" bottom="28" left="20"/>
-            </padding>
-
-            <Label text="BidWave Admin" styleClass="admin-sidebar-title"/>
-            <Label text="Administration and approval workspace" wrapText="true" styleClass="admin-sidebar-subtitle"/>
-
-            <Button text="Dashboard" maxWidth="Infinity" styleClass="sidebar-button"/>
-            <Button text="Pending Approvals" maxWidth="Infinity" styleClass="sidebar-button"/>
-            <Button text="User Management" maxWidth="Infinity" styleClass="sidebar-button"/>
-            <Button text="Logout" maxWidth="Infinity" styleClass="secondary-button" onAction="#handleLogout"/>
-        </VBox>
-    </left>
+<BorderPane prefHeight="820" prefWidth="1280" styleClass="admin-root" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/26" fx:controller="com.auction.client.controller.AdminDashboardController">
 
     <center>
         <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="admin-scroll-pane">
             <content>
-                <VBox spacing="20.0" styleClass="admin-page">
+                <VBox spacing="22.0" styleClass="admin-page">
                     <padding>
-                        <Insets top="24" right="24" bottom="24" left="24"/>
+                        <Insets bottom="42" left="42" right="42" top="34" />
                     </padding>
 
-                    <VBox spacing="6.0">
-                        <Label text="Admin Dashboard" styleClass="page-title"/>
-                        <Label text="Review listings, moderate activity, and monitor platform stats." styleClass="page-subtitle"/>
+                    <HBox alignment="CENTER_LEFT" spacing="18.0">
+                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                            <Label styleClass="admin-title" text="Admin Command Center" />
+                            <Label styleClass="admin-subtitle" text="Platform management, moderation, and analytics" />
+                        </VBox>
+                        <Button onAction="#handleLogout" minWidth="112.0" prefHeight="46.0" styleClass="admin-logout-button" text="Logout" />
+                    </HBox>
+
+                    <HBox spacing="14.0">
+                        <VBox spacing="8.0" styleClass="admin-stat-card" HBox.hgrow="ALWAYS">
+                            <Label styleClass="admin-stat-label" text="TOTAL USERS" />
+                            <Label fx:id="totalUsersLabel" styleClass="admin-stat-number" text="0" />
+                        </VBox>
+
+                        <VBox spacing="8.0" styleClass="admin-stat-card" HBox.hgrow="ALWAYS">
+                            <Label styleClass="admin-stat-label" text="ACTIVE SELLERS" />
+                            <Label fx:id="activeSellersLabel" styleClass="admin-stat-number" text="0" />
+                        </VBox>
+
+                        <VBox spacing="8.0" styleClass="admin-stat-card" HBox.hgrow="ALWAYS">
+                            <Label styleClass="admin-stat-label" text="TOTAL AUCTIONS" />
+                            <Label fx:id="totalAuctionsLabel" styleClass="admin-stat-number" text="0" />
+                        </VBox>
+
+                        <VBox spacing="8.0" HBox.hgrow="ALWAYS">
+                            <styleClass>
+                                <String fx:value="admin-stat-card" />
+                                <String fx:value="admin-stat-card-primary" />
+                            </styleClass>
+                            <Label styleClass="admin-stat-label-primary" text="PLATFORM REVENUE" />
+                            <Label fx:id="revenueLabel" styleClass="admin-stat-number-primary" text="€0" />
+                        </VBox>
+                    </HBox>
+
+                    <HBox spacing="20.0" styleClass="admin-tabs">
+                        <Button fx:id="overviewTabButton" onAction="#handleShowOverview" styleClass="admin-tab-button" text="Overview" />
+                        <Button fx:id="auctionManagementTabButton" onAction="#handleShowAuctionManagement" styleClass="admin-tab-button" text="Auction Management" />
+                    </HBox>
+
+                    <VBox fx:id="overviewPane" spacing="22.0">
+                        <VBox spacing="18.0" styleClass="admin-panel">
+                            <padding>
+                                <Insets bottom="22" left="22" right="22" top="22" />
+                            </padding>
+
+                            <Label styleClass="admin-section-title" text="Platform Overview" />
+                            <GridPane hgap="16.0" vgap="16.0">
+                                <columnConstraints>
+                                    <ColumnConstraints percentWidth="50.0" />
+                                    <ColumnConstraints percentWidth="50.0" />
+                                </columnConstraints>
+
+                                <VBox spacing="5.0" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                                    <styleClass>
+                                        <String fx:value="admin-overview-tile" />
+                                        <String fx:value="admin-overview-tile-success" />
+                                    </styleClass>
+                                    <Label styleClass="admin-overview-label" text="Active Auctions" />
+                                    <Label fx:id="activeAuctionsLabel" styleClass="admin-overview-number" text="0" />
+                                    <Label styleClass="admin-overview-caption" text="Currently live" />
+                                </VBox>
+
+                                <VBox spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                                    <styleClass>
+                                        <String fx:value="admin-overview-tile" />
+                                        <String fx:value="admin-overview-tile-info" />
+                                    </styleClass>
+                                    <Label styleClass="admin-overview-label" text="Closed Auctions" />
+                                    <Label fx:id="closedAuctionsLabel" styleClass="admin-overview-number" text="0" />
+                                    <Label styleClass="admin-overview-caption" text="Completed auctions" />
+                                </VBox>
+
+                                <VBox spacing="5.0" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                                    <styleClass>
+                                        <String fx:value="admin-overview-tile" />
+                                        <String fx:value="admin-overview-tile-info" />
+                                    </styleClass>
+                                    <Label styleClass="admin-overview-label" text="New Sellers" />
+                                    <Label fx:id="newSellersLabel" styleClass="admin-overview-number" text="0" />
+                                    <Label styleClass="admin-overview-caption" text="This month" />
+                                </VBox>
+
+                                <VBox spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                                    <styleClass>
+                                        <String fx:value="admin-overview-tile" />
+                                        <String fx:value="admin-overview-tile-success" />
+                                    </styleClass>
+                                    <Label styleClass="admin-overview-label" text="Auction Success Rate" />
+                                    <Label fx:id="successRateLabel" styleClass="admin-overview-number" text="0%" />
+                                    <Label styleClass="admin-overview-caption" text="Backend calculated" />
+                                </VBox>
+                            </GridPane>
+                        </VBox>
+
+                        <HBox spacing="20.0">
+                            <VBox spacing="14.0" styleClass="admin-panel" HBox.hgrow="ALWAYS">
+                                <padding>
+                                    <Insets bottom="22" left="22" right="22" top="22" />
+                                </padding>
+                                <Label styleClass="admin-section-title" text="Recent Notifications" />
+                                <TableView fx:id="notificationTable" prefHeight="260" prefWidth="1091.0">
+                                    <columns>
+                                        <TableColumn fx:id="notificationTypeColumn" prefWidth="150.0" text="Type" />
+                                        <TableColumn fx:id="notificationMessageColumn" prefWidth="520.0" text="Message" />
+                                        <TableColumn fx:id="notificationCreatedColumn" prefWidth="220.0" text="Created" />
+                                    </columns>
+                                </TableView>
+                            </VBox>
+
+                            <VBox prefWidth="430.0" spacing="14.0" styleClass="admin-panel">
+                                <padding>
+                                    <Insets bottom="22" left="22" right="22" top="22" />
+                                </padding>
+                                <Label styleClass="admin-section-title" text="Wallet Activity" />
+                                <TableView fx:id="walletActivityTable" prefHeight="260.0" prefWidth="186.0">
+                                    <columns>
+                                        <TableColumn fx:id="walletUserColumn" prefWidth="130.0" text="User" />
+                                        <TableColumn fx:id="walletTypeColumn" prefWidth="80.0" text="Type" />
+                                        <TableColumn fx:id="walletAmountColumn" prefWidth="90.0" text="Amount" />
+                                        <TableColumn fx:id="walletCreatedColumn" prefWidth="110.0" text="Created" />
+                                    </columns>
+                                </TableView>
+                            </VBox>
+                        </HBox>
                     </VBox>
 
-                    <HBox spacing="16.0">
-                        <VBox HBox.hgrow="ALWAYS" spacing="8.0" styleClass="admin-stat-card">
-                            <Label fx:id="totalUsersLabel" text="0" styleClass="admin-stat-number"/>
-                            <Label text="Total Users" styleClass="admin-stat-label"/>
-                        </VBox>
-
-                        <VBox HBox.hgrow="ALWAYS" spacing="8.0" styleClass="admin-stat-card">
-                            <Label fx:id="activeSellersLabel" text="0" styleClass="admin-stat-number"/>
-                            <Label text="Active Sellers" styleClass="admin-stat-label"/>
-                        </VBox>
-
-                        <VBox HBox.hgrow="ALWAYS" spacing="8.0" styleClass="admin-stat-card">
-                            <Label fx:id="totalAuctionsLabel" text="0" styleClass="admin-stat-number"/>
-                            <Label text="Total Auctions" styleClass="admin-stat-label"/>
-                        </VBox>
-
-                        <VBox HBox.hgrow="ALWAYS" spacing="8.0" styleClass="admin-stat-card">
-                            <Label fx:id="revenueLabel" text="$0" styleClass="admin-stat-number"/>
-                            <Label text="Revenue" styleClass="admin-stat-label"/>
-                        </VBox>
-                    </HBox>
-
-                    <HBox spacing="20.0">
-                        <VBox spacing="14.0" HBox.hgrow="ALWAYS" styleClass="admin-table-card">
-                            <padding>
-                                <Insets top="20" right="20" bottom="20" left="20"/>
-                            </padding>
-
-                            <Label text="Pending Approvals" styleClass="admin-section-title"/>
-
-                            <TableView fx:id="approvalTable" VBox.vgrow="ALWAYS">
-                                <columns>
-                                    <TableColumn fx:id="productNameColumn" text="Product" prefWidth="190.0"/>
-                                    <TableColumn fx:id="categoryColumn" text="Category" prefWidth="150.0"/>
-                                    <TableColumn fx:id="submittedDateColumn" text="Start Date" prefWidth="130.0"/>
-                                    <TableColumn fx:id="statusColumn" text="Status" prefWidth="130.0"/>
-                                </columns>
-                            </TableView>
-
-                            <Label fx:id="adminMessageLabel" text="" styleClass="admin-message"/>
-
-                            <HBox spacing="10.0">
-                                <Button text="Approve" styleClass="primary-button" onAction="#handleApprove"/>
-                                <Button text="Reject" styleClass="secondary-button" onAction="#handleReject"/>
-                                <Button text="Review" styleClass="secondary-button" onAction="#handleReview"/>
-                                <Button text="Delete" styleClass="danger-button" onAction="#handleDelete"/>
-                            </HBox>
-                        </VBox>
-
-                        <VBox spacing="14.0" prefWidth="420.0" styleClass="admin-side-card">
-                            <padding>
-                                <Insets top="20" right="20" bottom="20" left="20"/>
-                            </padding>
-
-                            <Label text="Recent Wallet Activity" styleClass="admin-section-title"/>
-                            <TableView fx:id="walletActivityTable" prefHeight="360">
-                                <columns>
-                                    <TableColumn fx:id="walletUserColumn" text="User" prefWidth="130.0"/>
-                                    <TableColumn fx:id="walletTypeColumn" text="Type" prefWidth="80.0"/>
-                                    <TableColumn fx:id="walletAmountColumn" text="Amount" prefWidth="90.0"/>
-                                    <TableColumn fx:id="walletCreatedColumn" text="Created" prefWidth="110.0"/>
-                                </columns>
-                            </TableView>
-                        </VBox>
-                    </HBox>
-
-                    <VBox spacing="14.0" styleClass="admin-table-card">
+                    <VBox fx:id="auctionManagementPane" managed="false" spacing="16.0" styleClass="admin-panel" visible="false">
                         <padding>
-                            <Insets top="20" right="20" bottom="20" left="20"/>
+                            <Insets bottom="22" left="22" right="22" top="22" />
                         </padding>
-                        <Label text="Recent Notifications" styleClass="admin-section-title"/>
-                        <TableView fx:id="notificationTable" prefHeight="240">
+
+                        <HBox alignment="CENTER_LEFT" spacing="12.0">
+                            <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                                <Label styleClass="admin-section-title" text="Auction Management" />
+                                <Label styleClass="admin-muted" text="Review seller submissions and create auctions from approved items." />
+                            </VBox>
+                            <Button onAction="#handleShowAuctionManagement" styleClass="admin-outline-button" text="Refresh" />
+                        </HBox>
+
+                        <TableView fx:id="approvalTable" prefHeight="430">
                             <columns>
-                                <TableColumn fx:id="notificationTypeColumn" text="Type" prefWidth="160.0"/>
-                                <TableColumn fx:id="notificationMessageColumn" text="Message" prefWidth="540.0"/>
-                                <TableColumn fx:id="notificationCreatedColumn" text="Created" prefWidth="260.0"/>
+                                <TableColumn fx:id="productNameColumn" prefWidth="230.0" text="Item Title" />
+                                <TableColumn fx:id="sellerColumn" prefWidth="190.0" text="Seller" />
+                                <TableColumn fx:id="categoryColumn" prefWidth="150.0" text="Category" />
+                                <TableColumn fx:id="priceColumn" prefWidth="150.0" text="Starting Price" />
+                                <TableColumn fx:id="submittedDateColumn" prefWidth="170.0" text="Start Date" />
+                                <TableColumn fx:id="statusColumn" prefWidth="120.0" text="Status" />
                             </columns>
                         </TableView>
+
+                        <Label fx:id="adminMessageLabel" styleClass="admin-message" text="" />
+
+                        <HBox spacing="10.0">
+                            <Button onAction="#handleApprove" styleClass="admin-primary-button" text="Approve + Create Auction" />
+                            <Button onAction="#handleReject" styleClass="admin-outline-button" text="Reject" />
+                            <Button onAction="#handleReview" styleClass="admin-outline-button" text="Review" />
+                            <Button onAction="#handleDelete" styleClass="admin-danger-button" text="Delete" />
+                        </HBox>
                     </VBox>
                 </VBox>
             </content>

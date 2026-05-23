@@ -11,9 +11,11 @@ import com.auction.client.session.SessionManager;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.scene.layout.VBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.Button;
 import javafx.scene.control.cell.PropertyValueFactory;
 
 import java.time.Instant;
@@ -25,11 +27,21 @@ public class AdminDashboardController {
     @FXML private Label activeSellersLabel;
     @FXML private Label revenueLabel;
     @FXML private Label totalUsersLabel;
+    @FXML private Label activeAuctionsLabel;
+    @FXML private Label closedAuctionsLabel;
+    @FXML private Label newSellersLabel;
+    @FXML private Label successRateLabel;
     @FXML private Label adminMessageLabel;
+    @FXML private Button overviewTabButton;
+    @FXML private Button auctionManagementTabButton;
+    @FXML private VBox overviewPane;
+    @FXML private VBox auctionManagementPane;
 
     @FXML private TableView<AdminApprovalItem> approvalTable;
     @FXML private TableColumn<AdminApprovalItem, String> productNameColumn;
+    @FXML private TableColumn<AdminApprovalItem, String> sellerColumn;
     @FXML private TableColumn<AdminApprovalItem, String> categoryColumn;
+    @FXML private TableColumn<AdminApprovalItem, String> priceColumn;
     @FXML private TableColumn<AdminApprovalItem, String> submittedDateColumn;
     @FXML private TableColumn<AdminApprovalItem, String> statusColumn;
 
@@ -55,6 +67,7 @@ public class AdminDashboardController {
         walletActivityTable.setItems(walletActivity);
         notificationTable.setItems(notifications);
         hideMessage();
+        showOverviewTab();
         loadPendingItems();
         loadAdminStats();
         loadWalletActivity();
@@ -62,10 +75,23 @@ public class AdminDashboardController {
     }
 
     private void setupTables() {
+        approvalTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        walletActivityTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        notificationTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
         productNameColumn.setCellValueFactory(new PropertyValueFactory<>("productName"));
+        sellerColumn.setCellValueFactory(new PropertyValueFactory<>("sellerName"));
         categoryColumn.setCellValueFactory(new PropertyValueFactory<>("category"));
+        priceColumn.setCellValueFactory(new PropertyValueFactory<>("startingPriceText"));
         submittedDateColumn.setCellValueFactory(new PropertyValueFactory<>("submittedDate"));
         statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
+
+        productNameColumn.setMinWidth(220);
+        sellerColumn.setMinWidth(220);
+        categoryColumn.setMinWidth(150);
+        priceColumn.setMinWidth(160);
+        submittedDateColumn.setMinWidth(190);
+        statusColumn.setMinWidth(130);
 
         walletUserColumn.setCellValueFactory(new PropertyValueFactory<>("userId"));
         walletTypeColumn.setCellValueFactory(new PropertyValueFactory<>("type"));
@@ -92,11 +118,19 @@ public class AdminDashboardController {
             totalUsersLabel.setText(String.valueOf(stats.getTotalUsers()));
             activeSellersLabel.setText(String.valueOf(stats.getActiveSellers()));
             totalAuctionsLabel.setText(String.valueOf(stats.getTotalAuctions()));
-            revenueLabel.setText("$" + String.format("%,.0f", stats.getRevenue()));
+            activeAuctionsLabel.setText(String.valueOf(stats.getActiveAuctions()));
+            closedAuctionsLabel.setText(String.valueOf(stats.getClosedAuctions()));
+            newSellersLabel.setText(String.valueOf(stats.getNewSellersThisMonth()));
+            successRateLabel.setText(String.format("%.0f%%", stats.getAuctionSuccessRate()));
+            revenueLabel.setText("€" + String.format("%,.1fk", stats.getRevenue() / 1000.0));
         } catch (Exception e) {
             totalUsersLabel.setText("-");
             activeSellersLabel.setText("-");
             totalAuctionsLabel.setText("-");
+            activeAuctionsLabel.setText("-");
+            closedAuctionsLabel.setText("-");
+            newSellersLabel.setText("-");
+            successRateLabel.setText("-");
             revenueLabel.setText("-");
         }
     }
@@ -163,6 +197,17 @@ public class AdminDashboardController {
     }
 
     @FXML
+    private void handleShowOverview() {
+        showOverviewTab();
+    }
+
+    @FXML
+    private void handleShowAuctionManagement() {
+        loadPendingItems();
+        showAuctionManagementTab();
+    }
+
+    @FXML
     private void handleDelete() {
         AdminApprovalItem selectedItem = approvalTable.getSelectionModel().getSelectedItem();
         if (!hasItemId(selectedItem, "delete")) {
@@ -203,6 +248,32 @@ public class AdminDashboardController {
         loadAdminStats();
         loadWalletActivity();
         loadNotifications();
+    }
+
+    private void showOverviewTab() {
+        overviewPane.setManaged(true);
+        overviewPane.setVisible(true);
+        auctionManagementPane.setManaged(false);
+        auctionManagementPane.setVisible(false);
+
+        overviewTabButton.getStyleClass().remove("admin-tab-button-active");
+        auctionManagementTabButton.getStyleClass().remove("admin-tab-button-active");
+        if (!overviewTabButton.getStyleClass().contains("admin-tab-button-active")) {
+            overviewTabButton.getStyleClass().add("admin-tab-button-active");
+        }
+    }
+
+    private void showAuctionManagementTab() {
+        overviewPane.setManaged(false);
+        overviewPane.setVisible(false);
+        auctionManagementPane.setManaged(true);
+        auctionManagementPane.setVisible(true);
+
+        overviewTabButton.getStyleClass().remove("admin-tab-button-active");
+        auctionManagementTabButton.getStyleClass().remove("admin-tab-button-active");
+        if (!auctionManagementTabButton.getStyleClass().contains("admin-tab-button-active")) {
+            auctionManagementTabButton.getStyleClass().add("admin-tab-button-active");
+        }
     }
 
     private CreateAuctionRequest buildCreateAuctionRequest(AdminApprovalItem item) {

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox maxHeight="700" maxWidth="560" prefHeight="700" prefWidth="560" spacing="0" styleClass="modal-card seller-item-dialog" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/26" fx:controller="com.auction.client.controller.SellerItemDialogController">
+
+    <HBox alignment="CENTER_LEFT" spacing="12" styleClass="modal-header">
+        <VBox spacing="4">
+            <Label fx:id="dialogTitleLabel" styleClass="modal-title" text="Create Listing" />
+            <Label styleClass="modal-subtitle" text="Fill in the detailed information about your product" />
+        </VBox>
+
+        <Region HBox.hgrow="ALWAYS" />
+
+        <Button focusTraversable="false" onAction="#handleClose" styleClass="modal-close-button" text="×" />
+    </HBox>
+
+    <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="modal-scroll-pane" vbarPolicy="AS_NEEDED" VBox.vgrow="ALWAYS">
+        <content>
+            <VBox spacing="14.0">
+                <padding>
+                    <Insets bottom="24" left="24" right="24" top="22" />
+                </padding>
+
+                <Label styleClass="field-label" text="Product Name" />
+                <TextField fx:id="productNameField" promptText="Enter product name" styleClass="seller-input" />
+
+                <Label styleClass="field-label" text="Description" />
+                <TextArea fx:id="descriptionArea" prefRowCount="4" promptText="Enter short description" styleClass="seller-textarea" wrapText="true" />
+
+                <Label styleClass="field-label" text="Category" />
+                <ComboBox fx:id="categoryField" maxWidth="Infinity" promptText="Select category" styleClass="seller-input" />
+
+                <HBox spacing="12.0">
+                    <VBox spacing="8.0" HBox.hgrow="ALWAYS">
+                        <Label styleClass="field-label" text="Starting Price" />
+                        <TextField fx:id="startingPriceField" promptText="Enter starting price" styleClass="seller-input" />
+                    </VBox>
+
+                    <VBox spacing="8.0" HBox.hgrow="ALWAYS">
+                        <Label styleClass="field-label" text="Reserve Price" />
+                        <TextField fx:id="reservePriceField" promptText="Enter reserve price" styleClass="seller-input" />
+                    </VBox>
+                </HBox>
+
+                <HBox spacing="12.0">
+                    <VBox spacing="8.0" HBox.hgrow="ALWAYS">
+                        <Label styleClass="field-label" text="Start Date" />
+                        <DatePicker fx:id="startDatePicker" maxWidth="Infinity" />
+                    </VBox>
+
+                    <VBox spacing="8.0" HBox.hgrow="ALWAYS">
+                        <Label styleClass="field-label" text="End Date" />
+                        <DatePicker fx:id="endDatePicker" maxWidth="Infinity" />
+                    </VBox>
+                </HBox>
+
+                <HBox spacing="16.0">
+                    <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+                        <Label styleClass="field-label" text="Product Images" />
+                        <Button maxWidth="Infinity" onAction="#handleChooseImage" styleClass="seller-outline-button" text="Choose Images" />
+
+                        <HBox alignment="CENTER" spacing="8.0">
+                            <ComboBox fx:id="primaryImageChoice" maxWidth="Infinity" promptText="Select primary image" HBox.hgrow="ALWAYS" />
+
+                            <Button focusTraversable="false" maxHeight="58" maxWidth="48" minHeight="24.0" minWidth="34.0" onAction="#handleRemoveSelectedImage" prefHeight="25.0" prefWidth="34.0" styleClass="seller-image-delete-button" text="×" />
+                        </HBox>
+
+                        <Label fx:id="selectedImageLabel" styleClass="seller-muted-label" text="No image selected" wrapText="true" />
+
+                        <HBox fx:id="imagePreviewStrip" spacing="8.0" />
+                    </VBox>
+
+                    <ImageView fx:id="productImagePreview" fitHeight="130" fitWidth="190" preserveRatio="false" styleClass="seller-preview-image" />
+                </HBox>
+
+                <Label fx:id="messageLabel" managed="false" styleClass="seller-message" text="" visible="false" wrapText="true" />
+
+                <HBox spacing="10.0">
+                    <Button maxWidth="Infinity" onAction="#handleClose" styleClass="seller-outline-button" text="Cancel" HBox.hgrow="ALWAYS" />
+
+                    <Button fx:id="deleteButton" managed="false" maxWidth="Infinity" onAction="#handleDelete" styleClass="seller-danger-button" text="Delete" visible="false" HBox.hgrow="ALWAYS" />
+
+                    <Button fx:id="submitButton" maxWidth="Infinity" onAction="#handleSubmit" styleClass="seller-create-button" text="Submit Listing" HBox.hgrow="ALWAYS" />
+                </HBox>
+            </VBox>
+        </content>
+    </ScrollPane>
+</VBox>

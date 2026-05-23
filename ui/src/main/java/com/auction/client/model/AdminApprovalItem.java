@@ -5,6 +5,7 @@ import java.util.UUID;
 public class AdminApprovalItem {
     private UUID id;
     private UUID sellerId;
+    private String sellerName;
 
     private String productName;
     private String description;
@@ -66,6 +67,18 @@ public class AdminApprovalItem {
         this.sellerId = sellerId;
     }
 
+    public String getSellerName() {
+        if (sellerName == null || sellerName.isBlank()) {
+            return sellerId == null ? "Unknown Seller" : sellerId.toString();
+        }
+
+        return sellerName;
+    }
+
+    public void setSellerName(String sellerName) {
+        this.sellerName = sellerName;
+    }
+
     public String getProductName() {
         return productName;
     }
@@ -100,6 +113,10 @@ public class AdminApprovalItem {
 
     public void setStartingPrice(double startingPrice) {
         this.startingPrice = startingPrice;
+    }
+
+    public String getStartingPriceText() {
+        return "€ " + String.format("%,.0f", startingPrice);
     }
 
     public Double getReservePrice() {
