@@ -124,8 +124,8 @@ public class AdminServiceImpl implements AdminService {
 
         if (itemId == null) throw new BusinessRuleException("itemId is required");
         if (adminId == null) throw new BusinessRuleException("adminId is required");
-        if (startingPrice <= 0) {
-            throw new BusinessRuleException("startingPrice must be positive");
+        if (startingPrice < 0) {
+            throw new BusinessRuleException("startingPrice must not be negative");
         }
         if (reservePrice != null && reservePrice < 0) {
             throw new BusinessRuleException("reservePrice must be non-negative");
@@ -134,10 +134,41 @@ public class AdminServiceImpl implements AdminService {
             throw new BusinessRuleException("start must be before end");
         }
 
-        Item item = itemRepository.findById(itemId)
+        return createAuctionForItemInternal(itemId, start, end, adminId, startingPrice, reservePrice, true);
+    }
+
+    @Override
+    @Transactional
+    public Auction approveAndCreateAuction(UUID itemId,
+                                           Instant start,
+                                           Instant end,
+                                           UUID adminId,
+                                           double startingPrice,
+                                           Double reservePrice) {
+        return createAuctionForItemInternal(itemId, start, end, adminId, startingPrice, reservePrice, true);
+    }
+
+    private Auction createAuctionForItemInternal(UUID itemId,
+                                                 Instant start,
+                                                 Instant end,
+                                                 UUID adminId,
+                                                 double startingPrice,
+                                                 Double reservePrice,
+                                                 boolean autoApprovePending) {
+        Item item = itemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new BusinessRuleException("Item not found: " + itemId));
 
-        if (item.getStatus() != ItemStatus.APPROVED) {
+        if (auctionRepository.existsByItemId(itemId)) {
+            throw new BusinessRuleException("Auction already exists for item: " + itemId);
+        }
+
+        if (item.getStatus() == ItemStatus.PENDING && autoApprovePending) {
+            item.setStatus(ItemStatus.APPROVED);
+            item.setApprovedBy(adminId);
+            item.setApprovedAt(Instant.now());
+            itemRepository.save(item);
+            saveNotification("ITEM_APPROVED", "Item approved: " + item.getName());
+        } else if (item.getStatus() != ItemStatus.APPROVED) {
             throw new BusinessRuleException("Item must be APPROVED before creating auction");
         }
 
@@ -145,8 +176,14 @@ public class AdminServiceImpl implements AdminService {
         dto.setItemId(item.getId());
         dto.setStartTime(start == null ? Instant.now() : start);
         dto.setEndTime(end == null ? Instant.now().plusSeconds(3600) : end);
-        dto.setStartPrice(startingPrice);
-        dto.setReservePrice(reservePrice == null ? 0.0 : reservePrice);
+        double effectiveStartingPrice = startingPrice > 0
+                ? startingPrice
+                : (item.getStartingPrice() == null ? 0.0 : item.getStartingPrice());
+        if (effectiveStartingPrice <= 0) {
+            throw new BusinessRuleException("startingPrice must be positive");
+        }
+        dto.setStartPrice(effectiveStartingPrice);
+        dto.setReservePrice(reservePrice == null ? item.getReservePrice() : reservePrice);
 
         Auction saved = auctionService.createAuction(dto, item.getSellerId(), adminId);
         saveNotification("AUCTION_CREATED", "Auction created for item: " + item.getName());

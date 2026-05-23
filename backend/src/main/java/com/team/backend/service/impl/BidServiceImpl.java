@@ -12,6 +12,7 @@ import com.team.backend.exception.ResourceNotFoundException;
 import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.AutoBidRepository;
 import com.team.backend.repository.BidRepository;
+import com.team.backend.repository.WalletRepository;
 import com.team.backend.service.AuctionHelper;
 import com.team.backend.service.BidService;
 import com.team.backend.service.EventPublisher;
@@ -23,6 +24,7 @@ import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -38,6 +40,7 @@ public class BidServiceImpl implements BidService {
     private final AuctionRepository auctionRepository;
     private final BidRepository bidRepository;
     private final AutoBidRepository autoBidRepository;
+    private final WalletRepository walletRepository;
     private final BidTransactionalService bidTransactionalService;
     private final AuctionHelper auctionHelper;
     private final ConcurrentHashMap<UUID, ReentrantLock> lockMap = new ConcurrentHashMap<>();
@@ -51,6 +54,7 @@ public class BidServiceImpl implements BidService {
     public BidServiceImpl(AuctionRepository auctionRepository,
                           BidRepository bidRepository,
                           AutoBidRepository autoBidRepository,
+                          WalletRepository walletRepository,
                           BidTransactionalService bidTransactionalService,
                           double minIncrement,
                           long antiSnipingThresholdSeconds,
@@ -60,6 +64,7 @@ public class BidServiceImpl implements BidService {
         this(auctionRepository,
                 bidRepository,
                 autoBidRepository,
+                walletRepository,
                 bidTransactionalService,
                 null,
                 minIncrement,
@@ -73,6 +78,7 @@ public class BidServiceImpl implements BidService {
     public BidServiceImpl(AuctionRepository auctionRepository,
                           BidRepository bidRepository,
                           AutoBidRepository autoBidRepository,
+                          WalletRepository walletRepository,
                           BidTransactionalService bidTransactionalService,
                           AuctionHelper auctionHelper,
                           @Value("${auction.bid.min-increment:1.0}") double minIncrement,
@@ -83,6 +89,7 @@ public class BidServiceImpl implements BidService {
         this.auctionRepository = auctionRepository;
         this.bidRepository = bidRepository;
         this.autoBidRepository = autoBidRepository;
+        this.walletRepository = walletRepository;
         this.bidTransactionalService = bidTransactionalService;
         this.auctionHelper = auctionHelper;
         this.minIncrement = minIncrement;
@@ -188,7 +195,7 @@ public class BidServiceImpl implements BidService {
             Auction auction = auctionRepository.findById(auctionId)
                     .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));
 
-            validateAuctionForBid(auction);
+            validateAuctionForBid(auction, bidderId, amount);
 
             double minAllowed = auction.getCurrentPrice() + minIncrement;
             if (amount < minAllowed) {
@@ -218,7 +225,7 @@ public class BidServiceImpl implements BidService {
         }
     }
 
-    private void validateAuctionForBid(Auction auction) {
+    private void validateAuctionForBid(Auction auction, UUID bidderId, double amount) {
         if (auction == null) {
             throw new ResourceNotFoundException("Auction is missing");
         }
@@ -227,14 +234,44 @@ public class BidServiceImpl implements BidService {
         }
 
         Instant now = Instant.now();
+        UUID sellerId = auction.getSellerId() != null ? auction.getSellerId() : auction.getCreatedBy();
+        if (sellerId != null && sellerId.equals(bidderId)) {
+            throw new InvalidBidException("Seller cannot bid on their own auction");
+        }
+        ensureSufficientBalance(bidderId, amount);
         if (auction.getStartTime() != null && now.isBefore(auction.getStartTime())) {
             throw new InvalidBidException("Auction has not started");
+        }
+        if (auction.getState() == AuctionState.SCHEDULED && auction.getStartTime() != null && !now.isBefore(auction.getStartTime())) {
+            auction.setState(AuctionState.ACTIVE);
+            auctionRepository.save(auction);
+        }
+        if (auction.getState() != AuctionState.ACTIVE) {
+            throw new InvalidBidException("Auction is not active");
         }
         if (auction.getEndTime() != null && now.isAfter(auction.getEndTime())) {
             auction.setState(AuctionState.FINISHED);
             auction.setWinnerId(auction.getLeaderId());
             auctionRepository.save(auction);
+            if (eventPublisher != null) {
+                try {
+                    eventPublisher.publishAuctionClosed(auction.getId(), auction.getWinnerId(), auction.getCurrentPrice(), Instant.now());
+                } catch (Exception e) {
+                    log.warn("Failed to publish fallback auction closed event for auction {}", auction.getId(), e);
+                }
+            }
             throw new AuctionClosedException("Auction has ended");
+        }
+    }
+
+    private void ensureSufficientBalance(UUID bidderId, double amount) {
+        BigDecimal required = BigDecimal.valueOf(amount);
+        BigDecimal balance = walletRepository.findByUserId(bidderId)
+                .map(wallet -> wallet.getBalance() == null ? BigDecimal.ZERO : wallet.getBalance())
+                .orElse(BigDecimal.ZERO);
+
+        if (balance.compareTo(required) < 0) {
+            throw new InvalidBidException("Insufficient wallet balance for this bid");
         }
     }
 

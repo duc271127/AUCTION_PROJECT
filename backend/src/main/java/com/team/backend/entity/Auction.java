@@ -6,7 +6,9 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Entity
-@Table(name = "auctions")
+@Table(name = "auctions", uniqueConstraints = {
+        @UniqueConstraint(columnNames = "item_id")
+})
 public class Auction {
 
     @Id

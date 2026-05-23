@@ -20,5 +20,6 @@ public interface AdminService {
     List<AdminWalletActivityDto> getRecentWalletActivity(int limit);
     List<AdminNotificationDto> getRecentNotifications(int limit);
     Auction createAuctionForItem(UUID itemId, Instant start, Instant end, UUID adminId, double startingPrice, Double reservePrice);
+    Auction approveAndCreateAuction(UUID itemId, Instant start, Instant end, UUID adminId, double startingPrice, Double reservePrice);
     List<PendingItemDto> listPendingItems();
 }

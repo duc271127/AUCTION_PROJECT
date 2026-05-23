@@ -16,9 +16,6 @@ import com.team.backend.entity.AutoBid;
 import com.team.backend.entity.BidTransaction;
 import com.team.backend.entity.User;
 import com.team.backend.exception.BusinessRuleException;
-import com.team.backend.realtime.RealtimeEvent;
-import com.team.backend.realtime.RealtimeEventFactory;
-import com.team.backend.realtime.RealtimeNotifier;
 import com.team.backend.service.AuctionHelper;
 import com.team.backend.service.AuctionService;
 import com.team.backend.service.AutoBidService;
@@ -57,20 +54,17 @@ public class AuctionController {
     private final AuctionService auctionService;
     private final BidService bidService;
     private final AutoBidService autoBidService;
-    private final RealtimeNotifier realtimeNotifier;
     private final UserService userService;
     private final AuctionHelper auctionHelper;
 
     public AuctionController(AuctionService auctionService,
                              BidService bidService,
                              AutoBidService autoBidService,
-                             RealtimeNotifier realtimeNotifier,
                              UserService userService,
                              AuctionHelper auctionHelper) {
         this.auctionService = auctionService;
         this.bidService = bidService;
         this.autoBidService = autoBidService;
-        this.realtimeNotifier = realtimeNotifier;
         this.userService = userService;
         this.auctionHelper = auctionHelper;
     }
@@ -223,19 +217,7 @@ public class AuctionController {
     @PostMapping("/{id}/close")
     @PreAuthorize("hasAnyRole('ADMIN','SELLER')")
     public ResponseEntity<Void> closeAuction(@PathVariable UUID id) {
-        auctionService.closeAuction(id);
-        Auction auction = auctionService.getAuction(id);
-        RealtimeEvent event = RealtimeEventFactory.auctionClosed(
-                id,
-                auction.getLeaderId(),
-                auctionHelper.lookupUserName(auction.getLeaderId()),
-                auction.getCurrentPrice(),
-                auction.getState() == null ? null : auction.getState().name(),
-                auctionHelper.computeRemainingSeconds(id),
-                auction.getEndTime(),
-                auction.getLeaderId() == null ? "Auction closed." : "Auction closed. Winner: " + auctionHelper.lookupUserName(auction.getLeaderId())
-        );
-        realtimeNotifier.broadcastToAuction(id, event);
+        auctionService.closeAuction(id, "Auction closed by operator.");
         return ResponseEntity.noContent().build();
     }
 

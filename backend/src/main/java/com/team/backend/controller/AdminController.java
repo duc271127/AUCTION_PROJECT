@@ -53,7 +53,26 @@ public class AdminController {
                 req.getStartTime(),
                 req.getEndTime(),
                 adminId,
-                req.getStartingPrice(),
+                req.getStartingPrice() == null ? 0.0 : req.getStartingPrice(),
+                req.getReservePrice()
+        );
+
+        return ResponseEntity.ok(toAuctionDto(auction));
+    }
+
+    @PostMapping("/items/{itemId}/approve-and-create-auction")
+    public ResponseEntity<AuctionDto> approveAndCreateAuction(
+            @PathVariable UUID itemId,
+            @RequestBody CreateAuctionRequest req) {
+
+        UUID adminId = resolveCurrentUserId();
+
+        Auction auction = adminService.approveAndCreateAuction(
+                itemId,
+                req.getStartTime(),
+                req.getEndTime(),
+                adminId,
+                req.getStartingPrice() == null ? 0.0 : req.getStartingPrice(),
                 req.getReservePrice()
         );
 
