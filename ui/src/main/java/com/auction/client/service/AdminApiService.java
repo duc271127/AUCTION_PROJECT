@@ -96,7 +96,22 @@ public class AdminApiService {
         }
     }
 
+    public AuctionListResponse approveAndCreateAuction(String itemId, CreateAuctionRequest request) {
+        try {
+            String jsonBody = objectMapper.writeValueAsString(request);
+            String responseBody = apiClient.post(
+                    "/admin/items/" + itemId + "/approve-and-create-auction",
+                    jsonBody
+            );
+            return objectMapper.readValue(responseBody, AuctionListResponse.class);
+        } catch (Exception e) {
+            throw new ApiException("Approve and create auction failed: " + e.getMessage(), e);
+        }
+    }
+
     public void deleteItem(String itemId) {
         apiClient.delete("/admin/items/" + itemId);
     }
+
+
 }

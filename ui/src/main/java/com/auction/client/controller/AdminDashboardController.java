@@ -159,8 +159,10 @@ public class AdminDashboardController {
         }
 
         try {
-            adminApiService.approveItem(selectedItem.getItemId());
-            adminApiService.createAuctionForItem(selectedItem.getItemId(), buildCreateAuctionRequest(selectedItem));
+            adminApiService.approveAndCreateAuction(
+                    selectedItem.getItemId(),
+                    buildCreateAuctionRequest(selectedItem)
+            );
             showSuccess("Item approved and auction created successfully.");
             reloadDashboardData();
         } catch (Exception e) {
