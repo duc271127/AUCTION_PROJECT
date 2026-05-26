@@ -8,20 +8,17 @@ import com.auction.client.navigation.SceneManager;
 import com.auction.client.service.AuctionApiService;
 import com.auction.client.service.FavoriteApiService;
 import com.auction.client.session.SessionManager;
+import com.auction.client.ui.AuctionCardData;
+import com.auction.client.ui.AuctionCardViewFactory;
 import com.auction.client.util.MockData;
 import com.auction.client.service.ItemApiService;
 import javafx.fxml.FXML;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.Region;
-import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.control.TextField;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 
 import java.util.HashSet;
 import java.util.List;
@@ -45,6 +42,7 @@ public class CategoryController {
     private final AuctionApiService auctionApiService = new AuctionApiService();
     private final FavoriteApiService favoriteApiService = new FavoriteApiService();
     private final ItemApiService itemApiService = new ItemApiService();
+    private final AuctionCardViewFactory cardFactory = new AuctionCardViewFactory(itemApiService);
 
     private final List<AuctionListResponse> auctions = new ArrayList<>();
 
@@ -141,7 +139,7 @@ public class CategoryController {
         endingSoonLabel.setText(String.valueOf(items.stream().filter(item -> item.getEndTime() != null && !item.getEndTime().isBlank()).count()));
         activeBiddersLabel.setText(String.valueOf(items.stream().mapToInt(AuctionListResponse::getBidCount).sum()));
         double avgPrice = items.stream().mapToDouble(AuctionListResponse::getCurrentPrice).average().orElse(0.0);
-        averagePriceLabel.setText("$" + String.format("%,.0f", avgPrice));
+        averagePriceLabel.setText("USD " + String.format("%,.0f", avgPrice));
     }
 
     private void renderCards(List<AuctionListResponse> items) {
@@ -169,45 +167,29 @@ public class CategoryController {
     }
 
     private VBox createAuctionCard(AuctionListResponse auction) {
-        VBox card = new VBox(8);
-        card.setPrefWidth(260.0);
-        card.getStyleClass().add("category-card");
-
-        ImageView media = new ImageView();
-        media.setFitWidth(300.0);
-        media.setFitHeight(260.0);
-        media.setPreserveRatio(false);
-        media.getStyleClass().add("category-card-image");
-        bindCardImage(media, auction.getImageUrl());
-
-        String auctionId = getAuctionId(auction);
-        Button favoriteButton = new Button(favoriteAuctionIds.contains(auctionId) ? "\u2665" : "\u2661");
-        favoriteButton.getStyleClass().add("category-heart-button");
-        favoriteButton.setFocusTraversable(false);
-        favoriteButton.setOnAction(event -> toggleFavorite(auction, favoriteButton));
-
-        StackPane mediaStack = new StackPane(media, favoriteButton);
-        StackPane.setAlignment(favoriteButton, Pos.TOP_RIGHT);
-        StackPane.setMargin(favoriteButton, new Insets(12, 12, 0, 0));
-
-        Label sellerLabel = new Label(auction.getSellerName() == null ? "SELLER" : auction.getSellerName().toUpperCase());
-        sellerLabel.getStyleClass().add("category-seller");
-
         String title = auction.getTitle() != null && !auction.getTitle().isBlank() ? auction.getTitle() : auction.getItemName();
-        Label titleLabel = new Label(title == null ? "Untitled auction" : title);
-        titleLabel.setWrapText(true);
-        titleLabel.getStyleClass().add("category-card-title");
+        String auctionId = getAuctionId(auction);
+        AuctionCardData cardData = new AuctionCardData(
+                auctionId,
+                auction.getSellerName() == null ? selectedCategory : auction.getSellerName().toUpperCase(),
+                title == null ? "Untitled auction" : title,
+                formatPrice(auction.getCurrentPrice()),
+                formatEnding(auction),
+                selectedCategory + " category",
+                auction.getImageUrl(),
+                null,
+                "Open Auction",
+                "36"
+        );
 
-        Label endingLabel = new Label(formatEnding(auction));
-        endingLabel.getStyleClass().add("category-ending");
-
-        Button openButton = new Button("Open Auction");
-        openButton.getStyleClass().add("secondary-button");
-        openButton.setFocusTraversable(false);
-        openButton.setOnAction(event -> openAuction(auction));
-
-        card.getChildren().addAll(mediaStack, sellerLabel, titleLabel, endingLabel, openButton);
-        return card;
+        return cardFactory.createCard(
+                cardData,
+                260,
+                260,
+                favoriteAuctionIds.contains(auctionId),
+                selected -> toggleFavorite(auction, selected),
+                () -> openAuction(auction)
+        );
     }
 
     private void renderErrorCard() {
@@ -217,16 +199,12 @@ public class CategoryController {
         categoryGrid.getChildren().add(error);
     }
 
-    private void toggleFavorite(AuctionListResponse auction, Button favoriteButton) {
+    private void toggleFavorite(AuctionListResponse auction, boolean selected) {
         String auctionId = getAuctionId(auction);
-        boolean wasFavorite = favoriteAuctionIds.contains(auctionId);
-
-        if (wasFavorite) {
-            favoriteAuctionIds.remove(auctionId);
-            favoriteButton.setText("\u2661");
-        } else {
+        if (selected) {
             favoriteAuctionIds.add(auctionId);
-            favoriteButton.setText("\u2665");
+        } else {
+            favoriteAuctionIds.remove(auctionId);
         }
 
         if (auction.getId() == null) {
@@ -234,10 +212,10 @@ public class CategoryController {
         }
 
         try {
-            if (wasFavorite) {
-                favoriteApiService.removeFavorite(auctionId);
-            } else {
+            if (selected) {
                 favoriteApiService.addFavorite(auctionId);
+            } else {
+                favoriteApiService.removeFavorite(auctionId);
             }
         } catch (Exception ignored) {
         }
@@ -246,10 +224,10 @@ public class CategoryController {
     private void openAuction(AuctionListResponse auction) {
         String title = auction.getTitle() != null && !auction.getTitle().isBlank() ? auction.getTitle() : auction.getItemName();
         MockData.setSelectedItem(new AuctionItem(
-                auction.getId().toString(),
+                getAuctionId(auction),
                 title == null ? "Auction" : title,
                 auction.getImageUrl() == null ? "/images/item1.png" : auction.getImageUrl(),
-                "$" + String.format("%,.0f", auction.getCurrentPrice()),
+                "USD " + String.format("%,.0f", auction.getCurrentPrice()),
                 formatEnding(auction),
                 auction.getState() == null ? "UNKNOWN" : auction.getState()
         ));
@@ -319,20 +297,8 @@ public class CategoryController {
         }
     }
 
-    private void bindCardImage(ImageView imageView, String imagePath) {
-        try {
-            if (imagePath != null &&
-                    (imagePath.startsWith("http://")
-                            || imagePath.startsWith("https://")
-                            || imagePath.startsWith("/uploads")
-                            || imagePath.startsWith("uploads/"))) {
-                imageView.setImage(new Image(itemApiService.toAbsoluteImageUrl(imagePath), true));
-            } else {
-                imageView.setImage(new Image(getClass().getResourceAsStream(imagePath)));
-            }
-        } catch (Exception e) {
-            imageView.setImage(null);
-        }
+    private String formatPrice(double value) {
+        return "USD " + String.format("%,.0f", value);
     }
 
     private String getAuctionId(AuctionListResponse auction) {

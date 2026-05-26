@@ -3,13 +3,17 @@ package com.team.backend.service.impl;
 import com.team.backend.dto.ItemCreateRequest;
 import com.team.backend.dto.ItemResponse;
 import com.team.backend.dto.PublicItemDetailDto;
+import com.team.backend.entity.Auction;
+import com.team.backend.entity.AuctionState;
 import com.team.backend.exception.BusinessRuleException;
+import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.ItemRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 
 import java.lang.reflect.Field;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -22,9 +26,12 @@ class ItemServiceImplContractTest {
     @Autowired
     private ItemRepository itemRepository;
 
+    @Autowired
+    private AuctionRepository auctionRepository;
+
     @Test
     void createForSeller_keepsPrimaryImageFirstAndReturnsMultiImageContract() {
-        ItemServiceImpl itemService = new ItemServiceImpl(itemRepository);
+        ItemServiceImpl itemService = new ItemServiceImpl(itemRepository, auctionRepository);
         ItemCreateRequest request = baseRequest();
         request.setImagePath("/api/uploads/images/main.png");
         request.setImageUrls(List.of(
@@ -45,7 +52,7 @@ class ItemServiceImplContractTest {
 
     @Test
     void createForSeller_rejectsNegativeQuantityAndLocalImagePath() {
-        ItemServiceImpl itemService = new ItemServiceImpl(itemRepository);
+        ItemServiceImpl itemService = new ItemServiceImpl(itemRepository, auctionRepository);
         ItemCreateRequest quantityRequest = baseRequest();
         quantityRequest.setQuantity(-1);
 
@@ -61,7 +68,7 @@ class ItemServiceImplContractTest {
 
     @Test
     void publicItemDetail_contractDoesNotExposeReservePrice() {
-        ItemServiceImpl itemService = new ItemServiceImpl(itemRepository);
+        ItemServiceImpl itemService = new ItemServiceImpl(itemRepository, auctionRepository);
         ItemCreateRequest request = baseRequest();
         request.setReservePrice(900.0);
 
@@ -73,6 +80,32 @@ class ItemServiceImplContractTest {
         assertTrue(Arrays.stream(PublicItemDetailDto.class.getDeclaredFields())
                 .map(Field::getName)
                 .noneMatch("reservePrice"::equals));
+    }
+
+    @Test
+    void deleteForSeller_rejectsItemsThatAlreadyHaveAnAuction() {
+        ItemServiceImpl itemService = new ItemServiceImpl(itemRepository, auctionRepository);
+        UUID sellerId = UUID.randomUUID();
+        ItemResponse saved = itemService.createForSeller(sellerId, baseRequest());
+
+        Auction auction = new Auction();
+        auction.setItemId(saved.getId());
+        auction.setTitle("Camera Auction");
+        auction.setDescription("Auction for camera");
+        auction.setImageUrl(saved.getImagePath());
+        auction.setCategory(saved.getCategory());
+        auction.setStartTime(Instant.now());
+        auction.setEndTime(Instant.now().plusSeconds(3600));
+        auction.setCurrentPrice(saved.getStartingPrice());
+        auction.setReservePrice(saved.getReservePrice());
+        auction.setSellerId(sellerId);
+        auction.setState(AuctionState.SCHEDULED);
+        auctionRepository.save(auction);
+
+        BusinessRuleException exception = assertThrows(BusinessRuleException.class,
+                () -> itemService.deleteForSellerResponse(saved.getId(), sellerId));
+
+        assertEquals("Cannot delete this listing because it already has an auction.", exception.getMessage());
     }
 
     private ItemCreateRequest baseRequest() {

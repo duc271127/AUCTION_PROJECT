@@ -116,7 +116,7 @@ public class AdminApprovalItem {
     }
 
     public String getStartingPriceText() {
-        return "€ " + String.format("%,.0f", startingPrice);
+        return "USD " + String.format("%,.0f", startingPrice);
     }
 
     public Double getReservePrice() {

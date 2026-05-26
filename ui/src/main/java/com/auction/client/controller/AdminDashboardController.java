@@ -11,15 +11,23 @@ import com.auction.client.session.SessionManager;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.layout.VBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableView;
 import javafx.scene.control.Button;
 import javafx.scene.control.cell.PropertyValueFactory;
 
+import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.Locale;
+import java.util.UUID;
 
 public class AdminDashboardController {
 
@@ -47,8 +55,10 @@ public class AdminDashboardController {
 
     @FXML private TableView<AdminWalletActivityResponse> walletActivityTable;
     @FXML private TableColumn<AdminWalletActivityResponse, String> walletUserColumn;
+    @FXML private TableColumn<AdminWalletActivityResponse, String> walletUserIdColumn;
     @FXML private TableColumn<AdminWalletActivityResponse, String> walletTypeColumn;
     @FXML private TableColumn<AdminWalletActivityResponse, String> walletAmountColumn;
+    @FXML private TableColumn<AdminWalletActivityResponse, String> walletBalanceColumn;
     @FXML private TableColumn<AdminWalletActivityResponse, String> walletCreatedColumn;
     @FXML private TableView<AdminNotificationResponse> notificationTable;
     @FXML private TableColumn<AdminNotificationResponse, String> notificationTypeColumn;
@@ -59,6 +69,9 @@ public class AdminDashboardController {
     private final ObservableList<AdminApprovalItem> approvalItems = FXCollections.observableArrayList();
     private final ObservableList<AdminWalletActivityResponse> walletActivity = FXCollections.observableArrayList();
     private final ObservableList<AdminNotificationResponse> notifications = FXCollections.observableArrayList();
+    private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.GERMANY);
+    private final DateTimeFormatter walletDateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+            .withZone(ZoneId.systemDefault());
 
     @FXML
     public void initialize() {
@@ -66,6 +79,8 @@ public class AdminDashboardController {
         approvalTable.setItems(approvalItems);
         walletActivityTable.setItems(walletActivity);
         notificationTable.setItems(notifications);
+        adminMessageLabel.setWrapText(true);
+        adminMessageLabel.setMaxWidth(Double.MAX_VALUE);
         hideMessage();
         showOverviewTab();
         loadPendingItems();
@@ -93,13 +108,66 @@ public class AdminDashboardController {
         submittedDateColumn.setMinWidth(190);
         statusColumn.setMinWidth(130);
 
-        walletUserColumn.setCellValueFactory(new PropertyValueFactory<>("userId"));
-        walletTypeColumn.setCellValueFactory(new PropertyValueFactory<>("type"));
-        walletAmountColumn.setCellValueFactory(new PropertyValueFactory<>("amount"));
-        walletCreatedColumn.setCellValueFactory(new PropertyValueFactory<>("createdAt"));
+        walletUserColumn.setCellValueFactory(cell -> new SimpleStringProperty(firstNonBlank(
+                cell.getValue() == null ? null : cell.getValue().getUserDisplayName(),
+                "Unknown user"
+        )));
+        walletUserIdColumn.setCellValueFactory(cell -> new SimpleStringProperty(
+                cell.getValue() == null || cell.getValue().getUserId() == null
+                        ? "-"
+                        : cell.getValue().getUserId().toString()
+        ));
+        walletTypeColumn.setCellValueFactory(cell -> new SimpleStringProperty(
+                cell.getValue() == null ? "-" : formatWalletType(cell.getValue().getType())
+        ));
+        walletAmountColumn.setCellValueFactory(cell -> new SimpleStringProperty(
+                cell.getValue() == null ? "-" : formatCurrency(cell.getValue().getAmount())
+        ));
+        walletBalanceColumn.setCellValueFactory(cell -> new SimpleStringProperty(
+                cell.getValue() == null ? "-" : formatCurrency(cell.getValue().getBalanceAfter())
+        ));
+        walletCreatedColumn.setCellValueFactory(cell -> new SimpleStringProperty(
+                cell.getValue() == null ? "-" : formatWalletCreatedAt(cell.getValue().getCreatedAt())
+        ));
         notificationTypeColumn.setCellValueFactory(new PropertyValueFactory<>("type"));
         notificationMessageColumn.setCellValueFactory(new PropertyValueFactory<>("message"));
         notificationCreatedColumn.setCellValueFactory(new PropertyValueFactory<>("createdAt"));
+
+        walletUserColumn.setMinWidth(160);
+        walletUserIdColumn.setMinWidth(260);
+        walletTypeColumn.setMinWidth(120);
+        walletAmountColumn.setMinWidth(140);
+        walletBalanceColumn.setMinWidth(150);
+        walletCreatedColumn.setMinWidth(180);
+
+        walletUserColumn.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty ? null : firstNonBlank(item, "Unknown user"));
+            }
+        });
+        walletUserIdColumn.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty ? null : shortenUuid(item));
+            }
+        });
+        walletTypeColumn.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty ? null : formatWalletType(item));
+            }
+        });
+        walletCreatedColumn.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty ? null : formatWalletCreatedAt(item));
+            }
+        });
     }
 
     private void loadPendingItems() {
@@ -122,7 +190,7 @@ public class AdminDashboardController {
             closedAuctionsLabel.setText(String.valueOf(stats.getClosedAuctions()));
             newSellersLabel.setText(String.valueOf(stats.getNewSellersThisMonth()));
             successRateLabel.setText(String.format("%.0f%%", stats.getAuctionSuccessRate()));
-            revenueLabel.setText("€" + String.format("%,.1fk", stats.getRevenue() / 1000.0));
+            revenueLabel.setText("USD " + String.format("%,.1fk", stats.getRevenue() / 1000.0));
         } catch (Exception e) {
             totalUsersLabel.setText("-");
             activeSellersLabel.setText("-");
@@ -317,16 +385,53 @@ public class AdminDashboardController {
             return "Unknown error.";
         }
 
-        int idx = rawMessage.indexOf("\"message\":\"");
-        if (idx >= 0) {
-            int start = idx + 11;
-            int end = rawMessage.indexOf("\"", start);
-            if (end > start) {
-                return rawMessage.substring(start, end);
-            }
+        String extractedJsonMessage = extractJsonMessage(rawMessage);
+        if (extractedJsonMessage != null && !extractedJsonMessage.isBlank()) {
+            return extractedJsonMessage;
         }
 
         return rawMessage;
+    }
+
+    private String extractJsonMessage(String rawMessage) {
+        int idx = rawMessage.indexOf("\"message\":\"");
+        if (idx < 0) {
+            return null;
+        }
+
+        int start = idx + 11;
+        StringBuilder builder = new StringBuilder();
+        boolean escaped = false;
+
+        for (int i = start; i < rawMessage.length(); i++) {
+            char current = rawMessage.charAt(i);
+
+            if (escaped) {
+                switch (current) {
+                    case '"' -> builder.append('"');
+                    case '\\' -> builder.append('\\');
+                    case 'n' -> builder.append('\n');
+                    case 'r' -> builder.append('\r');
+                    case 't' -> builder.append('\t');
+                    default -> builder.append(current);
+                }
+                escaped = false;
+                continue;
+            }
+
+            if (current == '\\') {
+                escaped = true;
+                continue;
+            }
+
+            if (current == '"') {
+                return builder.toString();
+            }
+
+            builder.append(current);
+        }
+
+        return null;
     }
 
     private void showMessage(String message) {
@@ -347,5 +452,46 @@ public class AdminDashboardController {
         adminMessageLabel.setText("");
         adminMessageLabel.setManaged(false);
         adminMessageLabel.setVisible(false);
+    }
+
+    private String formatCurrency(BigDecimal amount) {
+        return amount == null ? "-" : currencyFormat.format(amount);
+    }
+
+    private String shortenUuid(String rawValue) {
+        if (rawValue == null || rawValue.isBlank()) {
+            return "-";
+        }
+
+        try {
+            UUID uuid = UUID.fromString(rawValue);
+            return uuid.toString();
+        } catch (Exception ignored) {
+            return rawValue;
+        }
+    }
+
+    private String formatWalletType(String value) {
+        if (value == null || value.isBlank()) {
+            return "-";
+        }
+
+        return value.replace('_', ' ');
+    }
+
+    private String formatWalletCreatedAt(String value) {
+        if (value == null || value.isBlank()) {
+            return "-";
+        }
+
+        try {
+            return walletDateFormat.format(Instant.parse(value));
+        } catch (Exception ignored) {
+            return value;
+        }
+    }
+
+    private String firstNonBlank(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
     }
 }

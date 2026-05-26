@@ -231,6 +231,7 @@
     -fx-alignment: CENTER_LEFT;
     -fx-padding: 0 14 0 14;
     -fx-text-fill: #202124;
+    -fx-wrap-text: true;
 }
 
 .table-row-cell {

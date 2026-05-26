@@ -18,29 +18,74 @@ public class MockData {
 
         items.add(new AuctionItem(
                 "A001",
-                "Vintage Rolex Submariner",
+                "Affordable Silver & Laminated Objects Auction",
                 "/images/item1.png",
-                "$12,500",
-                "02h 14m",
-                "LIVE"
+                "USD 13,000",
+                "Ends today",
+                "Jewellery"
         ));
 
         items.add(new AuctionItem(
                 "A002",
-                "Rare Ming Porcelain Vase",
+                "Emeralds, Rubies & Sapphires Auction",
                 "/images/item2.png",
-                "$48,000",
-                "05h 42m",
-                "ENDING SOON"
+                "USD 24,500",
+                "Ending now",
+                "Jewellery"
         ));
 
         items.add(new AuctionItem(
                 "A003",
-                "Signed Michael Jordan Jersey",
+                "Exclusive White Diamonds Auction",
                 "/images/item3.png",
-                "$9,800",
-                "1d 03h",
-                "UPCOMING"
+                "USD 32,000",
+                "Ends today 16:00",
+                "Jewellery"
+        ));
+
+        items.add(new AuctionItem(
+                "A004",
+                "Coloured Gemstones Jewellery Auction",
+                "/images/item1.png",
+                "USD 18,750",
+                "Ends today 17:00",
+                "Jewellery"
+        ));
+
+        items.add(new AuctionItem(
+                "A005",
+                "Murano Glass Auction",
+                "/images/item2.png",
+                "USD 9,250",
+                "Tomorrow 11:00",
+                "Decor"
+        ));
+
+        items.add(new AuctionItem(
+                "A006",
+                "Unused Watches Auction",
+                "/images/item3.png",
+                "USD 14,300",
+                "2 days left",
+                "Watches"
+        ));
+
+        items.add(new AuctionItem(
+                "A007",
+                "Ceramic Figurines Auction",
+                "/images/item1.png",
+                "USD 6,850",
+                "3 days left",
+                "Collectibles"
+        ));
+
+        items.add(new AuctionItem(
+                "A008",
+                "Vintage Decorative Plates",
+                "/images/item2.png",
+                "USD 4,900",
+                "New listing",
+                "Art"
         ));
 
         return items;
@@ -51,21 +96,15 @@ public class MockData {
     }
 
     public static AuctionItem getSelectedItem() {
-        if (selectedItem == null) {
-            List<AuctionItem> items = getMockAuctionItems();
-            if (!items.isEmpty()) {
-                selectedItem = items.get(0);
-            }
-        }
         return selectedItem;
     }
 
     public static ObservableList<BidRecord> getMockBidHistory() {
         return FXCollections.observableArrayList(
-                new BidRecord("Alice", "$12,500", "21:03"),
-                new BidRecord("Brian", "$13,000", "21:04"),
-                new BidRecord("Cindy", "$13,500", "21:05"),
-                new BidRecord("David", "$14,000", "21:06")
+                new BidRecord("Alice", "USD 12,500", "21:03"),
+                new BidRecord("Brian", "USD 13,000", "21:04"),
+                new BidRecord("Cindy", "USD 13,500", "21:05"),
+                new BidRecord("David", "USD 14,000", "21:06")
         );
     }
 

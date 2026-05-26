@@ -8,6 +8,7 @@ import com.team.backend.dto.PublicItemDetailDto;
 import com.team.backend.entity.Item;
 import com.team.backend.entity.ItemStatus;
 import com.team.backend.exception.BusinessRuleException;
+import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.ItemRepository;
 import com.team.backend.service.ItemService;
 import org.springframework.stereotype.Service;
@@ -38,10 +39,12 @@ import java.util.stream.Collectors;
 public class ItemServiceImpl implements ItemService {
 
     private final ItemRepository itemRepository;
+    private final AuctionRepository auctionRepository;
     private final DateTimeFormatter iso = DateTimeFormatter.ISO_INSTANT;
 
-    public ItemServiceImpl(ItemRepository itemRepository) {
+    public ItemServiceImpl(ItemRepository itemRepository, AuctionRepository auctionRepository) {
         this.itemRepository = itemRepository;
+        this.auctionRepository = auctionRepository;
     }
 
     // -------------------------
@@ -191,6 +194,9 @@ public class ItemServiceImpl implements ItemService {
                 .orElseThrow(() -> new BusinessRuleException("Item not found: " + itemId));
         if (!sellerId.equals(item.getSellerId())) {
             throw new BusinessRuleException("Item not found for this seller");
+        }
+        if (auctionRepository.existsByItemId(itemId)) {
+            throw new BusinessRuleException("Cannot delete this listing because it already has an auction.");
         }
         itemRepository.delete(item);
     }
@@ -397,6 +403,11 @@ public class ItemServiceImpl implements ItemService {
         r.setImageUrls(itemImageUrls(item));
         r.setStartDate(formatDate(item.getStartTime()));
         r.setEndDate(formatDate(item.getEndTime()));
+        boolean deletable = !auctionRepository.existsByItemId(item.getId());
+        r.setDeletable(deletable);
+        r.setDeleteBlockedReason(deletable
+                ? null
+                : "This listing already has an auction, so the seller cannot delete it.");
         return r;
     }
 

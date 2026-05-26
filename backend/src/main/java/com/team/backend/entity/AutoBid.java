@@ -33,6 +33,10 @@ public class AutoBid implements Serializable {
     @Column(name = "max_amount", nullable = false)
     private double maxAmount;
 
+    @Positive
+    @Column(name = "bid_step")
+    private Double bidStep = 1.0;
+
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
@@ -50,22 +54,28 @@ public class AutoBid implements Serializable {
 
     public AutoBid() {}
 
-    public AutoBid(UUID auctionId, UUID bidderId, double maxAmount) {
+    public AutoBid(UUID auctionId, UUID bidderId, double maxAmount, double bidStep) {
         this.id = UUID.randomUUID();
         this.auctionId = auctionId;
         this.bidderId = bidderId;
         this.maxAmount = maxAmount;
+        this.bidStep = bidStep;
         this.active = true;
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
     }
 
-    public static AutoBid of(UUID auctionId, UUID bidderId, double maxAmount) {
-        return new AutoBid(auctionId, bidderId, maxAmount);
+    public static AutoBid of(UUID auctionId, UUID bidderId, double maxAmount, double bidStep) {
+        return new AutoBid(auctionId, bidderId, maxAmount, bidStep);
     }
 
     public AutoBid withMaxAmount(double maxAmount) {
         this.maxAmount = maxAmount;
+        return this;
+    }
+
+    public AutoBid withBidStep(double bidStep) {
+        this.bidStep = bidStep;
         return this;
     }
 
@@ -85,6 +95,13 @@ public class AutoBid implements Serializable {
 
     public double getMaxAmount() { return maxAmount; }
     public void setMaxAmount(double maxAmount) { this.maxAmount = maxAmount; }
+
+    public Double getBidStep() { return bidStep; }
+    public void setBidStep(Double bidStep) { this.bidStep = bidStep; }
+
+    public double resolveBidStep(double fallback) {
+        return bidStep == null || bidStep <= 0.0 ? fallback : bidStep;
+    }
 
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }

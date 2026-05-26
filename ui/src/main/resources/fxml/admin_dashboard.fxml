@@ -53,7 +53,7 @@
                                 <String fx:value="admin-stat-card-primary" />
                             </styleClass>
                             <Label styleClass="admin-stat-label-primary" text="PLATFORM REVENUE" />
-                            <Label fx:id="revenueLabel" styleClass="admin-stat-number-primary" text="€0" />
+                            <Label fx:id="revenueLabel" styleClass="admin-stat-number-primary" text="USD 0" />
                         </VBox>
                     </HBox>
 
@@ -117,8 +117,8 @@
                             </GridPane>
                         </VBox>
 
-                        <HBox spacing="20.0">
-                            <VBox spacing="14.0" styleClass="admin-panel" HBox.hgrow="ALWAYS">
+                        <VBox spacing="20.0">
+                            <VBox spacing="14.0" styleClass="admin-panel">
                                 <padding>
                                     <Insets bottom="22" left="22" right="22" top="22" />
                                 </padding>
@@ -132,21 +132,24 @@
                                 </TableView>
                             </VBox>
 
-                            <VBox prefWidth="430.0" spacing="14.0" styleClass="admin-panel">
+                            <VBox spacing="14.0" styleClass="admin-panel">
                                 <padding>
                                     <Insets bottom="22" left="22" right="22" top="22" />
                                 </padding>
                                 <Label styleClass="admin-section-title" text="Wallet Activity" />
-                                <TableView fx:id="walletActivityTable" prefHeight="260.0" prefWidth="186.0">
+                                <Label styleClass="admin-muted" text="Latest deposits, withdrawals, balances, and user IDs." />
+                                <TableView fx:id="walletActivityTable" prefHeight="260.0">
                                     <columns>
-                                        <TableColumn fx:id="walletUserColumn" prefWidth="130.0" text="User" />
-                                        <TableColumn fx:id="walletTypeColumn" prefWidth="80.0" text="Type" />
-                                        <TableColumn fx:id="walletAmountColumn" prefWidth="90.0" text="Amount" />
-                                        <TableColumn fx:id="walletCreatedColumn" prefWidth="110.0" text="Created" />
+                                        <TableColumn fx:id="walletUserColumn" prefWidth="170.0" text="User" />
+                                        <TableColumn fx:id="walletUserIdColumn" prefWidth="280.0" text="User ID" />
+                                        <TableColumn fx:id="walletTypeColumn" prefWidth="120.0" text="Type" />
+                                        <TableColumn fx:id="walletAmountColumn" prefWidth="140.0" text="Amount" />
+                                        <TableColumn fx:id="walletBalanceColumn" prefWidth="150.0" text="Balance After" />
+                                        <TableColumn fx:id="walletCreatedColumn" prefWidth="190.0" text="Created At" />
                                     </columns>
                                 </TableView>
                             </VBox>
-                        </HBox>
+                        </VBox>
                     </VBox>
 
                     <VBox fx:id="auctionManagementPane" managed="false" spacing="16.0" styleClass="admin-panel" visible="false">
@@ -173,7 +176,7 @@
                             </columns>
                         </TableView>
 
-                        <Label fx:id="adminMessageLabel" styleClass="admin-message" text="" />
+                        <Label fx:id="adminMessageLabel" maxWidth="1.7976931348623157E308" styleClass="admin-message" text="" wrapText="true" />
 
                         <HBox spacing="10.0">
                             <Button onAction="#handleApprove" styleClass="admin-primary-button" text="Approve + Create Auction" />

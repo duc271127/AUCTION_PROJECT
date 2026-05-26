@@ -18,6 +18,8 @@ public class ItemResponse {
     private List<String> imageUrls;
     private String sku;
     private Integer quantity;
+    private boolean deletable;
+    private String deleteBlockedReason;
 
     public ItemResponse() {
     }
@@ -118,4 +120,10 @@ public class ItemResponse {
 
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
+
+    public boolean isDeletable() { return deletable; }
+    public void setDeletable(boolean deletable) { this.deletable = deletable; }
+
+    public String getDeleteBlockedReason() { return deleteBlockedReason; }
+    public void setDeleteBlockedReason(String deleteBlockedReason) { this.deleteBlockedReason = deleteBlockedReason; }
 }

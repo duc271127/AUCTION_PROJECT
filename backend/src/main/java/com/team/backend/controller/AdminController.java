@@ -12,6 +12,7 @@ import com.team.backend.entity.User;
 import com.team.backend.exception.BusinessRuleException;
 import com.team.backend.service.AdminService;
 import com.team.backend.service.UserService;
+import com.team.backend.util.AuctionImageResolver;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -141,7 +142,7 @@ public class AdminController {
         d.itemName = a.getTitle();
         d.title = a.getTitle();
         d.description = a.getDescription();
-        d.imageUrl = a.getImageUrl();
+        d.imageUrl = AuctionImageResolver.resolvePrimaryImage(a);
         d.category = a.getCategory();
         d.sellerId = a.getSellerId();
         d.currentPrice = a.getCurrentPrice();

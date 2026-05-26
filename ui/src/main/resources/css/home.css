@@ -1,32 +1,65 @@
-.home-root {
-    -fx-background-color: linear-gradient(to bottom right, #f8fafc, #e2e8f0);
+.home-root,
+.home-scroll,
+.home-scroll > .viewport {
+    -fx-background-color: #ffffff;
 }
 
-.home-top-nav {
-    -fx-background-color: linear-gradient(to right, #15305d, #1e4ea7);
+.home-page {
+    -fx-background-color: #ffffff;
 }
 
-.home-brand {
-    -fx-text-fill: white;
-    -fx-font-size: 24px;
-    -fx-font-weight: bold;
+.home-hero {
+    -fx-alignment: CENTER_LEFT;
 }
 
-.hero-box {
-    -fx-background-color: linear-gradient(to right, #15305d, #1d4ed8);
-    -fx-background-radius: 20;
-    -fx-padding: 30;
+.home-hero-copy {
+    -fx-max-width: 500;
 }
 
 .home-hero-title {
-    -fx-text-fill: white;
-    -fx-font-size: 40px;
-    -fx-font-weight: bold;
-    -fx-line-spacing: 6px;
+    -fx-text-fill: #262626;
+    -fx-font-size: 60px;
+    -fx-font-weight: 400;
+    -fx-line-spacing: 4px;
 }
 
 .home-hero-subtitle {
-    -fx-text-fill: #dbeafe;
-    -fx-font-size: 16px;
-    -fx-max-width: 700px;
+    -fx-text-fill: #8c8c8c;
+    -fx-font-size: 18px;
+    -fx-line-spacing: 6px;
+    -fx-max-width: 440px;
+}
+
+.home-hero-image-wrap {
+    -fx-background-color: #f2f2f2;
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+    -fx-border-color: #e6e6e6;
+    -fx-border-width: 1;
+}
+
+.home-hero-image {
+    -fx-background-radius: 20;
+}
+
+.home-section-title {
+    -fx-text-fill: #262626;
+    -fx-font-size: 30px;
+    -fx-font-weight: 500;
+}
+
+.home-view-all {
+    -fx-background-color: transparent;
+    -fx-text-fill: #2a6df4;
+    -fx-font-size: 15px;
+    -fx-font-weight: 600;
+    -fx-padding: 4 0;
+}
+
+.home-view-all:hover {
+    -fx-underline: true;
+}
+
+.home-card-grid {
+    -fx-padding: 0;
 }

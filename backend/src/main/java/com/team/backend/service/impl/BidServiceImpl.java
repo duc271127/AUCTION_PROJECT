@@ -284,7 +284,8 @@ public class BidServiceImpl implements BidService {
             if (autoBid.getBidderId().equals(triggeringBidderId)) {
                 continue;
             }
-            if (autoBid.getMaxAmount() < auction.getCurrentPrice() + minIncrement) {
+            double autoBidStep = resolveAutoBidStep(autoBid);
+            if (autoBid.getMaxAmount() < auction.getCurrentPrice() + autoBidStep) {
                 continue;
             }
             if (best == null) {
@@ -299,7 +300,8 @@ public class BidServiceImpl implements BidService {
             return;
         }
 
-        double autoAmount = Math.min(best.getMaxAmount(), secondBestLimit + minIncrement);
+        double bestStep = resolveAutoBidStep(best);
+        double autoAmount = Math.min(best.getMaxAmount(), secondBestLimit + bestStep);
         if (autoAmount <= auction.getCurrentPrice()) {
             return;
         }
@@ -337,6 +339,14 @@ public class BidServiceImpl implements BidService {
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    private double resolveAutoBidStep(AutoBid autoBid) {
+        if (autoBid == null) {
+            return minIncrement;
+        }
+
+        return Math.max(minIncrement, autoBid.resolveBidStep(minIncrement));
     }
 
     private BidHistoryDto toBidHistoryItem(BidTransaction tx) {

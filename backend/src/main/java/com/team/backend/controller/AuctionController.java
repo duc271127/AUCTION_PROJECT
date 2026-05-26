@@ -21,6 +21,7 @@ import com.team.backend.service.AuctionService;
 import com.team.backend.service.AutoBidService;
 import com.team.backend.service.BidService;
 import com.team.backend.service.UserService;
+import com.team.backend.util.AuctionImageResolver;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -105,7 +106,7 @@ public class AuctionController {
     public ResponseEntity<AutoBidResponse> setAutoBid(@PathVariable UUID id,
                                                       @Valid @RequestBody AutoBidRequestDto dto) {
         UUID bidderId = resolveCurrentUserId();
-        AutoBid autoBid = autoBidService.setAutoBid(id, bidderId, dto.getMaxAmount());
+        AutoBid autoBid = autoBidService.setAutoBid(id, bidderId, dto.getMaxAmount(), dto.getBidStep());
         return ResponseEntity.ok(toAutoBidResponse(autoBid, auctionService.getAuction(id)));
     }
 
@@ -232,7 +233,7 @@ public class AuctionController {
         dto.itemName = auction.getTitle();
         dto.title = auction.getTitle();
         dto.description = auction.getDescription();
-        dto.imageUrl = auction.getImageUrl();
+        dto.imageUrl = AuctionImageResolver.resolvePrimaryImage(auction);
         dto.category = auction.getCategory();
         dto.sellerId = auction.getSellerId() != null ? auction.getSellerId() : auction.getCreatedBy();
         dto.sellerName = auction.getSellerName() != null ? auction.getSellerName() : auctionHelper.lookupUserName(dto.sellerId);
@@ -272,6 +273,7 @@ public class AuctionController {
         response.setBidderId(autoBid.getBidderId());
         response.setBidderName(auctionHelper.lookupUserName(autoBid.getBidderId()));
         response.setMaxAmount(autoBid.getMaxAmount());
+        response.setBidStep(autoBid.resolveBidStep(bidService.getMinIncrement()));
         response.setActive(autoBid.isActive());
         response.setAuctionState(auction.getState() == null ? null : auction.getState().name());
         response.setEndTime(auction.getEndTime());

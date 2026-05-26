@@ -14,15 +14,15 @@
       fx:controller="com.auction.client.controller.AutoBidDialogController"
       prefWidth="430"
       maxWidth="430"
-      prefHeight="620"
-      maxHeight="620"
+      prefHeight="690"
+      maxHeight="690"
       spacing="0"
       styleClass="modal-card">
 
     <HBox alignment="CENTER_LEFT" spacing="12" styleClass="modal-header">
-        <Label text="⚡ Auto-Bid" styleClass="modal-title"/>
+        <Label text="Auto-Bid" styleClass="modal-title"/>
         <Region HBox.hgrow="ALWAYS"/>
-        <Button text="×"
+        <Button text="X"
                 onAction="#handleClose"
                 focusTraversable="false"
                 styleClass="modal-close-button"/>
@@ -34,129 +34,168 @@
                 VBox.vgrow="ALWAYS"
                 styleClass="modal-scroll-pane">
         <content>
-    <VBox spacing="18">
-        <padding>
-            <Insets top="22" right="24" bottom="24" left="24"/>
-        </padding>
-
-        <VBox spacing="6">
-            <Label text="LOT" styleClass="balance-label"/>
-            <Label fx:id="lotTitleLabel"
-                   text="Auction title"
-                   wrapText="true"
-                   styleClass="item-title"/>
-        </VBox>
-
-        <VBox spacing="8" styleClass="info-box">
-            <Label text="ⓘ How auto-bid works" styleClass="field-label"/>
-            <Label text="Set your desired maximum price and we'll automatically bid for you in small increments. You only need to pay the amount necessary to continue winning."
-                   wrapText="true"
-                   styleClass="muted-text"/>
-        </VBox>
-
-        <HBox spacing="12">
-            <VBox alignment="CENTER" spacing="6" styleClass="soft-panel" HBox.hgrow="ALWAYS">
+            <VBox spacing="18">
                 <padding>
-                    <Insets top="14" right="16" bottom="14" left="16"/>
-                </padding>
-                <Label text="CURRENT PRICE" styleClass="balance-label"/>
-                <Label fx:id="currentPriceLabel" text="€ 0" styleClass="stat-value"/>
-            </VBox>
-
-            <VBox alignment="CENTER" spacing="6" styleClass="soft-panel" HBox.hgrow="ALWAYS">
-                <padding>
-                    <Insets top="14" right="16" bottom="14" left="16"/>
-                </padding>
-                <Label text="MINIMUM BID" styleClass="balance-label"/>
-                <Label fx:id="minimumBidBoxLabel" text="€ 0" styleClass="stat-value"/>
-            </VBox>
-        </HBox>
-
-        <VBox spacing="8">
-            <Label text="Your maximum bid price" styleClass="field-label"/>
-
-            <HBox alignment="CENTER_LEFT" spacing="0">
-                <Label text="€"
-                       minWidth="48"
-                       alignment="CENTER"
-                       style="-fx-background-color:#f2f2f2;-fx-border-color:#e5e7eb;-fx-border-radius:7 0 0 7;-fx-background-radius:7 0 0 7;-fx-font-size:16px;-fx-font-weight:800;"/>
-                <TextField fx:id="maxBidInputField"
-                           promptText="1155"
-                           HBox.hgrow="ALWAYS"
-                           style="-fx-background-radius:0 7 7 0;-fx-border-radius:0 7 7 0;"/>
-            </HBox>
-
-            <Label fx:id="minimumBidLabel"
-                   text="Minimum: € 0"
-                   styleClass="muted-text"/>
-        </VBox>
-
-        <VBox spacing="8">
-            <Label text="QUICK ADD" styleClass="balance-label"/>
-            <HBox spacing="8">
-                <Button text="+ € 50" onAction="#handleQuickAdd50" styleClass="secondary-button"/>
-                <Button text="+ € 100" onAction="#handleQuickAdd100" styleClass="secondary-button"/>
-                <Button text="+ € 200" onAction="#handleQuickAdd200" styleClass="secondary-button"/>
-                <Button text="+ € 500" onAction="#handleQuickAdd500" styleClass="secondary-button"/>
-            </HBox>
-        </VBox>
-
-        <VBox spacing="0" styleClass="table-card">
-            <Label text="BID SUMMARY"
-                   style="-fx-background-color:#f2f2f2;-fx-padding:10 14;-fx-font-size:12px;-fx-font-weight:800;-fx-text-fill:#8a8a8a;"/>
-
-            <VBox spacing="10">
-                <padding>
-                    <Insets top="14" right="14" bottom="14" left="14"/>
+                    <Insets top="22" right="24" bottom="24" left="24"/>
                 </padding>
 
-                <HBox>
-                    <Label text="Current bid" styleClass="muted-text"/>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <Label fx:id="summaryCurrentBidLabel" text="€ 0" styleClass="field-label"/>
+                <VBox spacing="6">
+                    <Label text="LOT" styleClass="balance-label"/>
+                    <Label fx:id="lotTitleLabel"
+                           text="Auction title"
+                           wrapText="true"
+                           styleClass="item-title"/>
+                    <Label fx:id="autoBidModeLabel"
+                           text=""
+                           visible="false"
+                           managed="false"
+                           wrapText="true"
+                           style="-fx-text-fill:#16a34a;-fx-font-size:13px;-fx-font-weight:700;"/>
+                </VBox>
+
+                <VBox spacing="8" styleClass="info-box">
+                    <Label text="How auto-bid works" styleClass="field-label"/>
+                    <Label text="Set your desired maximum price and the system will automatically bid for you in small increments. You only pay what is needed to stay in the lead."
+                           wrapText="true"
+                           styleClass="muted-text"/>
+                </VBox>
+
+                <HBox spacing="12">
+                    <VBox alignment="CENTER" spacing="6" styleClass="soft-panel" HBox.hgrow="ALWAYS">
+                        <padding>
+                            <Insets top="14" right="16" bottom="14" left="16"/>
+                        </padding>
+                        <Label text="CURRENT PRICE" styleClass="balance-label"/>
+                        <Label fx:id="currentPriceLabel" text="USD 0" styleClass="stat-value"/>
+                    </VBox>
+
+                    <VBox alignment="CENTER" spacing="6" styleClass="soft-panel" HBox.hgrow="ALWAYS">
+                        <padding>
+                            <Insets top="14" right="16" bottom="14" left="16"/>
+                        </padding>
+                        <Label text="MINIMUM BID" styleClass="balance-label"/>
+                        <Label fx:id="minimumBidBoxLabel" text="USD 0" styleClass="stat-value"/>
+                    </VBox>
                 </HBox>
 
-                <HBox>
-                    <Label text="Your max bid" styleClass="muted-text"/>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <Label fx:id="summaryMaxBidLabel" text="€ 0" style="-fx-text-fill:#0047ff;-fx-font-weight:800;"/>
-                </HBox>
+                <VBox spacing="8">
+                    <Label text="Your maximum bid price" styleClass="field-label"/>
 
-                <HBox>
-                    <Label text="You could save up to" styleClass="muted-text"/>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <Label fx:id="summarySaveLabel" text="€ 0" style="-fx-text-fill:#16a34a;-fx-font-weight:800;"/>
+                    <HBox alignment="CENTER_LEFT" spacing="0">
+                        <Label text="USD"
+                               minWidth="56"
+                               alignment="CENTER"
+                               style="-fx-background-color:#f2f2f2;-fx-border-color:#e5e7eb;-fx-border-radius:7 0 0 7;-fx-background-radius:7 0 0 7;-fx-font-size:14px;-fx-font-weight:800;"/>
+                        <TextField fx:id="maxBidInputField"
+                                   promptText="1155"
+                                   HBox.hgrow="ALWAYS"
+                                   style="-fx-background-radius:0 7 7 0;-fx-border-radius:0 7 7 0;"/>
+                    </HBox>
+
+                    <Label fx:id="minimumBidLabel"
+                           text="Minimum: USD 0"
+                           styleClass="muted-text"/>
+                </VBox>
+
+                <VBox spacing="8">
+                    <Label text="Bid step" styleClass="field-label"/>
+
+                    <HBox alignment="CENTER_LEFT" spacing="0">
+                        <Label text="USD"
+                               minWidth="56"
+                               alignment="CENTER"
+                               style="-fx-background-color:#f2f2f2;-fx-border-color:#e5e7eb;-fx-border-radius:7 0 0 7;-fx-background-radius:7 0 0 7;-fx-font-size:14px;-fx-font-weight:800;"/>
+                        <TextField fx:id="bidStepInputField"
+                                   promptText="1"
+                                   HBox.hgrow="ALWAYS"
+                                   style="-fx-background-radius:0 7 7 0;-fx-border-radius:0 7 7 0;"/>
+                    </HBox>
+
+                    <Label fx:id="stepHintLabel"
+                           text="Minimum increment: USD 0"
+                           styleClass="muted-text"/>
+                </VBox>
+
+                <VBox spacing="8">
+                    <Label text="QUICK ADD" styleClass="balance-label"/>
+                    <HBox spacing="8">
+                        <Button fx:id="quickAddFirstButton" text="+ 1 step" onAction="#handleQuickAdd50" styleClass="secondary-button"/>
+                        <Button fx:id="quickAddSecondButton" text="+ 2 steps" onAction="#handleQuickAdd100" styleClass="secondary-button"/>
+                        <Button fx:id="quickAddThirdButton" text="+ 5 steps" onAction="#handleQuickAdd200" styleClass="secondary-button"/>
+                        <Button fx:id="quickAddFourthButton" text="+ 10 steps" onAction="#handleQuickAdd500" styleClass="secondary-button"/>
+                    </HBox>
+                </VBox>
+
+                <VBox spacing="0" styleClass="table-card">
+                    <Label text="BID SUMMARY"
+                           style="-fx-background-color:#f2f2f2;-fx-padding:10 14;-fx-font-size:12px;-fx-font-weight:800;-fx-text-fill:#8a8a8a;"/>
+
+                    <VBox spacing="10">
+                        <padding>
+                            <Insets top="14" right="14" bottom="14" left="14"/>
+                        </padding>
+
+                        <HBox>
+                            <Label text="Current bid" styleClass="muted-text"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="summaryCurrentBidLabel" text="USD 0" styleClass="field-label"/>
+                        </HBox>
+
+                        <HBox>
+                            <Label text="Your max bid" styleClass="muted-text"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="summaryMaxBidLabel" text="USD 0" style="-fx-text-fill:#0047ff;-fx-font-weight:800;"/>
+                        </HBox>
+
+                        <HBox>
+                            <Label text="Bid step" styleClass="muted-text"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="summaryStepLabel" text="USD 0" styleClass="field-label"/>
+                        </HBox>
+
+                        <HBox>
+                            <Label text="You could save up to" styleClass="muted-text"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="summarySaveLabel" text="USD 0" style="-fx-text-fill:#16a34a;-fx-font-weight:800;"/>
+                        </HBox>
+                    </VBox>
+                </VBox>
+
+                <CheckBox fx:id="confirmCheckBox"
+                          text="Confirm auto-bid"
+                          styleClass="muted-text"/>
+
+                <Label fx:id="errorLabel"
+                       text=""
+                       visible="false"
+                       managed="false"
+                       wrapText="true"
+                       styleClass="error-label"/>
+
+                <Button fx:id="deactivateButton"
+                        text="Turn Off Auto-Bid"
+                        onAction="#handleDisableAutoBid"
+                        maxWidth="Infinity"
+                        visible="false"
+                        managed="false"
+                        styleClass="secondary-button"/>
+
+                <HBox spacing="12">
+                    <Button text="Cancel"
+                            onAction="#handleClose"
+                            maxWidth="Infinity"
+                            HBox.hgrow="ALWAYS"
+                            styleClass="secondary-button"/>
+
+                    <Button fx:id="activateButton"
+                            text="Activate Auto-Bid"
+                            onAction="#handleActivateAutoBid"
+                            maxWidth="Infinity"
+                            HBox.hgrow="ALWAYS"
+                            disable="true"
+                            styleClass="primary-button"/>
                 </HBox>
             </VBox>
-        </VBox>
-
-        <CheckBox fx:id="confirmCheckBox"
-                  text="Confirm auto-bid"
-                  styleClass="muted-text"/>
-
-        <Label fx:id="errorLabel"
-               text=""
-               visible="false"
-               managed="false"
-               wrapText="true"
-               styleClass="error-label"/>
-
-        <HBox spacing="12">
-            <Button text="Cancel"
-                    onAction="#handleClose"
-                    maxWidth="Infinity"
-                    HBox.hgrow="ALWAYS"
-                    styleClass="secondary-button"/>
-
-            <Button fx:id="activateButton"
-                    text="⚡ Activate Auto-Bid"
-                    onAction="#handleActivateAutoBid"
-                    maxWidth="Infinity"
-                    HBox.hgrow="ALWAYS"
-                    disable="true"
-                    styleClass="primary-button"/>
-        </HBox>
-    </VBox>
         </content>
     </ScrollPane>
 </VBox>

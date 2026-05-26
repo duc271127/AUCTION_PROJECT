@@ -1,5 +1,6 @@
 package com.auction.client.service;
 
+import com.auction.client.config.EndpointConfig;
 import com.auction.client.exception.ApiException;
 import com.auction.client.session.SessionManager;
 import com.google.gson.Gson;
@@ -19,9 +20,7 @@ import java.util.UUID;
 
 public class ApiClient {
 
-    // URL SERVER PLAYIT
-    private static final String BASE_URL =
-            "http://lungs-decree.with.playit.plus:1125";
+    private static final String BASE_URL = EndpointConfig.getHttpBaseUrl();
 
     private final HttpClient httpClient;
     private final Gson gson;

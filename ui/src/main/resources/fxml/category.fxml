@@ -12,6 +12,7 @@
 <?import javafx.scene.layout.TilePane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
 <AnchorPane xmlns:fx="http://javafx.com/fxml"
@@ -91,7 +92,9 @@
                             styleClass="category-scroll">
 
                     <content>
-                        <VBox spacing="26.0" styleClass="category-page">
+                        <StackPane styleClass="page-shell">
+                            <children>
+                        <VBox spacing="26.0" styleClass="category-page page-content">
                             <VBox spacing="28.0">
                                 <HBox spacing="28.0"
                                       alignment="CENTER_LEFT"
@@ -143,7 +146,7 @@
 
                                     <VBox spacing="5.0" styleClass="category-stat-card" HBox.hgrow="ALWAYS">
                                         <Label text="AVG. PRICE" styleClass="category-stat-label"/>
-                                        <Label fx:id="averagePriceLabel" text="€0" styleClass="category-stat-number"/>
+                                        <Label fx:id="averagePriceLabel" text="USD 0" styleClass="category-stat-number"/>
                                     </VBox>
                                 </HBox>
 
@@ -163,6 +166,8 @@
                                 </HBox>
                             </VBox>
                         </VBox>
+                            </children>
+                        </StackPane>
                     </content>
                 </ScrollPane>
             </center>

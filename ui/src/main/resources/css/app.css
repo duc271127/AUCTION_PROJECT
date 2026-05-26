@@ -1,9 +1,9 @@
 .root {
-    -auction-primary: #0047ff;
-    -auction-primary-hover: #003bd6;
-    -auction-primary-soft: #eef4ff;
+    -auction-primary: #0033ff;
+    -auction-primary-hover: #2a6df4;
+    -auction-primary-soft: #edf4ff;
 
-    -auction-bg: #fafafa;
+    -auction-bg: #ffffff;
     -auction-bg-soft: #f5f6f8;
     -auction-surface: #ffffff;
     -auction-surface-soft: #f2f2f2;
@@ -25,8 +25,8 @@
     -auction-danger: #dc2626;
     -auction-danger-soft: #fee2e2;
 
-    -auction-info: #2563eb;
-    -auction-info-soft: #dbeafe;
+    -auction-info: #2a6df4;
+    -auction-info-soft: #dce8ff;
 
     -auction-shadow: rgba(15, 23, 42, 0.08);
 

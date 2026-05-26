@@ -18,6 +18,8 @@ public class ItemResponse {
     private List<String> imageUrls;
     private String sku;
     private Integer quantity;
+    private boolean deletable;
+    private String deleteBlockedReason;
 
     // getters / setters
     public String getSku() { return sku; }
@@ -62,4 +64,10 @@ public class ItemResponse {
 
     public List<String> getImageUrls() { return imageUrls; }
     public void setImageUrls(List<String> imageUrls) { this.imageUrls = imageUrls; }
+
+    public boolean isDeletable() { return deletable; }
+    public void setDeletable(boolean deletable) { this.deletable = deletable; }
+
+    public String getDeleteBlockedReason() { return deleteBlockedReason; }
+    public void setDeleteBlockedReason(String deleteBlockedReason) { this.deleteBlockedReason = deleteBlockedReason; }
 }

@@ -21,7 +21,10 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import java.io.File;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -37,6 +40,10 @@ public class SellerItemDialogController {
     @FXML private TextField reservePriceField;
     @FXML private DatePicker startDatePicker;
     @FXML private DatePicker endDatePicker;
+    @FXML private ComboBox<String> startHourComboBox;
+    @FXML private ComboBox<String> startMinuteComboBox;
+    @FXML private ComboBox<String> endHourComboBox;
+    @FXML private ComboBox<String> endMinuteComboBox;
     @FXML private ImageView productImagePreview;
     @FXML private Label selectedImageLabel;
     @FXML private ComboBox<String> primaryImageChoice;
@@ -55,6 +62,11 @@ public class SellerItemDialogController {
     @FXML
     public void initialize() {
         categoryField.getItems().setAll("Art", "Jewellery", "Watches", "Fashion");
+        populateTimeChoices(startHourComboBox, 24);
+        populateTimeChoices(endHourComboBox, 24);
+        populateTimeChoices(startMinuteComboBox, 60);
+        populateTimeChoices(endMinuteComboBox, 60);
+        selectDefaultTimes();
         primaryImageChoice.getSelectionModel().selectedIndexProperty().addListener((obs, oldIndex, newIndex) -> {
             if (newIndex != null) {
                 updateLargePreview(newIndex.intValue());
@@ -85,6 +97,12 @@ public class SellerItemDialogController {
         submitButton.setText("Update Listing");
         deleteButton.setVisible(true);
         deleteButton.setManaged(true);
+        deleteButton.setDisable(!listing.isDeletable());
+        if (!listing.isDeletable()) {
+            deleteButton.setTooltip(new javafx.scene.control.Tooltip(resolveDeleteBlockedReason()));
+        } else {
+            deleteButton.setTooltip(null);
+        }
 
         productNameField.setText(safeText(listing.getProductName(), ""));
         descriptionArea.setText(safeText(listing.getDescription(), ""));
@@ -93,6 +111,8 @@ public class SellerItemDialogController {
         reservePriceField.setText(safeText(listing.getReservePrice(), ""));
         startDatePicker.setValue(parseDate(listing.getStartDate()));
         endDatePicker.setValue(parseDate(listing.getEndDate()));
+        applySavedTime(listing.getStartDate(), true);
+        applySavedTime(listing.getEndDate(), false);
 
         selectedImages.clear();
         if (listing.getImageUrls() != null) {
@@ -168,8 +188,8 @@ public class SellerItemDialogController {
                         getCategoryValue(),
                         Double.parseDouble(startingPriceField.getText().trim()),
                         getReservePriceValue(),
-                        startDatePicker.getValue().toString(),
-                        endDatePicker.getValue().toString(),
+                        buildIsoDateTime(startDatePicker.getValue(), true),
+                        buildIsoDateTime(endDatePicker.getValue(), false),
                         imagePath,
                         imageUrls,
                         "",
@@ -184,8 +204,8 @@ public class SellerItemDialogController {
                         getCategoryValue(),
                         Double.parseDouble(startingPriceField.getText().trim()),
                         getReservePriceValue(),
-                        startDatePicker.getValue().toString(),
-                        endDatePicker.getValue().toString(),
+                        buildIsoDateTime(startDatePicker.getValue(), true),
+                        buildIsoDateTime(endDatePicker.getValue(), false),
                         imagePath,
                         imageUrls,
                         safeText(listing.getSku(), ""),
@@ -207,6 +227,11 @@ public class SellerItemDialogController {
     @FXML
     private void handleDelete() {
         if (listing == null || listing.getId() == null) {
+            return;
+        }
+
+        if (!listing.isDeletable()) {
+            showError(resolveDeleteBlockedReason());
             return;
         }
 
@@ -283,6 +308,14 @@ public class SellerItemDialogController {
 
         if (endDatePicker.getValue().isBefore(startDatePicker.getValue())) {
             return ValidationResult.invalid("End date cannot be earlier than start date.");
+        }
+
+        if (endDatePicker.getValue().isEqual(startDatePicker.getValue())) {
+            LocalDateTime startDateTime = buildLocalDateTime(startDatePicker.getValue(), true);
+            LocalDateTime endDateTime = buildLocalDateTime(endDatePicker.getValue(), false);
+            if (endDateTime.isBefore(startDateTime) || endDateTime.isEqual(startDateTime)) {
+                return ValidationResult.invalid("End time must be later than start time.");
+            }
         }
 
         return ValidationResult.valid();
@@ -382,8 +415,91 @@ public class SellerItemDialogController {
         }
     }
 
+    private void populateTimeChoices(ComboBox<String> comboBox, int limit) {
+        if (comboBox == null) {
+            return;
+        }
+
+        List<String> values = new ArrayList<>();
+        for (int i = 0; i < limit; i++) {
+            values.add(String.format("%02d", i));
+        }
+        comboBox.getItems().setAll(values);
+    }
+
+    private void selectDefaultTimes() {
+        selectTime(startHourComboBox, "00");
+        selectTime(startMinuteComboBox, "00");
+        selectTime(endHourComboBox, "23");
+        selectTime(endMinuteComboBox, "59");
+    }
+
+    private void applySavedTime(String value, boolean startField) {
+        String defaultHour = startField ? "00" : "23";
+        String defaultMinute = startField ? "00" : "59";
+
+        ComboBox<String> hourBox = startField ? startHourComboBox : endHourComboBox;
+        ComboBox<String> minuteBox = startField ? startMinuteComboBox : endMinuteComboBox;
+
+        if (value == null || value.isBlank()) {
+            selectTime(hourBox, defaultHour);
+            selectTime(minuteBox, defaultMinute);
+            return;
+        }
+
+        try {
+            Instant instant = Instant.parse(value);
+            LocalDateTime dateTime = LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
+            selectTime(hourBox, String.format("%02d", dateTime.getHour()));
+            selectTime(minuteBox, String.format("%02d", dateTime.getMinute()));
+            return;
+        } catch (Exception ignored) {
+        }
+
+        selectTime(hourBox, defaultHour);
+        selectTime(minuteBox, defaultMinute);
+    }
+
+    private void selectTime(ComboBox<String> comboBox, String value) {
+        if (comboBox == null) {
+            return;
+        }
+
+        comboBox.getSelectionModel().select(value);
+    }
+
+    private String buildIsoDateTime(LocalDate date, boolean startField) {
+        return buildLocalDateTime(date, startField).toInstant(ZoneOffset.UTC).toString();
+    }
+
+    private LocalDateTime buildLocalDateTime(LocalDate date, boolean startField) {
+        int hour = parseTimeValue(startField ? startHourComboBox : endHourComboBox, startField ? "00" : "23");
+        int minute = parseTimeValue(startField ? startMinuteComboBox : endMinuteComboBox, startField ? "00" : "59");
+        return date.atTime(hour, minute, startField ? 0 : 59);
+    }
+
+    private int parseTimeValue(ComboBox<String> comboBox, String fallback) {
+        String value = comboBox == null || comboBox.getValue() == null || comboBox.getValue().isBlank()
+                ? fallback
+                : comboBox.getValue();
+        return Integer.parseInt(value);
+    }
+
     private String safeText(String value, String fallback) {
         return value == null || value.isBlank() ? fallback : value;
+    }
+
+    private String resolveDeleteBlockedReason() {
+        if (listing == null) {
+            return "This listing cannot be deleted.";
+        }
+
+        String reason = listing.getDeleteBlockedReason();
+        if (reason != null && !reason.isBlank()) {
+            return reason;
+        }
+
+        return "This listing already has an auction, so the seller cannot delete it.";
     }
 
     private void showError(String message) {

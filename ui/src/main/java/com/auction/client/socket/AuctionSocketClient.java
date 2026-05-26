@@ -1,5 +1,6 @@
 package com.auction.client.socket;
 
+import com.auction.client.config.EndpointConfig;
 import com.auction.client.dto.event.AuctionEventDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.java_websocket.client.WebSocketClient;
@@ -19,9 +20,7 @@ public class AuctionSocketClient {
 
     private WebSocketClient client;
 
-    // Spring SockJS websocket endpoint
-    private static final String WS_URL =
-            "ws://lungs-decree.with.playit.plus:1125/ws/websocket";
+    private static final String WS_URL = EndpointConfig.getWebSocketUrl();
 
     public boolean connectBlockingToServer() {
         try {

@@ -12,6 +12,7 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
 <AnchorPane prefHeight="900" prefWidth="1400" styleClass="detail-root" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.client.controller.ProductDetailController">
@@ -44,11 +45,16 @@
 
                     <Button focusTraversable="false" onAction="#handleOpenWallet" styleClass="market-wallet-button" text="Wallet" />
 
-                    <Button focusTraversable="false" styleClass="market-icon-button" text="♡" />
+                    <Button focusTraversable="false" styleClass="market-icon-button" text="&#9825;" />
 
                     <Label styleClass="market-user-icon" text="User" />
 
                     <Label fx:id="topUsernameLabel" styleClass="market-username" text="Username" />
+
+                    <Button focusTraversable="false"
+                            onAction="#handleLogout"
+                            styleClass="market-logout-button"
+                            text="Logout" />
                 </HBox>
             </top>
 
@@ -56,9 +62,11 @@
                 <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="detail-scroll">
 
                     <content>
-                        <VBox spacing="22.0" styleClass="detail-page">
+                        <StackPane styleClass="page-shell">
+                            <children>
+                        <VBox spacing="22.0" styleClass="detail-page page-content">
                             <padding>
-                                <Insets bottom="36" left="36" right="36" top="24" />
+                                <Insets bottom="36" left="24" right="24" top="24" />
                             </padding>
 
                             <Label styleClass="detail-breadcrumb" text="Home / Auctions / Product Detail" />
@@ -97,15 +105,15 @@
                                         <Label styleClass="detail-mini-label" text="YOUR BALANCE" />
 
                                         <HBox alignment="CENTER_LEFT">
-                                            <Label fx:id="balanceValueLabel" styleClass="detail-balance-value" text="€ 0" HBox.hgrow="ALWAYS" />
+                                            <Label fx:id="balanceValueLabel" styleClass="detail-balance-value" text="USD 0" HBox.hgrow="ALWAYS" />
 
-                                            <Label styleClass="detail-wallet-icon" text="▣" />
+                                            <Label styleClass="detail-wallet-icon" text="&#9633;" />
                                         </HBox>
                                     </VBox>
 
                                     <VBox spacing="8.0" styleClass="detail-time-card">
                                         <HBox alignment="CENTER_LEFT" spacing="6.0">
-                                            <Label styleClass="detail-time-icon" text="◉" />
+                                            <Label styleClass="detail-time-icon" text="&#9716;" />
                                             <Label styleClass="detail-time-title" text="Time remaining" />
                                         </HBox>
 
@@ -137,13 +145,13 @@
                                     <VBox spacing="6.0">
                                         <Label styleClass="detail-mini-label" text="CURRENT PRICE" />
 
-                                        <Label fx:id="currentBidLabel" styleClass="detail-current-price" text="€ 0" />
+                                        <Label fx:id="currentBidLabel" styleClass="detail-current-price" text="USD 0" />
 
                                         <Label fx:id="statusLabel" styleClass="detail-status" text="No reserve price" />
 
                                         <Label styleClass="detail-mini-label" text="ESTIMATED" />
 
-                                        <Label fx:id="estimatedValueLabel" styleClass="detail-estimated-value" text="€ 0 - € 0" />
+                                        <Label fx:id="estimatedValueLabel" styleClass="detail-estimated-value" text="USD 0 - USD 0" />
                                     </VBox>
 
                                     <Label fx:id="specsLabel" managed="false" styleClass="detail-specs" text="Estimated price and auction metadata" visible="false" wrapText="true" />
@@ -156,7 +164,7 @@
 
                                     <VBox spacing="8.0" styleClass="detail-actions">
 
-                                        <Button maxWidth="Infinity"
+                                        <Button fx:id="placeBidButton" maxWidth="Infinity"
                                                 onAction="#handleOpenBidDialog"
                                                 prefHeight="35.0"
                                                 prefWidth="360.0"
@@ -168,14 +176,14 @@
                                                 prefHeight="35.0"
                                                 prefWidth="360.0"
                                                 styleClass="detail-auto-button detail-action-button"
-                                                text="⚡ Auto-Bid" />
+                                                text="Auto-Bid" />
 
                                         <Button maxWidth="Infinity"
                                                 onAction="#handleViewChart"
                                                 prefHeight="35.0"
                                                 prefWidth="360.0"
                                                 styleClass="detail-chart-button detail-action-button"
-                                                text="↗ View Chart" />
+                                                text="View Chart" />
                                     </VBox>
 
                                     <Label fx:id="bidMessageLabel" styleClass="detail-bid-message" text="" wrapText="true" />
@@ -218,6 +226,8 @@
                             </VBox>
 
                         </VBox>
+                            </children>
+                        </StackPane>
                     </content>
                 </ScrollPane>
             </center>

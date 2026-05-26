@@ -6,14 +6,10 @@ import com.auction.client.dto.response.BidPlacementResponse;
 import com.auction.client.service.AuctionApiService;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.util.concurrent.CompletableFuture;
@@ -42,7 +38,6 @@ public class BidDialogController {
     public void setAuction(AuctionListResponse auction, Consumer<BidPlacementResponse> onBidPlaced) {
         this.auction = auction;
         this.onBidPlaced = onBidPlaced;
-
         bindAuction();
     }
 
@@ -65,11 +60,9 @@ public class BidDialogController {
         }
 
         String title = firstNonBlank(auction.getTitle(), auction.getItemName(), "Unnamed Auction");
-
         lotTitleLabel.setText(title);
         currentBidLabel.setText(formatMoney(auction.getCurrentPrice()));
         minimumBidLabel.setText("Minimum bid: " + formatMoney(getMinimumBid()));
-
         bidInputField.setPromptText(String.format("%.0f", getMinimumBid()));
     }
 
@@ -100,7 +93,6 @@ public class BidDialogController {
         }
 
         double minimumBid = getMinimumBid();
-
         if (amount < minimumBid) {
             showError("Your bid must be at least " + formatMoney(minimumBid) + ".");
             return;
@@ -117,9 +109,7 @@ public class BidDialogController {
                     if (onBidPlaced != null) {
                         onBidPlaced.accept(response);
                     }
-
                     closeCurrentDialog();
-                    openSuccessDialog(response.getCurrentPrice());
                 }))
                 .exceptionally(error -> {
                     runOnUiThread(() -> {
@@ -135,52 +125,9 @@ public class BidDialogController {
         closeCurrentDialog();
     }
 
-    private void openSuccessDialog(double bidAmount) {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/bid_success_dialog.fxml"));
-            Parent root = loader.load();
-
-            Stage successStage = new Stage();
-            successStage.setTitle("Bid placed");
-            successStage.initModality(Modality.WINDOW_MODAL);
-
-            if (dialogStage != null && dialogStage.getOwner() != null) {
-                successStage.initOwner(dialogStage.getOwner());
-            }
-
-            Scene scene = new Scene(root);
-            addStyles(scene);
-
-            BidSuccessDialogController controller = loader.getController();
-            controller.setDialogStage(successStage);
-            controller.setBidAmount(bidAmount);
-
-            successStage.setScene(scene);
-            successStage.setResizable(false);
-            successStage.showAndWait();
-
-        } catch (Exception e) {
-            System.out.println("Cannot open bid success dialog: " + e.getMessage());
-        }
-    }
-
     private void closeCurrentDialog() {
         if (dialogStage != null) {
             dialogStage.close();
-        }
-    }
-
-    private void addStyles(Scene scene) {
-        addStylesheet(scene, "/css/app.css");
-        addStylesheet(scene, "/css/components.css");
-        addStylesheet(scene, "/css/product_detail.css");
-    }
-
-    private void addStylesheet(Scene scene, String path) {
-        try {
-            String css = getClass().getResource(path).toExternalForm();
-            scene.getStylesheets().add(css);
-        } catch (Exception ignored) {
         }
     }
 
@@ -202,7 +149,6 @@ public class BidDialogController {
         }
 
         String normalized = text.replaceAll("[^0-9.]", "");
-
         if (normalized.isBlank()) {
             throw new NumberFormatException("empty amount");
         }
@@ -258,7 +204,7 @@ public class BidDialogController {
     }
 
     private String formatMoney(double value) {
-        return "€ " + String.format("%,.0f", value);
+        return "USD " + String.format("%,.0f", value);
     }
 
     private void runOnUiThread(Runnable task) {
