@@ -15,4 +15,6 @@ public interface AutoBidRepository extends JpaRepository<AutoBid, UUID> {
     List<AutoBid> findByBidderIdAndActiveTrueOrderByCreatedAtAsc(UUID bidderId);
 
     boolean existsByAuctionIdAndBidderIdAndActiveTrue(UUID auctionId, UUID bidderId);
+
+    void deleteByAuctionId(UUID auctionId);
 }

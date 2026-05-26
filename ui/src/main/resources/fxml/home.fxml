@@ -59,6 +59,7 @@
                             onAction="#handleGoToTrending"/>
 
                     <TextField fx:id="searchField"
+                               onAction="#handleSearch"
                                promptText="Search jewelry, watches, art ..."
                                focusTraversable="false"
                                styleClass="market-search"

@@ -90,6 +90,9 @@ public class BidHistoryDialogController {
         bidLineChart.setAlternativeColumnFillVisible(false);
         bidLineChart.setAlternativeRowFillVisible(false);
         bidLineChart.setCreateSymbols(true);
+        if (chartScrollPane != null) {
+            chartScrollPane.setPannable(false);
+        }
 
         if (timeAxis != null) {
             timeAxis.setAnimated(false);
@@ -359,7 +362,10 @@ public class BidHistoryDialogController {
             node.getStyleClass().add("bid-history-point-latest");
         }
 
-        node.setPickOnBounds(true);
+        node.setPickOnBounds(false);
+        node.setOnMousePressed(event -> event.consume());
+        node.setOnMouseReleased(event -> event.consume());
+        node.setOnMouseDragged(event -> event.consume());
 
         Tooltip existingTooltip = (Tooltip) node.getProperties().get("bid-history-tooltip");
         if (existingTooltip != null) {
@@ -379,11 +385,11 @@ public class BidHistoryDialogController {
         Tooltip tooltip = new Tooltip();
         tooltip.setGraphic(content);
         tooltip.setText(null);
-        tooltip.setShowDelay(Duration.millis(120));
-        tooltip.setHideDelay(Duration.millis(120));
-        tooltip.setShowDuration(Duration.seconds(20));
+        tooltip.setShowDelay(Duration.millis(80));
+        tooltip.setHideDelay(Duration.millis(60));
+        tooltip.setShowDuration(Duration.seconds(12));
         tooltip.getStyleClass().add("bid-history-tooltip");
-        tooltip.setConsumeAutoHidingEvents(false);
+        tooltip.setConsumeAutoHidingEvents(true);
         node.getProperties().put("bid-history-tooltip", tooltip);
         Tooltip.install(node, tooltip);
     }

@@ -10,9 +10,15 @@ import com.auction.client.service.ItemApiService;
 import com.auction.client.util.MockData;
 import com.auction.client.ui.AuctionCardData;
 import com.auction.client.ui.AuctionCardViewFactory;
+import com.auction.client.util.AuctionStateViewHelper;
+import com.auction.client.util.SearchNavigationContext;
 import javafx.fxml.FXML;
+import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.control.Button;
+import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
 
@@ -31,6 +37,7 @@ public class TrendingController {
     @FXML private Button viewedFilterButton;
     @FXML private Button savedFilterButton;
     @FXML private Button loadMoreButton;
+    @FXML private TextField searchField;
 
     @FXML private Label activeBidsLabel;
     @FXML private Label newAuctionsLabel;
@@ -47,6 +54,7 @@ public class TrendingController {
     private TrendingFilter selectedFilter = TrendingFilter.HOT;
     private int currentPage = 0;
     private static final int PAGE_SIZE = 12;
+    private String currentQuery;
 
     @FXML
     public void initialize() {
@@ -60,6 +68,10 @@ public class TrendingController {
                         ? "Bidder"
                         : SessionManager.getUsername()
         );
+        currentQuery = SearchNavigationContext.consumePendingQuery();
+        if (searchField != null && currentQuery != null) {
+            searchField.setText(currentQuery);
+        }
         loadFavorites();
         loadTrendingAuctions(true);
     }
@@ -86,7 +98,7 @@ public class TrendingController {
 
         try {
             List<AuctionListResponse> responses =
-                    auctionApiService.getTrendingAuctions(null, null, null, currentPage, PAGE_SIZE).getItems();
+                    auctionApiService.getTrendingAuctions(null, currentQuery, null, currentPage, PAGE_SIZE).getItems();
 
             if (responses != null) {
                 for (int i = 0; i < responses.size(); i++) {
@@ -94,13 +106,15 @@ public class TrendingController {
                 }
             }
 
-            if (trendingItems.isEmpty()) {
+            if (trendingItems.isEmpty() && !hasSearchQuery()) {
                 loadMockTrendingItems();
             }
 
         } catch (Exception e) {
-            if (trendingItems.isEmpty()) {
+            if (trendingItems.isEmpty() && !hasSearchQuery()) {
                 loadMockTrendingItems();
+            } else if (hasSearchQuery()) {
+                trendingItems.clear();
             }
         }
 
@@ -129,7 +143,7 @@ public class TrendingController {
         String ending = formatEndTime(response.getEndTime());
 
         long views = response.getViewCount() > 0 ? response.getViewCount() : 1200;
-        long saves = response.getFavoriteCount() > 0 ? response.getFavoriteCount() : 234;
+        long saves = Math.max(response.getFavoriteCount(), 0);
 
         double score = response.getTrendingScore() > 0
                 ? response.getTrendingScore()
@@ -142,6 +156,11 @@ public class TrendingController {
                 seller,
                 currentBid,
                 ending,
+                AuctionStateViewHelper.resolveDisplayState(
+                        response.getState(),
+                        response.getStartTime(),
+                        response.getEndTime()
+                ),
                 views,
                 saves,
                 response.getBidCount(),
@@ -164,8 +183,9 @@ public class TrendingController {
                     "Verified Seller",
                     item.getCurrentBid().replace("$", "USD "),
                     item.getTimeLeft(),
+                    "SCHEDULED",
                     1200 + rank * 150,
-                    234 + rank * 12,
+                    0,
                     8 + rank,
                     rank,
                     1000 - rank
@@ -184,8 +204,17 @@ public class TrendingController {
         List<TrendingCardItem> visibleItems = getVisibleItems();
 
         if (visibleItems.isEmpty()) {
+            if (loadMoreButton != null) {
+                loadMoreButton.setManaged(false);
+                loadMoreButton.setVisible(false);
+            }
             trendingGrid.getChildren().add(createEmptyState());
             return;
+        }
+
+        if (loadMoreButton != null) {
+            loadMoreButton.setManaged(true);
+            loadMoreButton.setVisible(true);
         }
 
         int rank = 1;
@@ -204,9 +233,9 @@ public class TrendingController {
                 "Ending: " + item.ending(),
                 formatCompact(item.viewCount()) + " views / " + formatCompact(item.saveCount()) + " saves",
                 item.imageUrl(),
-                "#" + rank + " Trending",
+                item.state(),
                 "View Details",
-                String.valueOf(item.saveCount())
+                String.valueOf(Math.max(item.saveCount(), 0))
         );
 
         return cardFactory.createCard(
@@ -226,7 +255,7 @@ public class TrendingController {
                 item.imageUrl(),
                 item.currentBid(),
                 item.ending(),
-                "TRENDING"
+                item.state()
         ));
 
         SceneManager.goToProductDetail();
@@ -270,6 +299,12 @@ public class TrendingController {
         loadTrendingAuctions(false);
     }
 
+    @FXML
+    private void handleSearch() {
+        currentQuery = searchField == null ? null : normalizeQuery(searchField.getText());
+        loadTrendingAuctions(true);
+    }
+
     private void applyFilter(TrendingFilter filter) {
         selectedFilter = filter;
         updateFilterButtons();
@@ -278,6 +313,7 @@ public class TrendingController {
 
     private List<TrendingCardItem> getVisibleItems() {
         List<TrendingCardItem> visibleItems = new ArrayList<>(trendingItems);
+        visibleItems.removeIf(this::isDeletedAuction);
 
         switch (selectedFilter) {
             case HOT -> visibleItems.sort(
@@ -292,6 +328,10 @@ public class TrendingController {
         }
 
         return visibleItems;
+    }
+
+    private boolean isDeletedAuction(TrendingCardItem item) {
+        return item != null && "DELETED".equalsIgnoreCase(item.state());
     }
 
     private void updateFilterButtons() {
@@ -329,6 +369,11 @@ public class TrendingController {
     }
 
     @FXML
+    private void handleOpenWonAuctions() {
+        SceneManager.goToWonAuctions();
+    }
+
+    @FXML
     private void handleLogout() {
         SessionManager.clear();
         SceneManager.goToAuth();
@@ -356,6 +401,13 @@ public class TrendingController {
 
     private void updateStats() {
         int totalBids = trendingItems.stream().mapToInt(TrendingCardItem::bidCount).sum();
+
+        if (hasSearchQuery() && trendingItems.isEmpty()) {
+            activeBidsLabel.setText("0");
+            newAuctionsLabel.setText("0");
+            totalBidsPlacedLabel.setText("0");
+            return;
+        }
 
         activeBidsLabel.setText(totalBids > 0 ? formatCompact(totalBids) : "1.2K");
         newAuctionsLabel.setText(String.valueOf(Math.max(trendingItems.size(), 0)));
@@ -402,7 +454,19 @@ public class TrendingController {
         return "";
     }
 
+    private String normalizeQuery(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
     private VBox createEmptyState() {
+        if (hasSearchQuery()) {
+            return createSearchEmptyState();
+        }
+
         Label title = new Label("No trending auctions yet.");
         title.getStyleClass().add("trending-card-title");
 
@@ -412,6 +476,45 @@ public class TrendingController {
         VBox emptyState = new VBox(8, title, subtitle);
         emptyState.getStyleClass().add("trending-empty-state");
         return emptyState;
+    }
+
+    private VBox createSearchEmptyState() {
+        ImageView illustration = buildSearchIllustration();
+
+        Label title = new Label("No results found");
+        title.getStyleClass().add("search-empty-title");
+
+        Label subtitle = new Label("We couldn't find any trending auctions matching \"" + currentQuery + "\".");
+        subtitle.getStyleClass().add("search-empty-copy");
+        subtitle.setWrapText(true);
+
+        Label hint = new Label("Try a broader keyword or return to the hottest live auctions.");
+        hint.getStyleClass().add("search-empty-hint");
+        hint.setWrapText(true);
+
+        VBox emptyState = new VBox(18, illustration, title, subtitle, hint);
+        emptyState.setAlignment(Pos.CENTER);
+        emptyState.setPrefWidth(1040);
+        emptyState.setMinHeight(420);
+        emptyState.getStyleClass().add("search-empty-state");
+        return emptyState;
+    }
+
+    private ImageView buildSearchIllustration() {
+        ImageView imageView = new ImageView();
+        var resource = getClass().getResource("/images/item2.png");
+        if (resource != null) {
+            imageView.setImage(new Image(resource.toExternalForm(), true));
+        }
+        imageView.setFitWidth(220);
+        imageView.setFitHeight(180);
+        imageView.setPreserveRatio(true);
+        imageView.getStyleClass().add("search-empty-illustration");
+        return imageView;
+    }
+
+    private boolean hasSearchQuery() {
+        return currentQuery != null && !currentQuery.isBlank();
     }
 
     private enum TrendingFilter {
@@ -427,6 +530,7 @@ public class TrendingController {
             String sellerName,
             String currentBid,
             String ending,
+            String state,
             long viewCount,
             long saveCount,
             int bidCount,

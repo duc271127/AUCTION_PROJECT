@@ -12,15 +12,17 @@
 }
 
 .detail-main-section {
-    -fx-alignment: TOP_LEFT;
+    -fx-alignment: TOP_CENTER;
 }
 
 .detail-media-column {
-    -fx-min-width: 734px;
-    -fx-max-width: 734px;
+    -fx-min-width: 760px;
+    -fx-pref-width: 760px;
+    -fx-max-width: 760px;
 }
 
 .detail-main-image {
+    -fx-smooth: true;
     -fx-background-color: #f2f2f2;
     -fx-background-radius: 10;
     -fx-border-radius: 10;
@@ -29,6 +31,7 @@
 }
 
 .detail-thumbnail {
+    -fx-smooth: true;
     -fx-background-color: #f7f7f8;
     -fx-background-radius: 8;
     -fx-border-radius: 8;
@@ -37,9 +40,10 @@
 }
 
 .detail-bid-column {
-    -fx-min-width: 351px;
-    -fx-max-width: 351px;
-    -fx-padding: 0 0 6 0;
+    -fx-min-width: 392px;
+    -fx-pref-width: 392px;
+    -fx-max-width: 392px;
+    -fx-padding: 4 0 6 0;
 }
 
 .detail-auction-title {
@@ -54,9 +58,10 @@
     -fx-border-radius: 999;
     -fx-background-radius: 999;
     -fx-text-fill: #0033ff;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
     -fx-font-weight: 700;
-    -fx-padding: 6 12;
+    -fx-padding: 7 14;
+    -fx-min-height: 40px;
 }
 
 .detail-favorite-pill:hover,
@@ -64,13 +69,17 @@
     -fx-background-color: #eef4ff;
 }
 
+.detail-favorite-row {
+    -fx-padding: 2 0 0 0;
+}
+
 .detail-seller-row {
-    -fx-padding: 2 0 18 0;
+    -fx-padding: 0 0 16 0;
 }
 
 .detail-seller-name {
     -fx-text-fill: #111111;
-    -fx-font-size: 14px;
+    -fx-font-size: 15px;
     -fx-font-weight: 700;
 }
 
@@ -124,6 +133,49 @@
     -fx-padding: 18 18;
 }
 
+.winner-notice-card {
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-padding: 16 18;
+    -fx-border-width: 1;
+}
+
+.winner-notice-card-success {
+    -fx-background-color: linear-gradient(to right, #effbf2, #f6fffa);
+    -fx-border-color: #78d89b;
+}
+
+.winner-notice-card-muted {
+    -fx-background-color: #f8fafc;
+    -fx-border-color: #d7dfeb;
+}
+
+.winner-notice-title {
+    -fx-text-fill: #111827;
+    -fx-font-size: 16px;
+    -fx-font-weight: 800;
+}
+
+.winner-notice-subtitle {
+    -fx-text-fill: #5b667a;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+}
+
+.winner-notice-button {
+    -fx-background-color: #0f766e;
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 12px;
+    -fx-font-weight: 800;
+    -fx-background-radius: 999;
+    -fx-border-radius: 999;
+    -fx-padding: 8 16;
+}
+
+.winner-notice-button:hover {
+    -fx-background-color: #0d9488;
+}
+
 .detail-mini-label {
     -fx-text-fill: #667085;
     -fx-font-size: 11px;
@@ -147,6 +199,12 @@
     -fx-text-fill: #111111;
     -fx-font-size: 12px;
     -fx-font-weight: 700;
+}
+
+.detail-time-context {
+    -fx-text-fill: #64748b;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
 }
 
 .detail-countdown-grid {
@@ -219,6 +277,13 @@
 .detail-place-button:hover {
     -fx-background-color: #2a6df4;
     -fx-border-color: #2a6df4;
+}
+
+.detail-place-button:disabled {
+    -fx-background-color: #dbe4f5;
+    -fx-border-color: #dbe4f5;
+    -fx-text-fill: #6b7280;
+    -fx-opacity: 1;
 }
 
 .detail-auto-button {

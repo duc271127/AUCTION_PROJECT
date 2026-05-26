@@ -158,6 +158,15 @@ public class AuctionApiService {
         }
     }
 
+    public List<AuctionListResponse> listMyWonAuctions() {
+        try {
+            String responseBody = apiClient.get("/api/auctions/me/wins");
+            return objectMapper.readValue(responseBody, new TypeReference<List<AuctionListResponse>>() {});
+        } catch (Exception e) {
+            throw new ApiException("Load won auctions failed: " + e.getMessage(), e);
+        }
+    }
+
     public List<BidResponse> getBidHistory(String auctionId) {
         try {
             String responseBody = apiClient.get("/api/auctions/" + auctionId + "/bids");

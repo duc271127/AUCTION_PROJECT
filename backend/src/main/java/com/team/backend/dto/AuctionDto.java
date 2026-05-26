@@ -21,6 +21,8 @@ public class AuctionDto {
     public double minNextBid;
     public UUID leaderId;
     public String leaderName;
+    public UUID winnerId;
+    public String winnerName;
     public Instant startTime;
     public Instant endTime;
     public String state;

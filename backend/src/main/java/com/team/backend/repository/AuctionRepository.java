@@ -18,6 +18,7 @@ import java.util.UUID;
 public interface AuctionRepository extends JpaRepository<Auction, UUID> {
     List<Auction> findByState(AuctionState state);
     List<Auction> findBySellerId(UUID sellerId);
+    List<Auction> findByWinnerIdOrderByEndTimeDesc(UUID winnerId);
 
     // auctions that should start now or earlier but still OPEN
     @Query("select a from Auction a where a.state = :state and a.startTime <= :now")
@@ -32,6 +33,8 @@ public interface AuctionRepository extends JpaRepository<Auction, UUID> {
     List<Auction> findActiveAuctions(Instant now);
 
     List<Auction> findByStateInAndStartTimeBefore(List<AuctionState> states, Instant now);
+
+    Optional<Auction> findByItemId(UUID itemId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Auction a where a.id = :id")

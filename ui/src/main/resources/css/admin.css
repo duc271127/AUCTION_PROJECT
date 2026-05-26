@@ -201,6 +201,202 @@
     -fx-wrap-text: true;
 }
 
+.admin-management-header {
+    -fx-background-color: #fbfbfc;
+    -fx-border-color: #e5e9f2;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 16 18;
+}
+
+.admin-management-heading {
+    -fx-text-fill: #3a3a3a;
+    -fx-font-size: 13px;
+    -fx-font-weight: 800;
+}
+
+.admin-management-row {
+    -fx-background-color: #ffffff;
+    -fx-border-color: transparent transparent #edf0f5 transparent;
+    -fx-padding: 16 18;
+    -fx-alignment: CENTER_LEFT;
+}
+
+.admin-table-scroll {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+    -fx-border-color: #e6ebf2;
+    -fx-border-radius: 18;
+    -fx-background-radius: 18;
+}
+
+.admin-table-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.admin-table-scroll > .corner {
+    -fx-background-color: transparent;
+}
+
+.admin-management-row-active {
+    -fx-background-color: #ffffff;
+}
+
+.admin-management-row-pending {
+    -fx-background-color: #fff4d8;
+}
+
+.admin-management-row-incoming {
+    -fx-background-color: #fff9dc;
+}
+
+.admin-management-row-closed {
+    -fx-background-color: #fff2f2;
+}
+
+.admin-management-row-rejected {
+    -fx-background-color: #fff2f2;
+}
+
+.admin-management-row-deleted {
+    -fx-background-color: #eef2f7;
+}
+
+.admin-management-title {
+    -fx-text-fill: #202124;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+}
+
+.admin-management-subtitle {
+    -fx-text-fill: #969dac;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+}
+
+.admin-status-pill {
+    -fx-font-size: 11px;
+    -fx-font-weight: 800;
+    -fx-padding: 5 10;
+    -fx-background-radius: 999;
+    -fx-border-radius: 999;
+}
+
+.admin-status-active {
+    -fx-background-color: #dff7e7;
+    -fx-text-fill: #16994b;
+}
+
+.admin-status-pending {
+    -fx-background-color: #ffd98a;
+    -fx-text-fill: #9a6500;
+}
+
+.admin-status-incoming {
+    -fx-background-color: #ffeeba;
+    -fx-text-fill: #c68a00;
+}
+
+.admin-status-closed {
+    -fx-background-color: #ffd7d7;
+    -fx-text-fill: #d64040;
+}
+
+.admin-status-rejected {
+    -fx-background-color: #ffd7d7;
+    -fx-text-fill: #d64040;
+}
+
+.admin-status-deleted {
+    -fx-background-color: #dbe4f0;
+    -fx-text-fill: #475569;
+}
+
+.admin-inline-link {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: #2563ff;
+    -fx-font-size: 13px;
+    -fx-font-weight: 800;
+    -fx-padding: 0;
+    -fx-cursor: hand;
+}
+
+.admin-inline-link:hover {
+    -fx-text-fill: #003ad1;
+}
+
+.admin-note-card {
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-width: 1;
+    -fx-padding: 14 16;
+}
+
+.admin-note-card-deposit {
+    -fx-background-color: #fff9dc;
+    -fx-border-color: #f1dc82;
+}
+
+.admin-note-card-withdrawal {
+    -fx-background-color: #ecf3ff;
+    -fx-border-color: #bfd3ff;
+}
+
+.admin-note-card-default {
+    -fx-background-color: #f8fafc;
+    -fx-border-color: #dbe4f0;
+}
+
+.admin-note-title {
+    -fx-text-fill: #202124;
+    -fx-font-size: 14px;
+    -fx-font-weight: 800;
+}
+
+.admin-note-body,
+.admin-note-meta {
+    -fx-text-fill: #6b7280;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+}
+
+.admin-note-tag {
+    -fx-text-fill: #6b7280;
+    -fx-font-size: 12px;
+    -fx-font-weight: 800;
+}
+
+.admin-pending-card {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e5e9f2;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 16 18;
+}
+
+.admin-pending-title {
+    -fx-text-fill: #202124;
+    -fx-font-size: 14px;
+    -fx-font-weight: 800;
+}
+
+.admin-pending-meta {
+    -fx-text-fill: #7b8190;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+}
+
+.admin-primary-button:disabled,
+.admin-outline-button:disabled,
+.admin-danger-button:disabled {
+    -fx-opacity: 1;
+    -fx-background-color: #eef2f7;
+    -fx-border-color: #d7dee9;
+    -fx-text-fill: #94a3b8;
+}
+
 .table-view {
     -fx-background-color: #ffffff;
     -fx-background-radius: 8;

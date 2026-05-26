@@ -28,17 +28,19 @@ public class BidValidator {
         switch (state) {
             case DRAFT:
             case SCHEDULED:
-                throw new InvalidBidException("Auction chưa bắt đầu");
+                throw new InvalidBidException("Auction has not started");
             case CANCELLED:
             case FINISHED:
-                throw new InvalidBidException("Auction đã đóng");
+            case REJECTED:
+            case DELETED:
+                throw new InvalidBidException("Auction is closed");
             default:
                 break;
         }
 
         double minAllowed = minAllowed(auction);
         if (amount < minAllowed) {
-            throw new InvalidBidException("Giá đặt phải lớn hơn hoặc bằng " + minAllowed);
+            throw new InvalidBidException("Bid must be at least " + minAllowed);
         }
     }
 }

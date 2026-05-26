@@ -17,9 +17,13 @@ public interface AuctionService {
     Auction getAuction(UUID auctionId);
     List<Auction> listAuctions();
     List<Auction> listAuctionsByState(AuctionState state);
+    List<Auction> listWonAuctions(UUID winnerId);
     Auction updateAuction(Auction auction);
+    void acceptAuction(UUID auctionId);
     void closeAuction(UUID auctionId);
     void closeAuction(UUID auctionId, String reason);
+    void rejectAuction(UUID auctionId, String reason);
+    void deleteAuction(UUID auctionId);
     void startAuction(UUID auctionId);
     void refreshStates();
     void validateAuctionOpenForBidding(UUID auctionId);

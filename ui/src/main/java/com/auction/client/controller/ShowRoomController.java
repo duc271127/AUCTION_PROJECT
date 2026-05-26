@@ -10,10 +10,16 @@ import com.auction.client.service.ItemApiService;
 import com.auction.client.session.SessionManager;
 import com.auction.client.ui.AuctionCardData;
 import com.auction.client.ui.AuctionCardViewFactory;
+import com.auction.client.util.AuctionStateViewHelper;
 import com.auction.client.util.MockData;
+import com.auction.client.util.SearchNavigationContext;
 import javafx.fxml.FXML;
+import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
 
@@ -34,6 +40,7 @@ public class ShowRoomController {
     @FXML private Button endingSoonFilterButton;
     @FXML private Button newListingsFilterButton;
     @FXML private Button highDemandFilterButton;
+    @FXML private TextField searchField;
 
     private final AuctionApiService auctionApiService = new AuctionApiService();
     private final FavoriteApiService favoriteApiService = new FavoriteApiService();
@@ -42,6 +49,7 @@ public class ShowRoomController {
     private final List<AuctionItem> items = new ArrayList<>();
     private final Set<String> favoriteAuctionIds = new LinkedHashSet<>();
     private ForYouFilter selectedFilter = ForYouFilter.ALL;
+    private String currentQuery;
 
     @FXML
     public void initialize() {
@@ -51,6 +59,10 @@ public class ShowRoomController {
         }
 
         usernameLabel.setText(firstNonBlank(SessionManager.getUsername(), "Bidder"));
+        currentQuery = SearchNavigationContext.consumePendingQuery();
+        if (searchField != null && currentQuery != null) {
+            searchField.setText(currentQuery);
+        }
         loadFavorites();
         loadAuctionList();
         updateWishlistUi();
@@ -72,29 +84,53 @@ public class ShowRoomController {
     private void loadAuctionList() {
         try {
             List<AuctionListResponse> responses =
-                    auctionApiService.getForYouAuctions(null, null, null, 0, 12).getItems();
+                    auctionApiService.searchAuctions(null, currentQuery, null, 0, 24, "startTime,asc").getItems();
 
             items.clear();
 
-            for (int i = 0; i < responses.size(); i++) {
-                items.add(mapToAuctionItem(responses.get(i), i));
+            if (responses != null) {
+                List<AuctionListResponse> sortedResponses = responses.stream()
+                        .sorted(Comparator
+                                .comparingInt(this::auctionDisplayPriority)
+                                .thenComparing(AuctionListResponse::getStartTime, Comparator.nullsLast(String::compareTo))
+                                .thenComparing(AuctionListResponse::getEndTime, Comparator.nullsLast(String::compareTo)))
+                        .toList();
+
+                for (int i = 0; i < sortedResponses.size(); i++) {
+                    items.add(mapToAuctionItem(sortedResponses.get(i), i));
+                }
             }
 
-            if (items.isEmpty()) {
+            if (items.isEmpty() && !hasSearchQuery()) {
                 loadMockAuctionsForDemo();
             }
 
             renderAuctionGrid();
 
         } catch (Exception e) {
-            loadMockAuctionsForDemo();
+            if (!hasSearchQuery()) {
+                loadMockAuctionsForDemo();
+            } else {
+                items.clear();
+            }
             renderAuctionGrid();
         }
     }
 
     private void loadMockAuctionsForDemo() {
         items.clear();
-        items.addAll(MockData.getMockAuctionItems());
+        List<AuctionItem> mockItems = MockData.getMockAuctionItems();
+        for (int i = 0; i < mockItems.size(); i++) {
+            AuctionItem item = mockItems.get(i);
+            items.add(new AuctionItem(
+                    item.getId(),
+                    item.getName(),
+                    item.getImagePath(),
+                    item.getCurrentBid(),
+                    item.getTimeLeft(),
+                    demoAuctionState(i)
+            ));
+        }
     }
 
     private AuctionItem mapToAuctionItem(AuctionListResponse response, int index) {
@@ -103,7 +139,11 @@ public class ShowRoomController {
                 : response.getImageUrl();
         String currentBid = "USD " + String.format("%,.0f", response.getCurrentPrice());
         String timeInfo = formatEndTime(response.getEndTime());
-        String status = response.getState() == null ? "UNKNOWN" : response.getState();
+        String status = AuctionStateViewHelper.resolveDisplayState(
+                response.getState(),
+                response.getStartTime(),
+                response.getEndTime()
+        );
         String idValue = response.getId() != null ? response.getId().toString() : "";
         String title = response.getTitle() != null && !response.getTitle().isBlank()
                 ? response.getTitle()
@@ -155,9 +195,19 @@ public class ShowRoomController {
 
     @FXML
     private void handleGoToForYou() {
+        currentQuery = null;
+        if (searchField != null) {
+            searchField.clear();
+        }
         loadFavorites();
         loadAuctionList();
         updateWishlistUi();
+    }
+
+    @FXML
+    private void handleSearch() {
+        currentQuery = searchField == null ? null : normalizeQuery(searchField.getText());
+        loadAuctionList();
     }
 
     @FXML
@@ -168,6 +218,11 @@ public class ShowRoomController {
     @FXML
     private void handleOpenWallet() {
         SceneManager.goToWallet();
+    }
+
+    @FXML
+    private void handleOpenWonAuctions() {
+        SceneManager.goToWonAuctions();
     }
 
     @FXML
@@ -217,15 +272,15 @@ public class ShowRoomController {
     private VBox createAuctionCard(AuctionItem item) {
         AuctionCardData cardData = new AuctionCardData(
                 item.getId(),
-                item.getStatus(),
+                "",
                 item.getName(),
                 item.getCurrentBid(),
                 item.getTimeLeft(),
                 "Personalized for you",
                 item.getImagePath(),
-                null,
+                item.getStatus(),
                 "View Details",
-                String.valueOf(Math.max(36, favoriteAuctionIds.size()))
+                "0"
         );
 
         return cardFactory.createCard(
@@ -239,6 +294,10 @@ public class ShowRoomController {
     }
 
     private VBox createEmptyState() {
+        if (hasSearchQuery()) {
+            return createSearchEmptyState();
+        }
+
         Label title = new Label("No auctions match this filter.");
         title.getStyleClass().add("auction-card-title");
 
@@ -248,6 +307,41 @@ public class ShowRoomController {
         VBox emptyState = new VBox(8, title, subtitle);
         emptyState.getStyleClass().add("for-you-empty-state");
         return emptyState;
+    }
+
+    private VBox createSearchEmptyState() {
+        ImageView illustration = buildSearchIllustration();
+
+        Label title = new Label("No results found");
+        title.getStyleClass().add("search-empty-title");
+
+        Label subtitle = new Label("We couldn't find any auctions matching \"" + currentQuery + "\".");
+        subtitle.getStyleClass().add("search-empty-copy");
+        subtitle.setWrapText(true);
+
+        Label hint = new Label("Try a different keyword or browse categories for more live auctions.");
+        hint.getStyleClass().add("search-empty-hint");
+        hint.setWrapText(true);
+
+        VBox emptyState = new VBox(18, illustration, title, subtitle, hint);
+        emptyState.setAlignment(Pos.CENTER);
+        emptyState.setPrefWidth(1040);
+        emptyState.setMinHeight(460);
+        emptyState.getStyleClass().add("search-empty-state");
+        return emptyState;
+    }
+
+    private ImageView buildSearchIllustration() {
+        ImageView imageView = new ImageView();
+        var resource = getClass().getResource("/images/item3.png");
+        if (resource != null) {
+            imageView.setImage(new Image(resource.toExternalForm(), true));
+        }
+        imageView.setFitWidth(220);
+        imageView.setFitHeight(180);
+        imageView.setPreserveRatio(true);
+        imageView.getStyleClass().add("search-empty-illustration");
+        return imageView;
     }
 
     private void openDetail(AuctionItem item) {
@@ -282,6 +376,7 @@ public class ShowRoomController {
 
     private List<AuctionItem> getVisibleItems() {
         List<AuctionItem> visibleItems = new ArrayList<>(items);
+        visibleItems.removeIf(this::isDeletedAuction);
 
         switch (selectedFilter) {
             case ENDING_SOON -> visibleItems.removeIf(item -> !hasEndingSoonStatus(item));
@@ -292,6 +387,27 @@ public class ShowRoomController {
         }
 
         return visibleItems;
+    }
+
+    private boolean isDeletedAuction(AuctionItem item) {
+        return item != null && "DELETED".equalsIgnoreCase(item.getStatus());
+    }
+
+    private int auctionDisplayPriority(AuctionListResponse response) {
+        String state = response == null ? "" : AuctionStateViewHelper.resolveDisplayState(
+                response.getState(),
+                response.getStartTime(),
+                response.getEndTime()
+        );
+
+        return switch (state) {
+            case "SCHEDULED" -> 0;
+            case "ACTIVE" -> 1;
+            case "CLOSED" -> 2;
+            case "REJECTED" -> 3;
+            case "DELETED" -> 4;
+            default -> 5;
+        };
     }
 
     private boolean hasEndingSoonStatus(AuctionItem item) {
@@ -360,6 +476,27 @@ public class ShowRoomController {
             }
         }
         return "";
+    }
+
+    private String normalizeQuery(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private boolean hasSearchQuery() {
+        return currentQuery != null && !currentQuery.isBlank();
+    }
+
+    private String demoAuctionState(int index) {
+        return switch (index % 5) {
+            case 0, 1 -> "ACTIVE";
+            case 2 -> "SCHEDULED";
+            case 3 -> "FINISHED";
+            default -> "DELETED";
+        };
     }
 
     private enum ForYouFilter {

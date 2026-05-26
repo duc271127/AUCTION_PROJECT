@@ -97,6 +97,27 @@ public class AdminController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/auctions/{auctionId}/accept")
+    public ResponseEntity<Void> acceptAuction(@PathVariable UUID auctionId) {
+        UUID adminId = resolveCurrentUserId();
+        adminService.acceptAuction(auctionId, adminId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/auctions/{auctionId}/reject")
+    public ResponseEntity<Void> rejectAuction(@PathVariable UUID auctionId) {
+        UUID adminId = resolveCurrentUserId();
+        adminService.rejectAuction(auctionId, adminId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/auctions/{auctionId}")
+    public ResponseEntity<Void> deleteAuction(@PathVariable UUID auctionId) {
+        UUID adminId = resolveCurrentUserId();
+        adminService.deleteAuction(auctionId, adminId);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/items/reported")
     public ResponseEntity<List<PendingItemDto>> listReportedItems() {
         return ResponseEntity.ok(adminService.listReportedItems());

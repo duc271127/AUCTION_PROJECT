@@ -3,30 +3,38 @@ package com.auction.client.controller;
 import com.auction.client.dto.request.CreateAuctionRequest;
 import com.auction.client.dto.response.AdminStatsResponse;
 import com.auction.client.dto.response.AdminWalletActivityResponse;
-import com.auction.client.dto.response.AdminNotificationResponse;
+import com.auction.client.dto.response.AuctionListResponse;
+import com.auction.client.dto.response.AuctionPageResponse;
 import com.auction.client.model.AdminApprovalItem;
 import com.auction.client.navigation.SceneManager;
 import com.auction.client.service.AdminApiService;
+import com.auction.client.service.AuctionApiService;
 import com.auction.client.session.SessionManager;
+import com.auction.client.util.AuctionStateViewHelper;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.scene.layout.VBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableView;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
-import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.layout.VBox;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 
 import java.math.BigDecimal;
-import java.text.NumberFormat;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.UUID;
 
 public class AdminDashboardController {
@@ -42,132 +50,45 @@ public class AdminDashboardController {
     @FXML private Label adminMessageLabel;
     @FXML private Button overviewTabButton;
     @FXML private Button auctionManagementTabButton;
+    @FXML private ScrollPane adminScrollPane;
     @FXML private VBox overviewPane;
+    @FXML private VBox adminPageBox;
     @FXML private VBox auctionManagementPane;
-
-    @FXML private TableView<AdminApprovalItem> approvalTable;
-    @FXML private TableColumn<AdminApprovalItem, String> productNameColumn;
-    @FXML private TableColumn<AdminApprovalItem, String> sellerColumn;
-    @FXML private TableColumn<AdminApprovalItem, String> categoryColumn;
-    @FXML private TableColumn<AdminApprovalItem, String> priceColumn;
-    @FXML private TableColumn<AdminApprovalItem, String> submittedDateColumn;
-    @FXML private TableColumn<AdminApprovalItem, String> statusColumn;
-
-    @FXML private TableView<AdminWalletActivityResponse> walletActivityTable;
-    @FXML private TableColumn<AdminWalletActivityResponse, String> walletUserColumn;
-    @FXML private TableColumn<AdminWalletActivityResponse, String> walletUserIdColumn;
-    @FXML private TableColumn<AdminWalletActivityResponse, String> walletTypeColumn;
-    @FXML private TableColumn<AdminWalletActivityResponse, String> walletAmountColumn;
-    @FXML private TableColumn<AdminWalletActivityResponse, String> walletBalanceColumn;
-    @FXML private TableColumn<AdminWalletActivityResponse, String> walletCreatedColumn;
-    @FXML private TableView<AdminNotificationResponse> notificationTable;
-    @FXML private TableColumn<AdminNotificationResponse, String> notificationTypeColumn;
-    @FXML private TableColumn<AdminNotificationResponse, String> notificationMessageColumn;
-    @FXML private TableColumn<AdminNotificationResponse, String> notificationCreatedColumn;
+    @FXML private VBox walletActivityFeedBox;
+    @FXML private VBox auctionRowsBox;
+    @FXML private VBox reviewActionPanel;
+    @FXML private Label reviewTitleLabel;
+    @FXML private Label reviewMetaLabel;
+    @FXML private Button reviewDeleteButton;
+    @FXML private Button reviewAcceptButton;
+    @FXML private Button reviewRejectButton;
+    @FXML private Button reviewViewButton;
 
     private final AdminApiService adminApiService = new AdminApiService();
+    private final AuctionApiService auctionApiService = new AuctionApiService();
     private final ObservableList<AdminApprovalItem> approvalItems = FXCollections.observableArrayList();
     private final ObservableList<AdminWalletActivityResponse> walletActivity = FXCollections.observableArrayList();
-    private final ObservableList<AdminNotificationResponse> notifications = FXCollections.observableArrayList();
-    private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.GERMANY);
+    private final ObservableList<AuctionListResponse> managedAuctions = FXCollections.observableArrayList();
+    private final DateTimeFormatter sellerDateTimeFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private final DateTimeFormatter sellerDateTimeMinuteFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private final DateTimeFormatter isoMinuteFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
     private final DateTimeFormatter walletDateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
             .withZone(ZoneId.systemDefault());
+    private final ZoneId appZone = ZoneId.systemDefault();
+    private AuctionListResponse selectedReviewAuction;
+    private AdminApprovalItem selectedReviewPendingItem;
 
     @FXML
     public void initialize() {
-        setupTables();
-        approvalTable.setItems(approvalItems);
-        walletActivityTable.setItems(walletActivity);
-        notificationTable.setItems(notifications);
         adminMessageLabel.setWrapText(true);
         adminMessageLabel.setMaxWidth(Double.MAX_VALUE);
         hideMessage();
         showOverviewTab();
         loadPendingItems();
+        loadManagedAuctions();
         loadAdminStats();
         loadWalletActivity();
-        loadNotifications();
-    }
-
-    private void setupTables() {
-        approvalTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        walletActivityTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        notificationTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-
-        productNameColumn.setCellValueFactory(new PropertyValueFactory<>("productName"));
-        sellerColumn.setCellValueFactory(new PropertyValueFactory<>("sellerName"));
-        categoryColumn.setCellValueFactory(new PropertyValueFactory<>("category"));
-        priceColumn.setCellValueFactory(new PropertyValueFactory<>("startingPriceText"));
-        submittedDateColumn.setCellValueFactory(new PropertyValueFactory<>("submittedDate"));
-        statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
-
-        productNameColumn.setMinWidth(220);
-        sellerColumn.setMinWidth(220);
-        categoryColumn.setMinWidth(150);
-        priceColumn.setMinWidth(160);
-        submittedDateColumn.setMinWidth(190);
-        statusColumn.setMinWidth(130);
-
-        walletUserColumn.setCellValueFactory(cell -> new SimpleStringProperty(firstNonBlank(
-                cell.getValue() == null ? null : cell.getValue().getUserDisplayName(),
-                "Unknown user"
-        )));
-        walletUserIdColumn.setCellValueFactory(cell -> new SimpleStringProperty(
-                cell.getValue() == null || cell.getValue().getUserId() == null
-                        ? "-"
-                        : cell.getValue().getUserId().toString()
-        ));
-        walletTypeColumn.setCellValueFactory(cell -> new SimpleStringProperty(
-                cell.getValue() == null ? "-" : formatWalletType(cell.getValue().getType())
-        ));
-        walletAmountColumn.setCellValueFactory(cell -> new SimpleStringProperty(
-                cell.getValue() == null ? "-" : formatCurrency(cell.getValue().getAmount())
-        ));
-        walletBalanceColumn.setCellValueFactory(cell -> new SimpleStringProperty(
-                cell.getValue() == null ? "-" : formatCurrency(cell.getValue().getBalanceAfter())
-        ));
-        walletCreatedColumn.setCellValueFactory(cell -> new SimpleStringProperty(
-                cell.getValue() == null ? "-" : formatWalletCreatedAt(cell.getValue().getCreatedAt())
-        ));
-        notificationTypeColumn.setCellValueFactory(new PropertyValueFactory<>("type"));
-        notificationMessageColumn.setCellValueFactory(new PropertyValueFactory<>("message"));
-        notificationCreatedColumn.setCellValueFactory(new PropertyValueFactory<>("createdAt"));
-
-        walletUserColumn.setMinWidth(160);
-        walletUserIdColumn.setMinWidth(260);
-        walletTypeColumn.setMinWidth(120);
-        walletAmountColumn.setMinWidth(140);
-        walletBalanceColumn.setMinWidth(150);
-        walletCreatedColumn.setMinWidth(180);
-
-        walletUserColumn.setCellFactory(column -> new TableCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                setText(empty ? null : firstNonBlank(item, "Unknown user"));
-            }
-        });
-        walletUserIdColumn.setCellFactory(column -> new TableCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                setText(empty ? null : shortenUuid(item));
-            }
-        });
-        walletTypeColumn.setCellFactory(column -> new TableCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                setText(empty ? null : formatWalletType(item));
-            }
-        });
-        walletCreatedColumn.setCellFactory(column -> new TableCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                setText(empty ? null : formatWalletCreatedAt(item));
-            }
-        });
+        clearReviewPanel();
     }
 
     private void loadPendingItems() {
@@ -206,22 +127,14 @@ public class AdminDashboardController {
     private void loadWalletActivity() {
         try {
             walletActivity.setAll(adminApiService.getRecentWalletActivity(5));
+            renderWalletActivityFeed();
         } catch (Exception e) {
             walletActivity.clear();
+            renderWalletActivityFeed();
         }
     }
 
-    private void loadNotifications() {
-        try {
-            notifications.setAll(adminApiService.getRecentNotifications(6));
-        } catch (Exception e) {
-            notifications.clear();
-        }
-    }
-
-    @FXML
-    private void handleApprove() {
-        AdminApprovalItem selectedItem = approvalTable.getSelectionModel().getSelectedItem();
+    private void approvePendingItem(AdminApprovalItem selectedItem) {
         if (!hasItemId(selectedItem, "approve")) {
             return;
         }
@@ -238,9 +151,7 @@ public class AdminDashboardController {
         }
     }
 
-    @FXML
-    private void handleReject() {
-        AdminApprovalItem selectedItem = approvalTable.getSelectionModel().getSelectedItem();
+    private void rejectPendingItem(AdminApprovalItem selectedItem) {
         if (!hasItemId(selectedItem, "reject")) {
             return;
         }
@@ -254,16 +165,19 @@ public class AdminDashboardController {
         }
     }
 
-    @FXML
-    private void handleReview() {
-        AdminApprovalItem selectedItem = approvalTable.getSelectionModel().getSelectedItem();
-
+    private void reviewPendingItem(AdminApprovalItem selectedItem) {
         if (selectedItem == null) {
             showMessage("Please select an item to review.");
             return;
         }
 
-        showSuccess("Reviewing: " + selectedItem.getProductName());
+        selectedReviewPendingItem = selectedItem;
+        selectedReviewAuction = findAuctionByItemId(selectedItem.getId());
+        populateReviewPanel(
+                firstNonBlank(selectedItem.getProductName(), "Untitled listing"),
+                buildPendingReviewMeta(selectedItem)
+        );
+        showSuccess("Review panel ready.");
     }
 
     @FXML
@@ -274,12 +188,11 @@ public class AdminDashboardController {
     @FXML
     private void handleShowAuctionManagement() {
         loadPendingItems();
+        loadManagedAuctions();
         showAuctionManagementTab();
     }
 
-    @FXML
-    private void handleDelete() {
-        AdminApprovalItem selectedItem = approvalTable.getSelectionModel().getSelectedItem();
+    private void deletePendingItem(AdminApprovalItem selectedItem) {
         if (!hasItemId(selectedItem, "delete")) {
             return;
         }
@@ -299,6 +212,89 @@ public class AdminDashboardController {
         SceneManager.goToAuth();
     }
 
+    @FXML
+    private void handleReviewDelete() {
+        if (selectedReviewAuction != null && selectedReviewAuction.getId() != null) {
+            try {
+                adminApiService.deleteAuction(selectedReviewAuction.getId().toString());
+                showSuccess("Auction marked as deleted.");
+                reloadDashboardData();
+            } catch (Exception e) {
+                showMessage("Delete failed: " + extractFriendlyMessage(e.getMessage()));
+            }
+            return;
+        }
+
+        if (selectedReviewPendingItem != null) {
+            deletePendingItem(selectedReviewPendingItem);
+            return;
+        }
+
+        showMessage("Please review an auction first.");
+    }
+
+    @FXML
+    private void handleReviewAccept() {
+        if (selectedReviewAuction != null && selectedReviewAuction.getId() != null) {
+            try {
+                adminApiService.acceptAuction(selectedReviewAuction.getId().toString());
+                showSuccess("Auction activated.");
+                reloadDashboardData();
+            } catch (Exception e) {
+                showMessage("Accept failed: " + extractFriendlyMessage(e.getMessage()));
+            }
+            return;
+        }
+
+        if (selectedReviewPendingItem != null) {
+            approvePendingItem(selectedReviewPendingItem);
+            return;
+        }
+
+        showMessage("Please review an auction first.");
+    }
+
+    @FXML
+    private void handleReviewReject() {
+        if (selectedReviewAuction != null && selectedReviewAuction.getId() != null) {
+            try {
+                adminApiService.rejectAuction(selectedReviewAuction.getId().toString());
+                showSuccess("Auction marked as rejected.");
+                reloadDashboardData();
+            } catch (Exception e) {
+                showMessage("Reject failed: " + extractFriendlyMessage(e.getMessage()));
+            }
+            return;
+        }
+
+        if (selectedReviewPendingItem != null) {
+            rejectPendingItem(selectedReviewPendingItem);
+            return;
+        }
+
+        showMessage("Please review an auction first.");
+    }
+
+    @FXML
+    private void handleReviewView() {
+        if (selectedReviewAuction != null) {
+            showSuccess("Viewing " + firstNonBlank(selectedReviewAuction.getTitle(), selectedReviewAuction.getItemName(), "auction")
+                    + " | " + formatAuctionState(selectedReviewAuction)
+                    + " | Current bid " + formatCurrency(selectedReviewAuction.getCurrentPrice())
+                    + " | " + formatAdminDate(selectedReviewAuction.getStartTime()) + " -> " + formatAdminDate(selectedReviewAuction.getEndTime()));
+            return;
+        }
+
+        if (selectedReviewPendingItem != null) {
+            showSuccess("Viewing " + firstNonBlank(selectedReviewPendingItem.getProductName(), "listing")
+                    + " | " + selectedReviewPendingItem.getStartingPriceText()
+                    + " | " + firstNonBlank(selectedReviewPendingItem.getDescription(), "No description"));
+            return;
+        }
+
+        showMessage("Please review an item first.");
+    }
+
     private boolean hasItemId(AdminApprovalItem item, String action) {
         if (item == null) {
             showMessage("Please select an item to " + action + ".");
@@ -314,10 +310,11 @@ public class AdminDashboardController {
     }
 
     private void reloadDashboardData() {
+        clearReviewPanel();
         loadPendingItems();
+        loadManagedAuctions();
         loadAdminStats();
         loadWalletActivity();
-        loadNotifications();
     }
 
     private void showOverviewTab() {
@@ -367,8 +364,7 @@ public class AdminDashboardController {
             return Instant.now().plus(1, ChronoUnit.MINUTES).toString();
         }
 
-        String trimmed = value.trim();
-        return trimmed.contains("T") ? (trimmed.endsWith("Z") ? trimmed : trimmed + "Z") : trimmed + "T00:00:00Z";
+        return parseSellerDateTime(value, true).toString();
     }
 
     private String toInstantTextOrDefaultEnd(String value) {
@@ -376,8 +372,55 @@ public class AdminDashboardController {
             return Instant.now().plus(7, ChronoUnit.DAYS).toString();
         }
 
-        String trimmed = value.trim();
-        return trimmed.contains("T") ? (trimmed.endsWith("Z") ? trimmed : trimmed + "Z") : trimmed + "T23:59:59Z";
+        return parseSellerDateTime(value, false).toString();
+    }
+
+    private Instant parseSellerDateTime(String value, boolean startField) {
+        String trimmed = value == null ? "" : value.trim();
+        if (trimmed.isBlank()) {
+            return startField
+                    ? Instant.now().plus(1, ChronoUnit.MINUTES)
+                    : Instant.now().plus(7, ChronoUnit.DAYS);
+        }
+
+        try {
+            return Instant.parse(trimmed);
+        } catch (DateTimeParseException ignored) {
+        }
+
+        try {
+            LocalDateTime localDateTime = LocalDateTime.parse(trimmed);
+            return localDateTime.atZone(appZone).toInstant();
+        } catch (DateTimeParseException ignored) {
+        }
+
+        try {
+            LocalDateTime localDateTime = LocalDateTime.parse(trimmed, sellerDateTimeFormat);
+            return localDateTime.atZone(appZone).toInstant();
+        } catch (DateTimeParseException ignored) {
+        }
+
+        try {
+            LocalDateTime localDateTime = LocalDateTime.parse(trimmed, sellerDateTimeMinuteFormat);
+            return localDateTime.atZone(appZone).toInstant();
+        } catch (DateTimeParseException ignored) {
+        }
+
+        try {
+            LocalDateTime localDateTime = LocalDateTime.parse(trimmed, isoMinuteFormat);
+            return localDateTime.atZone(appZone).toInstant();
+        } catch (DateTimeParseException ignored) {
+        }
+
+        try {
+            LocalDate localDate = LocalDate.parse(trimmed);
+            LocalDateTime localDateTime = startField
+                    ? localDate.atTime(0, 0, 0)
+                    : localDate.atTime(23, 59, 59);
+            return localDateTime.atZone(appZone).toInstant();
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException("Invalid seller schedule: " + value, ex);
+        }
     }
 
     private String extractFriendlyMessage(String rawMessage) {
@@ -455,20 +498,11 @@ public class AdminDashboardController {
     }
 
     private String formatCurrency(BigDecimal amount) {
-        return amount == null ? "-" : currencyFormat.format(amount);
+        return amount == null ? "-" : formatCurrency(amount.doubleValue());
     }
 
-    private String shortenUuid(String rawValue) {
-        if (rawValue == null || rawValue.isBlank()) {
-            return "-";
-        }
-
-        try {
-            UUID uuid = UUID.fromString(rawValue);
-            return uuid.toString();
-        } catch (Exception ignored) {
-            return rawValue;
-        }
+    private String formatCurrency(double amount) {
+        return "USD " + String.format(Locale.US, "%,.2f", amount);
     }
 
     private String formatWalletType(String value) {
@@ -493,5 +527,433 @@ public class AdminDashboardController {
 
     private String firstNonBlank(String value, String fallback) {
         return value == null || value.isBlank() ? fallback : value;
+    }
+
+    private void loadManagedAuctions() {
+        try {
+            AuctionPageResponse response = auctionApiService.searchAuctions(null, null, null, 0, 20, "createdAt,desc");
+            managedAuctions.setAll((response.getItems() == null ? java.util.List.<AuctionListResponse>of() : response.getItems())
+                    .stream()
+                    .sorted(Comparator
+                            .comparingInt(this::auctionPriority)
+                            .thenComparing(AuctionListResponse::getStartTime, Comparator.nullsLast(Comparator.reverseOrder()))
+                            .thenComparing(AuctionListResponse::getTitle, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                    .toList());
+            renderManagedAuctions();
+        } catch (Exception e) {
+            managedAuctions.clear();
+            renderManagedAuctions();
+            showMessage("Cannot load auctions: " + extractFriendlyMessage(e.getMessage()));
+        }
+    }
+
+    private void renderWalletActivityFeed() {
+        if (walletActivityFeedBox == null) {
+            return;
+        }
+
+        walletActivityFeedBox.getChildren().clear();
+        if (walletActivity.isEmpty()) {
+            walletActivityFeedBox.getChildren().add(buildEmptyState("No recent wallet activity."));
+            return;
+        }
+
+        for (AdminWalletActivityResponse activity : walletActivity) {
+            walletActivityFeedBox.getChildren().add(buildWalletActivityCard(activity));
+        }
+    }
+
+    private Node buildWalletActivityCard(AdminWalletActivityResponse activity) {
+        String type = activity == null ? "" : firstNonBlank(activity.getType(), "");
+        String cardClass = switch (type.toUpperCase(Locale.ROOT)) {
+            case "DEPOSIT" -> "admin-note-card-deposit";
+            case "WITHDRAW", "WITHDRAWAL" -> "admin-note-card-withdrawal";
+            default -> "admin-note-card-default";
+        };
+
+        Label title = new Label(firstNonBlank(activity == null ? null : activity.getUserDisplayName(), "Unknown user"));
+        title.getStyleClass().add("admin-note-title");
+
+        Label body = new Label((activity == null ? "-" : formatCurrency(activity.getAmount()))
+                + " | Balance " + (activity == null ? "-" : formatCurrency(activity.getBalanceAfter())));
+        body.getStyleClass().add("admin-note-body");
+
+        Label meta = new Label(activity == null ? "-" : formatWalletCreatedAt(activity.getCreatedAt()));
+        meta.getStyleClass().add("admin-note-meta");
+
+        VBox copy = new VBox(4, title, body, meta);
+        HBox.setHgrow(copy, Priority.ALWAYS);
+
+        Label tag = new Label(type.isBlank() ? "Activity" : formatWalletType(type));
+        tag.getStyleClass().add("admin-note-tag");
+
+        HBox row = new HBox(12, copy, tag);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.getStyleClass().addAll("admin-note-card", cardClass);
+        return row;
+    }
+
+    private void renderManagedAuctions() {
+        if (auctionRowsBox == null) {
+            return;
+        }
+
+        auctionRowsBox.getChildren().clear();
+        for (AdminApprovalItem item : approvalItems.stream()
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparing(AdminApprovalItem::getStartDate, Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList()) {
+            auctionRowsBox.getChildren().add(buildPendingRow(item));
+        }
+
+        for (AuctionListResponse auction : managedAuctions) {
+            auctionRowsBox.getChildren().add(buildAuctionRow(auction));
+        }
+
+        if (auctionRowsBox.getChildren().isEmpty()) {
+            auctionRowsBox.getChildren().add(buildEmptyState("No auctions found."));
+        }
+    }
+
+    private Node buildAuctionRow(AuctionListResponse auction) {
+        Label title = new Label(firstNonBlank(auction.getTitle(), auction.getItemName(), "Untitled auction"));
+        title.getStyleClass().add("admin-management-title");
+
+        Label subtitle = new Label(formatAdminDate(auction.getStartTime()));
+        subtitle.getStyleClass().add("admin-management-subtitle");
+
+        VBox titleBox = new VBox(4, title, subtitle);
+        HBox.setHgrow(titleBox, Priority.ALWAYS);
+
+        Label seller = new Label(firstNonBlank(auction.getSellerName(), "Unknown seller"));
+        seller.getStyleClass().add("admin-management-subtitle");
+        seller.setMinWidth(170);
+
+        Label status = new Label(formatAuctionState(auction));
+        status.getStyleClass().addAll("admin-status-pill", adminStateClass(auction));
+        status.setMinWidth(120);
+
+        Label currentBid = new Label(formatCurrency(BigDecimal.valueOf(auction.getCurrentPrice())));
+        currentBid.getStyleClass().add("admin-management-title");
+        currentBid.setMinWidth(140);
+
+        Button review = new Button("Review");
+        review.getStyleClass().add("admin-inline-link");
+        review.setOnAction(event -> reviewAuctionRow(auction));
+        review.setMinWidth(110);
+
+        HBox row = new HBox(18, titleBox, seller, status, currentBid, review);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.getStyleClass().addAll("admin-management-row", adminRowClass(auction));
+        return row;
+    }
+
+    private Node buildPendingRow(AdminApprovalItem item) {
+        Label title = new Label(firstNonBlank(item == null ? null : item.getProductName(), "Untitled pending item"));
+        title.getStyleClass().add("admin-management-title");
+
+        Label subtitle = new Label(formatAdminDate(item == null ? null : item.getStartDate()));
+        subtitle.getStyleClass().add("admin-management-subtitle");
+
+        VBox titleBox = new VBox(4, title, subtitle);
+        HBox.setHgrow(titleBox, Priority.ALWAYS);
+
+        Label seller = new Label(firstNonBlank(item == null ? null : item.getSellerName(), "Unknown seller"));
+        seller.getStyleClass().add("admin-management-subtitle");
+        seller.setMinWidth(170);
+
+        Label status = new Label(formatPendingState(item));
+        status.getStyleClass().addAll("admin-status-pill", adminStateClass(item));
+        status.setMinWidth(120);
+
+        Label currentBid = new Label(item == null ? "-" : item.getStartingPriceText());
+        currentBid.getStyleClass().add("admin-management-title");
+        currentBid.setMinWidth(140);
+
+        Button review = new Button("Review");
+        review.getStyleClass().add("admin-inline-link");
+        review.setOnAction(event -> reviewPendingItem(item));
+        review.setMinWidth(110);
+
+        HBox row = new HBox(18, titleBox, seller, status, currentBid, review);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.getStyleClass().addAll("admin-management-row", adminRowClass(item));
+        return row;
+    }
+
+    private Node buildEmptyState(String message) {
+        Label label = new Label(message);
+        label.getStyleClass().add("admin-muted");
+        VBox box = new VBox(label);
+        box.getStyleClass().add("admin-pending-card");
+        return box;
+    }
+
+    private void reviewAuction(AuctionListResponse auction) {
+        if (auction == null) {
+            showMessage("Auction is unavailable.");
+            return;
+        }
+
+        showSuccess("Reviewing " + firstNonBlank(auction.getTitle(), auction.getItemName(), "auction")
+                + " | " + formatAuctionState(auction)
+                + " | " + formatAdminDate(auction.getStartTime()) + " -> " + formatAdminDate(auction.getEndTime()));
+    }
+
+    private void reviewAuctionRow(AuctionListResponse auction) {
+        if (auction == null) {
+            showMessage("Auction is unavailable.");
+            return;
+        }
+
+        selectedReviewAuction = auction;
+        selectedReviewPendingItem = null;
+        populateReviewPanel(
+                firstNonBlank(auction.getTitle(), auction.getItemName(), "Untitled auction"),
+                buildAuctionReviewMeta(auction)
+        );
+        reviewAuction(auction);
+    }
+
+    private String formatAdminDate(String value) {
+        if (value == null || value.isBlank()) {
+            return "-";
+        }
+
+        try {
+            return walletDateFormat.format(Instant.parse(value));
+        } catch (Exception ignored) {
+            return value;
+        }
+    }
+
+    private String adminRowClass(AuctionListResponse auction) {
+        return switch (normalizeAuctionState(auction)) {
+            case "pending" -> "admin-management-row-pending";
+            case "active" -> "admin-management-row-active";
+            case "scheduled" -> "admin-management-row-incoming";
+            case "rejected" -> "admin-management-row-rejected";
+            case "deleted" -> "admin-management-row-deleted";
+            default -> "admin-management-row-closed";
+        };
+    }
+
+    private String adminRowClass(AdminApprovalItem item) {
+        return switch (normalizePendingState(item)) {
+            case "pending" -> "admin-management-row-pending";
+            case "active" -> "admin-management-row-active";
+            case "scheduled" -> "admin-management-row-incoming";
+            case "rejected" -> "admin-management-row-rejected";
+            case "deleted" -> "admin-management-row-deleted";
+            default -> "admin-management-row-closed";
+        };
+    }
+
+    private String adminStateClass(AuctionListResponse auction) {
+        return switch (normalizeAuctionState(auction)) {
+            case "pending" -> "admin-status-pending";
+            case "active" -> "admin-status-active";
+            case "scheduled" -> "admin-status-incoming";
+            case "rejected" -> "admin-status-rejected";
+            case "deleted" -> "admin-status-deleted";
+            default -> "admin-status-closed";
+        };
+    }
+
+    private String adminStateClass(AdminApprovalItem item) {
+        return switch (normalizePendingState(item)) {
+            case "pending" -> "admin-status-pending";
+            case "active" -> "admin-status-active";
+            case "scheduled" -> "admin-status-incoming";
+            case "rejected" -> "admin-status-rejected";
+            case "deleted" -> "admin-status-deleted";
+            default -> "admin-status-closed";
+        };
+    }
+
+    private String formatAuctionState(AuctionListResponse auction) {
+        return normalizeAuctionState(auction);
+    }
+
+    private String formatPendingState(AdminApprovalItem item) {
+        return normalizePendingState(item);
+    }
+
+    private String normalizeAuctionState(AuctionListResponse auction) {
+        if (auction == null) {
+            return "closed";
+        }
+
+        return toAdminState(AuctionStateViewHelper.resolveDisplayState(
+                auction.getState(),
+                auction.getStartTime(),
+                auction.getEndTime()
+        ));
+    }
+
+    private String normalizePendingState(AdminApprovalItem item) {
+        if (item == null) {
+            return "pending";
+        }
+
+        String state = item.getStatus();
+        return state == null || state.isBlank() ? "pending" : toAdminState(state);
+    }
+
+    private String toAdminState(String state) {
+        if (state == null || state.isBlank()) {
+            return "scheduled";
+        }
+
+        return switch (state.trim().toUpperCase(Locale.ROOT)) {
+            case "PENDING" -> "pending";
+            case "ACTIVE" -> "active";
+            case "SCHEDULED", "DRAFT", "INCOMING" -> "scheduled";
+            case "FINISHED", "CANCELLED", "CLOSED", "ENDED" -> "closed";
+            case "REJECTED" -> "rejected";
+            case "DELETED" -> "deleted";
+            default -> "closed";
+        };
+    }
+
+    private int auctionPriority(AuctionListResponse auction) {
+        if (auction == null) {
+            return Integer.MAX_VALUE;
+        }
+
+        String normalized = normalizeAuctionState(auction);
+        return switch (normalized) {
+            case "scheduled" -> 0;
+            case "active" -> 1;
+            case "closed" -> 2;
+            case "deleted" -> 3;
+            case "rejected" -> 4;
+            default -> 5;
+        };
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return "";
+        }
+
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+
+        return "";
+    }
+
+    private void populateReviewPanel(String title, String meta) {
+        if (reviewActionPanel == null) {
+            return;
+        }
+
+        reviewActionPanel.setManaged(true);
+        reviewActionPanel.setVisible(true);
+        reviewTitleLabel.setText(firstNonBlank(title, "No item selected"));
+        reviewMetaLabel.setText(firstNonBlank(meta, "No review details."));
+        refreshReviewButtons();
+        scrollToReviewPanel();
+    }
+
+    private void refreshReviewButtons() {
+        boolean hasAnySelection = selectedReviewAuction != null || selectedReviewPendingItem != null;
+
+        if (reviewDeleteButton != null) {
+            reviewDeleteButton.setDisable(!hasAnySelection);
+        }
+        if (reviewAcceptButton != null) {
+            reviewAcceptButton.setDisable(!hasAnySelection);
+        }
+        if (reviewRejectButton != null) {
+            reviewRejectButton.setDisable(!hasAnySelection);
+        }
+        if (reviewViewButton != null) {
+            reviewViewButton.setDisable(!hasAnySelection);
+        }
+    }
+
+    private void clearReviewPanel() {
+        selectedReviewAuction = null;
+        selectedReviewPendingItem = null;
+
+        if (reviewActionPanel != null) {
+            reviewActionPanel.setManaged(false);
+            reviewActionPanel.setVisible(false);
+        }
+        if (reviewTitleLabel != null) {
+            reviewTitleLabel.setText("No item selected");
+        }
+        if (reviewMetaLabel != null) {
+            reviewMetaLabel.setText("Choose an auction to review.");
+        }
+        refreshReviewButtons();
+    }
+
+    private String buildAuctionReviewMeta(AuctionListResponse auction) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("Seller ").append(firstNonBlank(auction.getSellerName(), "Unknown seller"));
+        builder.append(" | Status ").append(formatAuctionState(auction));
+        builder.append(" | Current bid ").append(formatCurrency(auction.getCurrentPrice()));
+        builder.append(" | Start ").append(formatAdminDate(auction.getStartTime()));
+        builder.append(" | End ").append(formatAdminDate(auction.getEndTime()));
+        builder.append(" | Accept=activate auction, Reject=mark rejected, Delete=mark deleted");
+        return builder.toString();
+    }
+
+    private String buildPendingReviewMeta(AdminApprovalItem item) {
+        return "Seller " + firstNonBlank(item.getSellerName(), "Unknown seller")
+                + " | Status pending"
+                + " | Category " + firstNonBlank(item.getCategory(), "General")
+                + " | Price " + item.getStartingPriceText()
+                + " | Start " + firstNonBlank(formatAdminDate(item.getStartDate()), "-")
+                + " | End " + firstNonBlank(formatAdminDate(item.getEndDate()), "-");
+    }
+
+    private AdminApprovalItem findPendingItemByItemId(UUID itemId) {
+        if (itemId == null) {
+            return null;
+        }
+
+        return approvalItems.stream()
+                .filter(Objects::nonNull)
+                .filter(item -> item.getId() != null && itemId.equals(item.getId()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private AuctionListResponse findAuctionByItemId(UUID itemId) {
+        if (itemId == null) {
+            return null;
+        }
+
+        return managedAuctions.stream()
+                .filter(Objects::nonNull)
+                .filter(auction -> itemId.equals(auction.getItemId()))
+                .min(Comparator.comparing(AuctionListResponse::getStartTime, Comparator.nullsLast(String::compareTo)))
+                .orElse(null);
+    }
+
+    private void scrollToReviewPanel() {
+        if (adminScrollPane == null || reviewActionPanel == null || adminPageBox == null) {
+            return;
+        }
+
+        Platform.runLater(() -> {
+            double contentHeight = adminPageBox.getBoundsInLocal().getHeight();
+            double viewportHeight = adminScrollPane.getViewportBounds().getHeight();
+            double panelY = reviewActionPanel.getBoundsInParent().getMinY();
+
+            if (contentHeight <= viewportHeight) {
+                adminScrollPane.setVvalue(0);
+                return;
+            }
+
+            double target = panelY / Math.max(1, contentHeight - viewportHeight);
+            adminScrollPane.setVvalue(Math.max(0, Math.min(target, 1)));
+        });
     }
 }

@@ -20,6 +20,8 @@ public class AuctionListResponse {
     private double minNextBid;
     private UUID leaderId;
     private String leaderName;
+    private UUID winnerId;
+    private String winnerName;
     private String startTime;
     private String endTime;
     private String state;
@@ -161,6 +163,22 @@ public class AuctionListResponse {
 
     public void setLeaderName(String leaderName) {
         this.leaderName = leaderName;
+    }
+
+    public UUID getWinnerId() {
+        return winnerId;
+    }
+
+    public void setWinnerId(UUID winnerId) {
+        this.winnerId = winnerId;
+    }
+
+    public String getWinnerName() {
+        return winnerName;
+    }
+
+    public void setWinnerName(String winnerName) {
+        this.winnerName = winnerName;
     }
 
     public String getStartTime() {

@@ -10,11 +10,15 @@ import com.auction.client.service.FavoriteApiService;
 import com.auction.client.session.SessionManager;
 import com.auction.client.ui.AuctionCardData;
 import com.auction.client.ui.AuctionCardViewFactory;
+import com.auction.client.util.AuctionStateViewHelper;
 import com.auction.client.util.MockData;
 import com.auction.client.service.ItemApiService;
 import javafx.fxml.FXML;
+import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
@@ -99,14 +103,19 @@ public class CategoryController {
                 auctions.addAll(page.getItems());
             }
 
-            if (auctions.isEmpty()) {
+            if (auctions.isEmpty() && !hasSearchQuery()) {
                 loadMockCategoryAuctions();
             }
 
         } catch (Exception e) {
-            loadMockCategoryAuctions();
+            if (!hasSearchQuery()) {
+                loadMockCategoryAuctions();
+            } else {
+                auctions.clear();
+            }
         }
 
+        auctions.removeIf(this::isDeletedAuction);
         renderStats(auctions);
         renderCards(auctions);
     }
@@ -121,9 +130,9 @@ public class CategoryController {
             response.setImageUrl(item.getImagePath());
             response.setSellerName(mockSellerForCategory(index));
             response.setCurrentPrice(parseMoney(item.getCurrentBid()));
-            response.setState(item.getStatus());
+            response.setState(demoAuctionState(index));
             response.setBidCount(8 + index * 3);
-            response.setFavoriteCount(36 + index * 12);
+            response.setFavoriteCount(0);
             response.setViewCount(1200 + index * 250);
             response.setCategory(selectedCategory);
             response.setEndTime(item.getTimeLeft());
@@ -154,7 +163,23 @@ public class CategoryController {
             categoryGrid.getChildren().add(createAuctionCard(auction));
         }
     }
+
+    private boolean isDeletedAuction(AuctionListResponse auction) {
+        if (auction == null) {
+            return false;
+        }
+
+        return "DELETED".equalsIgnoreCase(AuctionStateViewHelper.resolveDisplayState(
+                auction.getState(),
+                auction.getStartTime(),
+                auction.getEndTime()
+        ));
+    }
     private VBox createEmptyState() {
+        if (hasSearchQuery()) {
+            return createSearchEmptyState();
+        }
+
         Label title = new Label("No auctions in this category yet.");
         title.getStyleClass().add("category-card-title");
 
@@ -164,6 +189,41 @@ public class CategoryController {
         VBox empty = new VBox(8, title, subtitle);
         empty.getStyleClass().add("category-empty-state");
         return empty;
+    }
+
+    private VBox createSearchEmptyState() {
+        ImageView illustration = buildSearchIllustration();
+
+        Label title = new Label("No results found");
+        title.getStyleClass().add("search-empty-title");
+
+        Label subtitle = new Label("We couldn't find any " + selectedCategory.toLowerCase() + " auctions matching \"" + currentQuery + "\".");
+        subtitle.getStyleClass().add("search-empty-copy");
+        subtitle.setWrapText(true);
+
+        Label hint = new Label("Try another keyword or browse the full category selection.");
+        hint.getStyleClass().add("search-empty-hint");
+        hint.setWrapText(true);
+
+        VBox empty = new VBox(18, illustration, title, subtitle, hint);
+        empty.setAlignment(Pos.CENTER);
+        empty.setPrefWidth(920);
+        empty.setMinHeight(420);
+        empty.getStyleClass().add("search-empty-state");
+        return empty;
+    }
+
+    private ImageView buildSearchIllustration() {
+        ImageView imageView = new ImageView();
+        var resource = getClass().getResource("/images/item1.png");
+        if (resource != null) {
+            imageView.setImage(new Image(resource.toExternalForm(), true));
+        }
+        imageView.setFitWidth(220);
+        imageView.setFitHeight(180);
+        imageView.setPreserveRatio(true);
+        imageView.getStyleClass().add("search-empty-illustration");
+        return imageView;
     }
 
     private VBox createAuctionCard(AuctionListResponse auction) {
@@ -177,9 +237,13 @@ public class CategoryController {
                 formatEnding(auction),
                 selectedCategory + " category",
                 auction.getImageUrl(),
-                null,
+                AuctionStateViewHelper.resolveDisplayState(
+                        auction.getState(),
+                        auction.getStartTime(),
+                        auction.getEndTime()
+                ),
                 "Open Auction",
-                "36"
+                String.valueOf(Math.max(auction.getFavoriteCount(), 0))
         );
 
         return cardFactory.createCard(
@@ -229,7 +293,11 @@ public class CategoryController {
                 auction.getImageUrl() == null ? "/images/item1.png" : auction.getImageUrl(),
                 "USD " + String.format("%,.0f", auction.getCurrentPrice()),
                 formatEnding(auction),
-                auction.getState() == null ? "UNKNOWN" : auction.getState()
+                AuctionStateViewHelper.resolveDisplayState(
+                        auction.getState(),
+                        auction.getStartTime(),
+                        auction.getEndTime()
+                )
         ));
         SceneManager.goToProductDetail();
     }
@@ -249,6 +317,15 @@ public class CategoryController {
             case "Watches" -> "Explore mechanical icons, limited editions and vintage timepieces with live bidding.";
             case "Fashion" -> "Discover luxury fashion, archive garments and collectible accessories.";
             default -> "Explore exceptional artworks and collectibles from live auctions in this category.";
+        };
+    }
+
+    private String demoAuctionState(int index) {
+        return switch (index % 5) {
+            case 0, 1 -> "ACTIVE";
+            case 2 -> "SCHEDULED";
+            case 3 -> "FINISHED";
+            default -> "DELETED";
         };
     }
 
@@ -328,8 +405,20 @@ public class CategoryController {
 
     @FXML
     private void handleSearch() {
-        currentQuery = searchField == null ? null : searchField.getText();
+        currentQuery = searchField == null ? null : normalizeQuery(searchField.getText());
         loadCategoryAuctions();
+    }
+
+    private boolean hasSearchQuery() {
+        return currentQuery != null && !currentQuery.isBlank();
+    }
+
+    private String normalizeQuery(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     @FXML
@@ -369,6 +458,11 @@ public class CategoryController {
     @FXML
     private void handleOpenWallet() {
         SceneManager.goToWallet();
+    }
+
+    @FXML
+    private void handleOpenWonAuctions() {
+        SceneManager.goToWonAuctions();
     }
 
     @FXML

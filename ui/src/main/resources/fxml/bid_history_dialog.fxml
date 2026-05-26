@@ -59,7 +59,7 @@
                                     fitToWidth="false"
                                     hbarPolicy="AS_NEEDED"
                                     vbarPolicy="NEVER"
-                                    pannable="true"
+                                    pannable="false"
                                     styleClass="bid-history-chart-scroll">
                             <content>
                                 <LineChart fx:id="bidLineChart"

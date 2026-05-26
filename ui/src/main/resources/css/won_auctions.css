@@ -1,0 +1,120 @@
+.won-root,
+.won-scroll,
+.won-scroll > .viewport,
+.won-page {
+    -fx-background-color: linear-gradient(to bottom, #fcfdff, #f6f9ff);
+}
+
+.won-title {
+    -fx-text-fill: #132238;
+    -fx-font-size: 34px;
+    -fx-font-weight: 800;
+}
+
+.won-stat-card {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 18;
+    -fx-border-radius: 18;
+    -fx-border-color: #dce6f5;
+    -fx-border-width: 1;
+    -fx-padding: 18 20;
+}
+
+.won-stat-card-strong {
+    -fx-background-color: linear-gradient(to right, #ecf5ff, #f4f9ff);
+    -fx-border-color: #8fb7ff;
+}
+
+.won-stat-label {
+    -fx-text-fill: #60708a;
+    -fx-font-size: 11px;
+    -fx-font-weight: 800;
+}
+
+.won-stat-value {
+    -fx-text-fill: #132238;
+    -fx-font-size: 28px;
+    -fx-font-weight: 800;
+}
+
+.won-stat-value-small {
+    -fx-font-size: 18px;
+}
+
+.won-section-card {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 22;
+    -fx-border-radius: 22;
+    -fx-border-color: #dde6f1;
+    -fx-border-width: 1;
+    -fx-padding: 22 22;
+}
+
+.won-section-title {
+    -fx-text-fill: #15263d;
+    -fx-font-size: 22px;
+    -fx-font-weight: 800;
+}
+
+.won-notification-card {
+    -fx-background-radius: 16;
+    -fx-border-radius: 16;
+    -fx-border-width: 1;
+}
+
+.won-notification-success {
+    -fx-background-color: linear-gradient(to right, #eefcf2, #f8fff9);
+    -fx-border-color: #a7e2b6;
+}
+
+.won-notification-empty {
+    -fx-background-color: #f8fafc;
+    -fx-border-color: #dce4ef;
+}
+
+.won-notification-title {
+    -fx-text-fill: #132238;
+    -fx-font-size: 15px;
+    -fx-font-weight: 800;
+}
+
+.won-notification-body {
+    -fx-text-fill: #66768d;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+}
+
+.won-notification-pulse {
+    -fx-min-width: 14px;
+    -fx-pref-width: 14px;
+    -fx-max-width: 14px;
+    -fx-min-height: 14px;
+    -fx-pref-height: 14px;
+    -fx-max-height: 14px;
+    -fx-background-color: #16a34a;
+    -fx-background-radius: 999;
+    -fx-border-color: #bbf7d0;
+    -fx-border-width: 4px;
+    -fx-border-radius: 999;
+}
+
+.won-empty-state {
+    -fx-background-color: #f8fbff;
+    -fx-background-radius: 18;
+    -fx-border-radius: 18;
+    -fx-border-color: #dbe5f2;
+    -fx-border-width: 1;
+}
+
+.won-empty-title {
+    -fx-text-fill: #1a2a43;
+    -fx-font-size: 18px;
+    -fx-font-weight: 800;
+}
+
+.won-empty-subtitle,
+.won-message-label {
+    -fx-text-fill: #65758c;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+}
