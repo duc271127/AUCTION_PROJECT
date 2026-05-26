@@ -68,6 +68,11 @@
                             styleClass="market-wallet-button"
                             onAction="#handleOpenWallet"/>
 
+                    <Button text="Wins"
+                            focusTraversable="false"
+                            styleClass="market-wallet-button"
+                            onAction="#handleOpenWonAuctions"/>
+
                     <Button text="&#9825;"
                             focusTraversable="false"
                             styleClass="market-icon-button"

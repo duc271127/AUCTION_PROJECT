@@ -24,7 +24,7 @@ import java.io.File;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -58,6 +58,7 @@ public class SellerItemDialogController {
     private SellerListing listing;
     private Runnable onSaved;
     private boolean imageUploadSkipped;
+    private static final ZoneId APP_ZONE = ZoneId.systemDefault();
 
     @FXML
     public void initialize() {
@@ -449,7 +450,7 @@ public class SellerItemDialogController {
 
         try {
             Instant instant = Instant.parse(value);
-            LocalDateTime dateTime = LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
+            LocalDateTime dateTime = LocalDateTime.ofInstant(instant, APP_ZONE);
             selectTime(hourBox, String.format("%02d", dateTime.getHour()));
             selectTime(minuteBox, String.format("%02d", dateTime.getMinute()));
             return;
@@ -469,7 +470,7 @@ public class SellerItemDialogController {
     }
 
     private String buildIsoDateTime(LocalDate date, boolean startField) {
-        return buildLocalDateTime(date, startField).toInstant(ZoneOffset.UTC).toString();
+        return buildLocalDateTime(date, startField).atZone(APP_ZONE).toInstant().toString();
     }
 
     private LocalDateTime buildLocalDateTime(LocalDate date, boolean startField) {

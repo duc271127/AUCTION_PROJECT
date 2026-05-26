@@ -8,6 +8,9 @@ import com.auction.client.service.AuctionApiService;
 import com.auction.client.session.SessionManager;
 import com.auction.client.service.ItemApiService;
 import com.auction.client.util.MockData;
+import com.auction.client.util.AuctionStateViewHelper;
+import com.auction.client.util.FavoriteUiStateStore;
+import com.auction.client.util.SearchNavigationContext;
 import com.auction.client.dto.response.WalletBalanceResponse;
 import com.auction.client.service.WalletApiService;
 import com.auction.client.dto.response.BidPlacementResponse;
@@ -42,6 +45,7 @@ import java.time.LocalDateTime;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 
 public class ProductDetailController {
@@ -53,6 +57,7 @@ public class ProductDetailController {
     @FXML private Label productNameLabel;
     @FXML private Label currentBidLabel;
     @FXML private Label countdownLabel;
+    @FXML private Label timeCardTitleLabel;
     @FXML private Label countdownDayLabel;
     @FXML private Label countdownHourLabel;
     @FXML private Label countdownMinuteLabel;
@@ -68,10 +73,16 @@ public class ProductDetailController {
     @FXML private Label categoryValueLabel;
     @FXML private Label conditionValueLabel;
     @FXML private Label estimatedValueLabel;
+    @FXML private Label winnerNoticeTitleLabel;
+    @FXML private Label winnerNoticeSubtitleLabel;
 
     @FXML private TextField bidAmountField;
+    @FXML private TextField searchField;
     @FXML private Button detailFavoriteButton;
     @FXML private Button placeBidButton;
+    @FXML private Button autoBidButton;
+    @FXML private Button winnerNoticeButton;
+    @FXML private javafx.scene.layout.VBox winnerNoticeCard;
 
     private final AuctionApiService auctionApiService = new AuctionApiService();
     private final ItemApiService itemApiService = new ItemApiService();
@@ -81,7 +92,8 @@ public class ProductDetailController {
     private AuctionListResponse currentAuction;
     private PublicItemDetailResponse currentItemDetail;
     private boolean favoriteSelected = false;
-    private int favoriteCount = 36;
+    private boolean favoriteDirty = false;
+    private int favoriteCount = 0;
     private Timeline countdownTimeline;
     private Timeline auctionRefreshTimeline;
     private Instant countdownEndInstant;
@@ -96,6 +108,7 @@ public class ProductDetailController {
     public void initialize() {
         bindSessionUsername();
         loadWalletBalance();
+        renderFavoriteButton();
         selectedItem = MockData.getSelectedItem();
 
         if (selectedItem == null) {
@@ -154,6 +167,8 @@ public class ProductDetailController {
     }
 
     private void bindDetailFromApi(AuctionListResponse response) {
+        String auctionId = response.getId() == null ? null : response.getId().toString();
+        FavoriteUiStateStore.FavoriteState storedFavorite = FavoriteUiStateStore.get(auctionId);
         String title = firstNonBlank(
                 response.getTitle(),
                 response.getItemName(),
@@ -162,16 +177,20 @@ public class ProductDetailController {
 
         productNameLabel.setText(title);
         currentBidLabel.setText(formatMoney(response.getCurrentPrice()));
-        updateCountdown(response.getEndTime());
+        updateAuctionTiming(response);
+        updateWinnerNotice(response);
 
         String sellerName = firstNonBlank(response.getSellerName(), SessionManager.getUsername(), "Seller");
         detailUsernameLabel.setText(sellerName);
 
-        long count = response.getFavoriteCount() > 0 ? response.getFavoriteCount() : favoriteCount;
-        favoriteCount = (int) count;
-        detailFavoriteButton.setText((favoriteSelected ? "\u2665 " : "\u2661 ") + favoriteCount);
-
-        statusLabel.setText(firstNonBlank(response.getState(), "No reserve price"));
+        if (storedFavorite != null) {
+            favoriteSelected = storedFavorite.selected();
+            favoriteCount = storedFavorite.count();
+            favoriteDirty = true;
+        } else if (!favoriteDirty) {
+            favoriteCount = (int) Math.max(response.getFavoriteCount(), 0);
+        }
+        renderFavoriteButton();
 
         double low = response.getCurrentPrice();
         double high = resolveDisplayedHighEstimate(response.getMinNextBid(), low);
@@ -192,9 +211,13 @@ public class ProductDetailController {
     private void bindFallbackFromSelectedItem() {
         productNameLabel.setText(selectedItem.getName());
         currentBidLabel.setText(selectedItem.getCurrentBid());
-        countdownLabel.setText("Ends: " + selectedItem.getTimeLeft());
+        countdownLabel.setText("Ends at: " + selectedItem.getTimeLeft());
+        if (timeCardTitleLabel != null) {
+            timeCardTitleLabel.setText("Time remaining");
+        }
         setCountdownParts(0);
         statusLabel.setText("No reserve price");
+        hideWinnerNotice();
 
         specsLabel.setText(
                 "Auction Detail:\\n" +
@@ -390,7 +413,7 @@ public class ProductDetailController {
     }
 
     private void updateCountdown(String endTime) {
-        countdownLabel.setText("Ends: " + formatDateTime(endTime));
+        countdownLabel.setText("Ends at " + formatDateTime(endTime));
         countdownEndInstant = parseEndInstant(endTime);
         refreshCountdown();
         startCountdownTimer();
@@ -439,9 +462,17 @@ public class ProductDetailController {
     private void showEmptyState() {
         productNameLabel.setText("No selected item");
         currentBidLabel.setText("-");
-        countdownLabel.setText("Ends: -");
+        countdownLabel.setText("Ends at -");
+        if (timeCardTitleLabel != null) {
+            timeCardTitleLabel.setText("Time remaining");
+        }
         setCountdownParts(0);
         statusLabel.setText("No reserve price");
+        favoriteDirty = false;
+        favoriteCount = 0;
+        renderFavoriteButton();
+        setBidControlsDisabled(true, "Place Bid", "Auto-Bid");
+        hideWinnerNotice();
         specsLabel.setText("Please go back to the showroom and choose an auction item.");
         clearImage(mainImageView, "main");
         clearImage(thumb1ImageView, "thumb1");
@@ -475,6 +506,16 @@ public class ProductDetailController {
     private void handleOpenBidDialog() {
         if (selectedItem == null || currentAuction == null) {
             showBidMessage("Auction data is unavailable.");
+            return;
+        }
+
+        if (isAuctionScheduled(currentAuction)) {
+            showBidMessage("Auction has not started yet.");
+            return;
+        }
+
+        if (isAuctionClosed(currentAuction)) {
+            showBidMessage("Auction is closed.");
             return;
         }
 
@@ -560,9 +601,10 @@ public class ProductDetailController {
         }
 
         currentBidLabel.setText(formatMoney(response.getCurrentPrice()));
-        statusLabel.setText(firstNonBlank(response.getState(), "Bid placed"));
 
-        if (response.getEndTime() != null && !response.getEndTime().isBlank()) {
+        if (currentAuction != null) {
+            updateAuctionTiming(currentAuction);
+        } else if (response.getEndTime() != null && !response.getEndTime().isBlank()) {
             updateCountdown(response.getEndTime());
         }
 
@@ -579,6 +621,12 @@ public class ProductDetailController {
     }
 
     @FXML
+    private void handleSearch() {
+        SearchNavigationContext.setPendingQuery(searchField == null ? null : searchField.getText());
+        SceneManager.goToShowroom();
+    }
+
+    @FXML
     private void handleGoToTrending() {
         SceneManager.goToTrending();
     }
@@ -586,6 +634,11 @@ public class ProductDetailController {
     @FXML
     private void handleOpenWallet() {
         SceneManager.goToWallet();
+    }
+
+    @FXML
+    private void handleOpenWonAuctions() {
+        SceneManager.goToWonAuctions();
     }
 
     @FXML
@@ -615,6 +668,11 @@ public class ProductDetailController {
         clearCurrentUserAutoBidState(false);
         SessionManager.clear();
         SceneManager.goToAuth();
+    }
+
+    @FXML
+    private void handleOpenWinnerHub() {
+        SceneManager.goToWonAuctions();
     }
 
     @FXML
@@ -708,14 +766,12 @@ public class ProductDetailController {
     @FXML
     private void handleToggleFavorite() {
         favoriteSelected = !favoriteSelected;
-
-        if (favoriteSelected) {
-            detailFavoriteButton.setText("\u2665 " + favoriteCount);
-            detailFavoriteButton.getStyleClass().add("detail-favorite-active");
-        } else {
-            detailFavoriteButton.setText("\u2661 " + favoriteCount);
-            detailFavoriteButton.getStyleClass().remove("detail-favorite-active");
-        }
+        favoriteDirty = true;
+        favoriteCount = favoriteSelected
+                ? favoriteCount + 1
+                : Math.max(0, favoriteCount - 1);
+        FavoriteUiStateStore.put(resolveCurrentAuctionId(), favoriteSelected, favoriteCount);
+        renderFavoriteButton();
     }
     @FXML
     private void handlePlaceBid() {
@@ -795,6 +851,25 @@ public class ProductDetailController {
 
     private String safeText(String value, String fallback) {
         return (value == null || value.isBlank()) ? fallback : value;
+    }
+
+    private void renderFavoriteButton() {
+        if (detailFavoriteButton == null) {
+            return;
+        }
+
+        detailFavoriteButton.setText((favoriteSelected ? "\u2665 " : "\u2661 ") + favoriteCount);
+        detailFavoriteButton.getStyleClass().remove("detail-favorite-active");
+        if (favoriteSelected) {
+            detailFavoriteButton.getStyleClass().add("detail-favorite-active");
+        }
+    }
+
+    private String resolveCurrentAuctionId() {
+        if (currentAuction != null && currentAuction.getId() != null) {
+            return currentAuction.getId().toString();
+        }
+        return selectedItem == null ? null : selectedItem.getId();
     }
 
     private String shortId(String id) {
@@ -954,12 +1029,23 @@ public class ProductDetailController {
     }
 
     private void updateAutoBidActionButton() {
-        if (placeBidButton == null) {
+        if (placeBidButton == null && autoBidButton == null) {
             return;
         }
 
-        placeBidButton.setDisable(false);
-        placeBidButton.setText("Place Bid");
+        if (currentAuction != null) {
+            if (isAuctionScheduled(currentAuction)) {
+                setScheduledBidControls();
+                return;
+            }
+
+            if (isAuctionClosed(currentAuction)) {
+                setBidControlsDisabled(true, "Auction Closed", "Auction Closed");
+                return;
+            }
+        }
+
+        setBidControlsDisabled(false, "Place Bid", "Auto-Bid");
     }
 
     private String extractFriendlyMessage(String rawMessage) {
@@ -1019,9 +1105,17 @@ public class ProductDetailController {
         setCountdownParts(remainingSeconds);
 
         if (remainingSeconds <= 0) {
+            if (currentAuction != null) {
+                updateAuctionTiming(currentAuction);
+                if (countdownEndInstant != null
+                        && java.time.Duration.between(Instant.now(), countdownEndInstant).getSeconds() > 0) {
+                    return;
+                }
+            }
+
             stopCountdownTimer();
             if (statusLabel != null && (statusLabel.getText() == null || statusLabel.getText().isBlank())) {
-                statusLabel.setText("FINISHED");
+                statusLabel.setText("CLOSED");
             }
         }
     }
@@ -1057,5 +1151,228 @@ public class ProductDetailController {
         }
 
         return currentPrice + 100;
+    }
+
+    private void updateAuctionTiming(AuctionListResponse response) {
+        String displayState = AuctionStateViewHelper.resolveDisplayState(
+                response.getState(),
+                response.getStartTime(),
+                response.getEndTime()
+        );
+        response.setState(displayState);
+        Instant now = Instant.now();
+        Instant startInstant = parseEndInstant(response.getStartTime());
+        Instant endInstant = parseEndInstant(response.getEndTime());
+
+        boolean terminalState = isTerminalAuctionState(displayState);
+        boolean finished = terminalState || (endInstant != null && !now.isBefore(endInstant));
+        boolean scheduledByState = isScheduledAuctionState(displayState);
+        boolean activeByState = isLiveAuctionState(displayState);
+        boolean scheduledByTime = startInstant != null && now.isBefore(startInstant);
+        boolean activeByTime = startInstant != null && !now.isBefore(startInstant);
+        boolean scheduled = !finished && (scheduledByTime || (startInstant == null && scheduledByState && !activeByState));
+        boolean active = !finished && !scheduled && (activeByState || activeByTime || (scheduledByState && startInstant != null && !now.isBefore(startInstant)));
+
+        if (timeCardTitleLabel != null) {
+            if (scheduled) {
+                timeCardTitleLabel.setText("Auction starts in");
+            } else if (finished) {
+                timeCardTitleLabel.setText("Auction ended");
+            } else {
+                timeCardTitleLabel.setText("Time remaining");
+            }
+        }
+
+        if (scheduled) {
+            countdownLabel.setText("Starts at " + formatDateTime(response.getStartTime()));
+            if (startInstant != null && now.isBefore(startInstant)) {
+                countdownEndInstant = startInstant;
+                refreshCountdown();
+                startCountdownTimer();
+            } else {
+                countdownEndInstant = null;
+                setCountdownParts(0);
+                stopCountdownTimer();
+            }
+            setScheduledBidControls();
+            statusLabel.setText("SCHEDULED | Auction opens soon");
+            return;
+        }
+
+        if (active) {
+            updateCountdown(response.getEndTime());
+            setBidControlsDisabled(false, "Place Bid", "Auto-Bid");
+            statusLabel.setText("ACTIVE | Live bidding");
+            return;
+        }
+
+        countdownLabel.setText(finished
+                ? "Ended at " + formatDateTime(response.getEndTime())
+                : "Starts at " + formatDateTime(response.getStartTime()));
+        countdownEndInstant = null;
+        setCountdownParts(0);
+        stopCountdownTimer();
+        setBidControlsDisabled(true, finished ? "Auction Closed" : "Unavailable", finished ? "Auction Closed" : "Unavailable");
+        if (finished) {
+            statusLabel.setText("CLOSED | Auction closed");
+        }
+    }
+
+    private boolean isAuctionLive(AuctionListResponse auction) {
+        if (auction == null) {
+            return false;
+        }
+
+        return AuctionStateViewHelper.isActive(
+                auction.getState(),
+                auction.getStartTime(),
+                auction.getEndTime()
+        );
+    }
+
+    private boolean isAuctionScheduled(AuctionListResponse auction) {
+        if (auction == null) {
+            return false;
+        }
+
+        return AuctionStateViewHelper.isScheduled(
+                auction.getState(),
+                auction.getStartTime(),
+                auction.getEndTime()
+        );
+    }
+
+    private boolean isAuctionClosed(AuctionListResponse auction) {
+        if (auction == null) {
+            return false;
+        }
+
+        return AuctionStateViewHelper.isClosed(
+                auction.getState(),
+                auction.getStartTime(),
+                auction.getEndTime()
+        );
+    }
+
+    private boolean isTerminalAuctionState(String state) {
+        String normalized = normalizeAuctionState(state);
+        return "FINISHED".equalsIgnoreCase(normalized)
+                || "CANCELLED".equalsIgnoreCase(normalized)
+                || "CLOSED".equalsIgnoreCase(normalized)
+                || "ENDED".equalsIgnoreCase(normalized)
+                || "DELETED".equalsIgnoreCase(normalized)
+                || "REJECTED".equalsIgnoreCase(normalized);
+    }
+
+    private boolean isLiveAuctionState(String state) {
+        String normalized = normalizeAuctionState(state);
+        return "ACTIVE".equalsIgnoreCase(normalized)
+                || "OPEN".equalsIgnoreCase(normalized)
+                || "LIVE".equalsIgnoreCase(normalized);
+    }
+
+    private boolean isScheduledAuctionState(String state) {
+        String normalized = normalizeAuctionState(state);
+        return "SCHEDULED".equalsIgnoreCase(normalized)
+                || "INCOMING".equalsIgnoreCase(normalized)
+                || "PENDING".equalsIgnoreCase(normalized)
+                || "DRAFT".equalsIgnoreCase(normalized);
+    }
+
+    private String normalizeAuctionState(String state) {
+        return firstNonBlank(state, "").trim().toUpperCase(Locale.ROOT);
+    }
+
+    private void setBidControlsDisabled(boolean disabled, String placeBidText, String autoBidText) {
+        if (placeBidButton != null) {
+            placeBidButton.setDisable(disabled);
+            placeBidButton.setText(placeBidText);
+        }
+        if (autoBidButton != null) {
+            autoBidButton.setDisable(disabled);
+            autoBidButton.setText(autoBidText);
+        }
+    }
+
+    private void setScheduledBidControls() {
+        if (placeBidButton != null) {
+            placeBidButton.setDisable(true);
+            placeBidButton.setText("Available When Live");
+        }
+        if (autoBidButton != null) {
+            autoBidButton.setDisable(false);
+            autoBidButton.setText("Auto-Bid");
+        }
+    }
+
+    private void updateWinnerNotice(AuctionListResponse auction) {
+        if (auction == null) {
+            hideWinnerNotice();
+            return;
+        }
+
+        if (!isAuctionClosed(auction)) {
+            hideWinnerNotice();
+            return;
+        }
+
+        if (winnerNoticeCard == null || winnerNoticeTitleLabel == null || winnerNoticeSubtitleLabel == null) {
+            return;
+        }
+
+        java.util.UUID resolvedWinnerId = auction.getWinnerId() != null ? auction.getWinnerId() : auction.getLeaderId();
+        String winnerName = firstNonBlank(auction.getWinnerName(), auction.getLeaderName(), "No winner");
+        boolean currentUserWon = SessionManager.getUserId() != null
+                && resolvedWinnerId != null
+                && SessionManager.getUserId().equals(resolvedWinnerId);
+
+        winnerNoticeCard.getStyleClass().removeAll(
+                "winner-notice-card",
+                "winner-notice-card-success",
+                "winner-notice-card-muted"
+        );
+        winnerNoticeCard.getStyleClass().add("winner-notice-card");
+
+        if (currentUserWon) {
+            winnerNoticeCard.getStyleClass().add("winner-notice-card-success");
+            winnerNoticeTitleLabel.setText("You won this auction");
+            winnerNoticeSubtitleLabel.setText(
+                    formatMoney(auction.getCurrentPrice()) + " final price. Open Wins to review your successful auction."
+            );
+            if (winnerNoticeButton != null) {
+                winnerNoticeButton.setManaged(true);
+                winnerNoticeButton.setVisible(true);
+            }
+        } else if (resolvedWinnerId != null) {
+            winnerNoticeCard.getStyleClass().add("winner-notice-card-muted");
+            winnerNoticeTitleLabel.setText("Winning bidder confirmed");
+            winnerNoticeSubtitleLabel.setText(winnerName + " won this auction at " + formatMoney(auction.getCurrentPrice()) + ".");
+            if (winnerNoticeButton != null) {
+                winnerNoticeButton.setManaged(false);
+                winnerNoticeButton.setVisible(false);
+            }
+        } else {
+            winnerNoticeCard.getStyleClass().add("winner-notice-card-muted");
+            winnerNoticeTitleLabel.setText("Auction finished with no winner");
+            winnerNoticeSubtitleLabel.setText("This auction closed without a successful bidder.");
+            if (winnerNoticeButton != null) {
+                winnerNoticeButton.setManaged(false);
+                winnerNoticeButton.setVisible(false);
+            }
+        }
+
+        winnerNoticeCard.setManaged(true);
+        winnerNoticeCard.setVisible(true);
+    }
+
+    private void hideWinnerNotice() {
+        if (winnerNoticeCard != null) {
+            winnerNoticeCard.setManaged(false);
+            winnerNoticeCard.setVisible(false);
+        }
+        if (winnerNoticeButton != null) {
+            winnerNoticeButton.setManaged(false);
+            winnerNoticeButton.setVisible(false);
+        }
     }
 }

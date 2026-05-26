@@ -1,6 +1,7 @@
 package com.auction.client.ui;
 
 import com.auction.client.service.ItemApiService;
+import com.auction.client.util.FavoriteUiStateStore;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -11,6 +12,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
+import java.util.Locale;
 import java.util.function.Consumer;
 
 public class AuctionCardViewFactory {
@@ -37,23 +39,33 @@ public class AuctionCardViewFactory {
         StackPane mediaPane = new StackPane(imageView);
         mediaPane.getStyleClass().add("market-card-media");
 
-        if (data.badgeText() != null && !data.badgeText().isBlank()) {
-            Label badge = new Label(data.badgeText());
+        String badgeText = resolveBadgeText(data.badgeText());
+        String badgeStateClass = resolveBadgeStateClass(data.badgeText());
+        if (badgeText != null && !badgeText.isBlank() && badgeStateClass != null) {
+            Label badge = new Label(badgeText);
             badge.getStyleClass().add("market-card-badge");
+            badge.getStyleClass().add(badgeStateClass);
             StackPane.setAlignment(badge, Pos.TOP_LEFT);
             StackPane.setMargin(badge, new Insets(10, 0, 0, 10));
             mediaPane.getChildren().add(badge);
         }
 
-        Button favoriteButton = new Button(buildFavoriteText(data.favoriteCountText(), favoriteSelected));
+        FavoriteUiStateStore.FavoriteState favoriteState = FavoriteUiStateStore.get(data.id());
+        boolean initialSelected = favoriteState != null ? favoriteState.selected() : favoriteSelected;
+        int[] favoriteCount = {favoriteState != null ? favoriteState.count() : parseFavoriteCount(data.favoriteCountText())};
+        Button favoriteButton = new Button(buildFavoriteText(favoriteCount[0], initialSelected));
         favoriteButton.setFocusTraversable(false);
         favoriteButton.getStyleClass().add("market-card-favorite");
-        if (favoriteSelected) {
+        if (initialSelected) {
             favoriteButton.getStyleClass().add("market-card-favorite-active");
         }
         favoriteButton.setOnAction(event -> {
             boolean next = !favoriteButton.getStyleClass().contains("market-card-favorite-active");
-            favoriteButton.setText(buildFavoriteText(data.favoriteCountText(), next));
+            favoriteCount[0] = next
+                    ? favoriteCount[0] + 1
+                    : Math.max(0, favoriteCount[0] - 1);
+            FavoriteUiStateStore.put(data.id(), next, favoriteCount[0]);
+            favoriteButton.setText(buildFavoriteText(favoriteCount[0], next));
             favoriteButton.getStyleClass().remove("market-card-favorite-active");
             if (next) {
                 favoriteButton.getStyleClass().add("market-card-favorite-active");
@@ -123,12 +135,51 @@ public class AuctionCardViewFactory {
         }
     }
 
-    private String buildFavoriteText(String countText, boolean selected) {
+    private String buildFavoriteText(int count, boolean selected) {
         String icon = selected ? "\u2665" : "\u2661";
-        return countText == null || countText.isBlank() ? icon : icon + " " + countText;
+        return icon + " " + count;
+    }
+
+    private int parseFavoriteCount(String countText) {
+        if (countText == null || countText.isBlank()) {
+            return 0;
+        }
+
+        try {
+            return Integer.parseInt(countText.replaceAll("[^0-9-]", ""));
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private String firstNonBlank(String value, String fallback) {
         return value == null || value.isBlank() ? fallback : value;
+    }
+
+    private String resolveBadgeText(String badgeText) {
+        if (badgeText == null || badgeText.isBlank()) {
+            return badgeText;
+        }
+
+        return switch (badgeText.trim().toUpperCase(Locale.ROOT)) {
+            case "FINISHED", "CANCELLED", "ENDED" -> "CLOSED";
+            default -> badgeText.trim();
+        };
+    }
+
+    private String resolveBadgeStateClass(String badgeText) {
+        if (badgeText == null || badgeText.isBlank()) {
+            return null;
+        }
+
+        String normalized = badgeText.trim().toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "ACTIVE", "OPEN", "LIVE" -> "market-card-badge-active";
+            case "SCHEDULED", "DRAFT", "INCOMING", "PENDING" -> "market-card-badge-pending";
+            case "FINISHED", "CANCELLED", "CLOSED", "ENDED" -> "market-card-badge-finished";
+            case "DELETED" -> "market-card-badge-deleted";
+            case "REJECTED" -> "market-card-badge-rejected";
+            default -> normalized.contains("TRENDING") ? "market-card-badge-trending" : null;
+        };
     }
 }

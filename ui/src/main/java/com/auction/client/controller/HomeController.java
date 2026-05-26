@@ -6,6 +6,7 @@ import com.auction.client.service.ItemApiService;
 import com.auction.client.ui.AuctionCardData;
 import com.auction.client.ui.AuctionCardViewFactory;
 import com.auction.client.util.MockData;
+import com.auction.client.util.SearchNavigationContext;
 import javafx.fxml.FXML;
 import javafx.scene.control.TextField;
 import javafx.scene.image.ImageView;
@@ -38,6 +39,12 @@ public class HomeController {
 
     @FXML
     private void handleGoToShowroom() {
+        SceneManager.goToShowroom();
+    }
+
+    @FXML
+    private void handleSearch() {
+        SearchNavigationContext.setPendingQuery(searchField == null ? null : searchField.getText());
         SceneManager.goToShowroom();
     }
 
@@ -106,7 +113,7 @@ public class HomeController {
                     item.getImagePath(),
                     badge,
                     actionText,
-                    "36"
+                    "0"
             ));
             rank++;
         }

@@ -136,6 +136,17 @@ public class AuctionController {
                 .toList());
     }
 
+    @GetMapping("/me/wins")
+    @PreAuthorize("hasRole('BIDDER')")
+    public ResponseEntity<List<AuctionDto>> listMyWonAuctions() {
+        return ResponseEntity.ok(
+                auctionService.listWonAuctions(resolveCurrentUserId())
+                        .stream()
+                        .map(this::toDto)
+                        .toList()
+        );
+    }
+
     @GetMapping
     public ResponseEntity<AuctionPageResponse> listAuctions(@RequestParam(value = "category", required = false) String category,
                                                             @RequestParam(value = "q", required = false) String q,
@@ -245,6 +256,8 @@ public class AuctionController {
         dto.minNextBid = auction.getMinNextBid() == null ? auction.getCurrentPrice() + bidService.getMinIncrement() : auction.getMinNextBid();
         dto.leaderId = auction.getLeaderId();
         dto.leaderName = auctionHelper.lookupUserName(auction.getLeaderId());
+        dto.winnerId = auction.getWinnerId();
+        dto.winnerName = auctionHelper.lookupUserName(auction.getWinnerId());
         dto.startTime = auction.getStartTime();
         dto.endTime = auction.getEndTime();
         dto.state = auction.getState() == null ? null : auction.getState().name();

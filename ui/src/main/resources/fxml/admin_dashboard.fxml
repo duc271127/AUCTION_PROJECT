@@ -5,20 +5,19 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
-<?import javafx.scene.control.TableColumn?>
-<?import javafx.scene.control.TableView?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 
 <BorderPane prefHeight="820" prefWidth="1280" styleClass="admin-root" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/26" fx:controller="com.auction.client.controller.AdminDashboardController">
 
     <center>
-        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="admin-scroll-pane">
+        <ScrollPane fx:id="adminScrollPane" fitToWidth="true" hbarPolicy="NEVER" styleClass="admin-scroll-pane">
             <content>
-                <VBox spacing="22.0" styleClass="admin-page">
+                <VBox fx:id="adminPageBox" spacing="22.0" styleClass="admin-page">
                     <padding>
                         <Insets bottom="42" left="42" right="42" top="34" />
                     </padding>
@@ -117,73 +116,64 @@
                             </GridPane>
                         </VBox>
 
-                        <VBox spacing="20.0">
-                            <VBox spacing="14.0" styleClass="admin-panel">
-                                <padding>
-                                    <Insets bottom="22" left="22" right="22" top="22" />
-                                </padding>
-                                <Label styleClass="admin-section-title" text="Recent Notifications" />
-                                <TableView fx:id="notificationTable" prefHeight="260" prefWidth="1091.0">
-                                    <columns>
-                                        <TableColumn fx:id="notificationTypeColumn" prefWidth="150.0" text="Type" />
-                                        <TableColumn fx:id="notificationMessageColumn" prefWidth="520.0" text="Message" />
-                                        <TableColumn fx:id="notificationCreatedColumn" prefWidth="220.0" text="Created" />
-                                    </columns>
-                                </TableView>
-                            </VBox>
-
-                            <VBox spacing="14.0" styleClass="admin-panel">
-                                <padding>
-                                    <Insets bottom="22" left="22" right="22" top="22" />
-                                </padding>
-                                <Label styleClass="admin-section-title" text="Wallet Activity" />
-                                <Label styleClass="admin-muted" text="Latest deposits, withdrawals, balances, and user IDs." />
-                                <TableView fx:id="walletActivityTable" prefHeight="260.0">
-                                    <columns>
-                                        <TableColumn fx:id="walletUserColumn" prefWidth="170.0" text="User" />
-                                        <TableColumn fx:id="walletUserIdColumn" prefWidth="280.0" text="User ID" />
-                                        <TableColumn fx:id="walletTypeColumn" prefWidth="120.0" text="Type" />
-                                        <TableColumn fx:id="walletAmountColumn" prefWidth="140.0" text="Amount" />
-                                        <TableColumn fx:id="walletBalanceColumn" prefWidth="150.0" text="Balance After" />
-                                        <TableColumn fx:id="walletCreatedColumn" prefWidth="190.0" text="Created At" />
-                                    </columns>
-                                </TableView>
-                            </VBox>
+                        <VBox spacing="14.0" styleClass="admin-panel">
+                            <padding>
+                                <Insets bottom="22" left="22" right="22" top="22" />
+                            </padding>
+                            <Label styleClass="admin-section-title" text="Recent Notifications" />
+                            <Label styleClass="admin-muted" text="Latest deposits, withdrawals, and wallet activity." />
+                            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" prefViewportHeight="470.0" styleClass="admin-table-scroll" vbarPolicy="AS_NEEDED">
+                                <content>
+                                    <VBox fx:id="walletActivityFeedBox" spacing="12.0" />
+                                </content>
+                            </ScrollPane>
                         </VBox>
                     </VBox>
 
-                    <VBox fx:id="auctionManagementPane" managed="false" spacing="16.0" styleClass="admin-panel" visible="false">
-                        <padding>
-                            <Insets bottom="22" left="22" right="22" top="22" />
-                        </padding>
+                    <VBox fx:id="auctionManagementPane" managed="false" spacing="18.0" visible="false">
+                        <VBox spacing="16.0" styleClass="admin-panel">
+                            <padding>
+                                <Insets bottom="22" left="22" right="22" top="22" />
+                            </padding>
 
-                        <HBox alignment="CENTER_LEFT" spacing="12.0">
-                            <VBox spacing="4.0" HBox.hgrow="ALWAYS">
-                                <Label styleClass="admin-section-title" text="Auction Management" />
-                                <Label styleClass="admin-muted" text="Review seller submissions and create auctions from approved items." />
+                            <HBox alignment="CENTER_LEFT" spacing="12.0">
+                                <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                                    <Label styleClass="admin-section-title" text="Auction Management" />
+                                    <Label styleClass="admin-muted" text="Track active, scheduled, and closed auctions across the platform." />
+                                </VBox>
+                                <Button onAction="#handleShowAuctionManagement" styleClass="admin-outline-button" text="Refresh" />
+                            </HBox>
+
+                            <HBox spacing="18.0" styleClass="admin-management-header">
+                                <Label maxWidth="1.7976931348623157E308" styleClass="admin-management-heading" text="Auction Title" HBox.hgrow="ALWAYS" />
+                                <Label minWidth="170.0" styleClass="admin-management-heading" text="Seller" />
+                                <Label minWidth="120.0" styleClass="admin-management-heading" text="Status" />
+                                <Label minWidth="140.0" styleClass="admin-management-heading" text="Current Bid" />
+                                <Label minWidth="110.0" styleClass="admin-management-heading" text="Actions" />
+                            </HBox>
+                            <VBox fx:id="reviewActionPanel" managed="false" spacing="14.0" styleClass="admin-pending-card" visible="false">
+                                <padding>
+                                    <Insets bottom="18" left="18" right="18" top="18" />
+                                </padding>
+                                <Label styleClass="admin-section-title" text="Review Actions" />
+                                <Label fx:id="reviewTitleLabel" styleClass="admin-pending-title" text="No item selected" />
+                                <Label fx:id="reviewMetaLabel" styleClass="admin-pending-meta" text="Choose an auction or pending submission to review." wrapText="true" />
+                                <HBox spacing="10.0">
+                                    <Button fx:id="reviewDeleteButton" onAction="#handleReviewDelete" styleClass="admin-danger-button" text="DELETE" />
+                                    <Button fx:id="reviewAcceptButton" onAction="#handleReviewAccept" styleClass="admin-primary-button" text="ACCEPT" />
+                                    <Button fx:id="reviewRejectButton" onAction="#handleReviewReject" styleClass="admin-outline-button" text="REJECT" />
+                                    <Button fx:id="reviewViewButton" onAction="#handleReviewView" styleClass="admin-outline-button" text="VIEW" />
+                                </HBox>
                             </VBox>
-                            <Button onAction="#handleShowAuctionManagement" styleClass="admin-outline-button" text="Refresh" />
-                        </HBox>
 
-                        <TableView fx:id="approvalTable" prefHeight="430">
-                            <columns>
-                                <TableColumn fx:id="productNameColumn" prefWidth="230.0" text="Item Title" />
-                                <TableColumn fx:id="sellerColumn" prefWidth="190.0" text="Seller" />
-                                <TableColumn fx:id="categoryColumn" prefWidth="150.0" text="Category" />
-                                <TableColumn fx:id="priceColumn" prefWidth="150.0" text="Starting Price" />
-                                <TableColumn fx:id="submittedDateColumn" prefWidth="170.0" text="Start Date" />
-                                <TableColumn fx:id="statusColumn" prefWidth="120.0" text="Status" />
-                            </columns>
-                        </TableView>
+                            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" prefViewportHeight="470.0" styleClass="admin-table-scroll" vbarPolicy="AS_NEEDED">
+                                <content>
+                                    <VBox fx:id="auctionRowsBox" spacing="0.0" />
+                                </content>
+                            </ScrollPane>
+                        </VBox>
 
                         <Label fx:id="adminMessageLabel" maxWidth="1.7976931348623157E308" styleClass="admin-message" text="" wrapText="true" />
-
-                        <HBox spacing="10.0">
-                            <Button onAction="#handleApprove" styleClass="admin-primary-button" text="Approve + Create Auction" />
-                            <Button onAction="#handleReject" styleClass="admin-outline-button" text="Reject" />
-                            <Button onAction="#handleReview" styleClass="admin-outline-button" text="Review" />
-                            <Button onAction="#handleDelete" styleClass="admin-danger-button" text="Delete" />
-                        </HBox>
                     </VBox>
                 </VBox>
             </content>

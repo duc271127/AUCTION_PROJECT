@@ -129,7 +129,10 @@ public class BidTransactionalService {
         if (auction.getState() == null) {
             throw new InvalidBidException("Auction state is missing");
         }
-        if (auction.getState() == AuctionState.FINISHED || auction.getState() == AuctionState.CANCELLED) {
+        if (auction.getState() == AuctionState.FINISHED
+                || auction.getState() == AuctionState.CANCELLED
+                || auction.getState() == AuctionState.REJECTED
+                || auction.getState() == AuctionState.DELETED) {
             throw new AuctionClosedException("Auction is closed");
         }
 

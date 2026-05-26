@@ -243,6 +243,45 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
+    @Transactional
+    public void acceptAuction(UUID auctionId, UUID adminId) {
+        if (auctionId == null) throw new BusinessRuleException("auctionId is required");
+        if (adminId == null) throw new BusinessRuleException("adminId is required");
+
+        Auction auction = auctionRepository.findById(auctionId)
+                .orElseThrow(() -> new BusinessRuleException("Auction not found: " + auctionId));
+
+        auctionService.acceptAuction(auctionId);
+        saveNotification("AUCTION_ACCEPTED", "Auction accepted: " + auction.getTitle());
+    }
+
+    @Override
+    @Transactional
+    public void rejectAuction(UUID auctionId, UUID adminId) {
+        if (auctionId == null) throw new BusinessRuleException("auctionId is required");
+        if (adminId == null) throw new BusinessRuleException("adminId is required");
+
+        Auction auction = auctionRepository.findById(auctionId)
+                .orElseThrow(() -> new BusinessRuleException("Auction not found: " + auctionId));
+
+        auctionService.rejectAuction(auctionId, "Auction rejected by admin.");
+        saveNotification("AUCTION_REJECTED", "Auction rejected: " + auction.getTitle());
+    }
+
+    @Override
+    @Transactional
+    public void deleteAuction(UUID auctionId, UUID adminId) {
+        if (auctionId == null) throw new BusinessRuleException("auctionId is required");
+        if (adminId == null) throw new BusinessRuleException("adminId is required");
+
+        Auction auction = auctionRepository.findById(auctionId)
+                .orElseThrow(() -> new BusinessRuleException("Auction not found: " + auctionId));
+
+        auctionService.deleteAuction(auctionId);
+        saveNotification("AUCTION_DELETED", "Auction marked deleted: " + auction.getTitle());
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<PendingItemDto> listReportedItems() {
         return itemRepository.findByStatus(ItemStatus.REJECTED)

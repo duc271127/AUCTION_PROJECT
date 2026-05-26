@@ -15,6 +15,9 @@ public interface AdminService {
     Item approveItem(UUID itemId, UUID adminId);
     Item rejectItem(UUID itemId, UUID adminId);
     void deleteItem(UUID itemId);
+    void acceptAuction(UUID auctionId, UUID adminId);
+    void rejectAuction(UUID auctionId, UUID adminId);
+    void deleteAuction(UUID auctionId, UUID adminId);
     List<PendingItemDto> listReportedItems();
     AdminStatsDto getStats();
     List<AdminWalletActivityDto> getRecentWalletActivity(int limit);

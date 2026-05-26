@@ -64,7 +64,9 @@
                             styleClass="market-nav-link"
                             onAction="#handleGoToTrending"/>
 
-                    <TextField promptText="Search jewelry, watches, art ..."
+                    <TextField fx:id="searchField"
+                               onAction="#handleSearch"
+                               promptText="Search jewelry, watches, art ..."
                                focusTraversable="false"
                                styleClass="market-search"
                                HBox.hgrow="ALWAYS"/>
@@ -73,6 +75,11 @@
                             focusTraversable="false"
                             styleClass="market-wallet-button"
                             onAction="#handleOpenWallet"/>
+
+                    <Button text="Wins"
+                            focusTraversable="false"
+                            styleClass="market-wallet-button"
+                            onAction="#handleOpenWonAuctions"/>
 
                     <Button fx:id="wishlistButton"
                             text="&#9825; 0"

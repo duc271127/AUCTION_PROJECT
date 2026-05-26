@@ -109,4 +109,28 @@ public class AdminApiService {
         apiClient.delete("/admin/items/" + itemId);
     }
 
+    public void acceptAuction(String auctionId) {
+        try {
+            apiClient.post("/admin/auctions/" + auctionId + "/accept", "");
+        } catch (Exception e) {
+            throw new ApiException("Accept auction failed: " + e.getMessage(), e);
+        }
+    }
+
+    public void rejectAuction(String auctionId) {
+        try {
+            apiClient.post("/admin/auctions/" + auctionId + "/reject", "");
+        } catch (Exception e) {
+            throw new ApiException("Reject auction failed: " + e.getMessage(), e);
+        }
+    }
+
+    public void deleteAuction(String auctionId) {
+        try {
+            apiClient.delete("/admin/auctions/" + auctionId);
+        } catch (Exception e) {
+            throw new ApiException("Delete auction failed: " + e.getMessage(), e);
+        }
+    }
+
 }

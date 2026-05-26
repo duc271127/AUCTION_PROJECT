@@ -61,7 +61,9 @@ public class AutoBidServiceImpl implements AutoBidService {
         }
         if (auction.getState() != null &&
                 ("FINISHED".equalsIgnoreCase(auction.getState().name())
-                        || "CANCELLED".equalsIgnoreCase(auction.getState().name()))) {
+                        || "CANCELLED".equalsIgnoreCase(auction.getState().name())
+                        || "REJECTED".equalsIgnoreCase(auction.getState().name())
+                        || "DELETED".equalsIgnoreCase(auction.getState().name()))) {
             throw new InvalidBidException("Cannot enable auto-bid on a closed auction");
         }
         if (auction.getState() != AuctionState.ACTIVE && auction.getState() != AuctionState.SCHEDULED) {

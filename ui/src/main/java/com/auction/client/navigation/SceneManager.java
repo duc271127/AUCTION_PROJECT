@@ -131,6 +131,13 @@ public class SceneManager {
         switchScene("/fxml/wallet.fxml", "Auction Project - Wallet", "/css/wallet.css");
     }
 
+    public static void goToWonAuctions() {
+        if (!requireRole("BIDDER")) {
+            return;
+        }
+        switchScene("/fxml/won_auctions.fxml", "Auction Project - Won Auctions", "/css/won_auctions.css");
+    }
+
     public static void goToCategory() {
         if (!requireRole("BIDDER")) {
             return;

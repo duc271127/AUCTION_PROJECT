@@ -4,11 +4,13 @@ import com.team.backend.dto.AuctionCreateDto;
 import com.team.backend.dto.AuctionDetailResponse;
 import com.team.backend.entity.Auction;
 import com.team.backend.entity.AuctionState;
+import com.team.backend.entity.BidTransaction;
 import com.team.backend.entity.Item;
 import com.team.backend.exception.BusinessRuleException;
 import com.team.backend.exception.ResourceNotFoundException;
 import com.team.backend.mapper.AuctionMapper;
 import com.team.backend.repository.AuctionRepository;
+import com.team.backend.repository.AutoBidRepository;
 import com.team.backend.repository.BidRepository;
 import com.team.backend.repository.FavoriteRepository;
 import com.team.backend.repository.ItemRepository;
@@ -43,6 +45,7 @@ public class AuctionServiceImpl implements AuctionService {
 
     private final AuctionRepository auctionRepository;
     private final ItemRepository itemRepository;
+    private final AutoBidRepository autoBidRepository;
     private final BidRepository bidRepository;
     private final FavoriteRepository favoriteRepository;
     private final AuctionHelper auctionHelper;
@@ -50,12 +53,14 @@ public class AuctionServiceImpl implements AuctionService {
 
     public AuctionServiceImpl(AuctionRepository auctionRepository,
                               ItemRepository itemRepository,
+                              AutoBidRepository autoBidRepository,
                               BidRepository bidRepository,
                               FavoriteRepository favoriteRepository,
                               AuctionHelper auctionHelper,
                               Optional<EventPublisher> eventPublisherOptional) {
         this.auctionRepository = auctionRepository;
         this.itemRepository = itemRepository;
+        this.autoBidRepository = autoBidRepository;
         this.bidRepository = bidRepository;
         this.favoriteRepository = favoriteRepository;
         this.auctionHelper = auctionHelper;
@@ -206,6 +211,17 @@ public class AuctionServiceImpl implements AuctionService {
     }
 
     @Override
+    public List<Auction> listWonAuctions(UUID winnerId) {
+        if (winnerId == null) {
+            return List.of();
+        }
+
+        List<Auction> auctions = auctionRepository.findByWinnerIdOrderByEndTimeDesc(winnerId);
+        auctions.forEach(this::populateTransientFields);
+        return auctions;
+    }
+
+    @Override
     public Page<Auction> searchCatalog(String category, String q, AuctionState state, Pageable pageable) {
         Page<Auction> page = auctionRepository.searchCatalog(category, q, state, pageable);
         page.forEach(this::populateTransientFields);
@@ -250,6 +266,32 @@ public class AuctionServiceImpl implements AuctionService {
 
     @Override
     @Transactional
+    public void acceptAuction(UUID auctionId) {
+        Auction auction = auctionRepository.findByIdForUpdate(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));
+
+        if (auction.getState() == AuctionState.ACTIVE) {
+            return;
+        }
+        if (isTerminalState(auction.getState())) {
+            throw new BusinessRuleException("Only incoming auctions can be accepted.");
+        }
+
+        Instant now = Instant.now();
+        if (auction.getEndTime() != null && !now.isBefore(auction.getEndTime())) {
+            throw new BusinessRuleException("Cannot accept an auction that has already ended.");
+        }
+
+        if (auction.getStartTime() == null || auction.getStartTime().isAfter(now)) {
+            auction.setStartTime(now);
+        }
+        auction.setState(AuctionState.ACTIVE);
+        auction.setUpdatedAt(now);
+        auctionRepository.save(auction);
+    }
+
+    @Override
+    @Transactional
     public void closeAuction(UUID auctionId) {
         closeAuction(auctionId, "Auction finished.");
     }
@@ -260,11 +302,49 @@ public class AuctionServiceImpl implements AuctionService {
         Auction auction = auctionRepository.findByIdForUpdate(auctionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));
 
-        if (auction.getState() == AuctionState.FINISHED || auction.getState() == AuctionState.CANCELLED) {
+        if (isTerminalState(auction.getState())) {
             throw new BusinessRuleException("Auction is already closed");
         }
 
         closeAuctionInternal(auction, reason);
+    }
+
+    @Override
+    @Transactional
+    public void rejectAuction(UUID auctionId, String reason) {
+        Auction auction = auctionRepository.findByIdForUpdate(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));
+
+        if (auction.getState() == AuctionState.REJECTED) {
+            return;
+        }
+        if (auction.getState() == AuctionState.DELETED || auction.getState() == AuctionState.FINISHED) {
+            throw new BusinessRuleException("Auction cannot be rejected anymore.");
+        }
+
+        auction.setState(AuctionState.REJECTED);
+        auction.setWinnerId(null);
+        auction.setUpdatedAt(Instant.now());
+        auctionRepository.save(auction);
+    }
+
+    @Override
+    @Transactional
+    public void deleteAuction(UUID auctionId) {
+        Auction auction = auctionRepository.findByIdForUpdate(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));
+
+        if (auction.getState() == AuctionState.DELETED) {
+            return;
+        }
+        if (auction.getState() == AuctionState.FINISHED) {
+            throw new BusinessRuleException("Finished auctions cannot be deleted.");
+        }
+
+        auction.setState(AuctionState.DELETED);
+        auction.setWinnerId(null);
+        auction.setUpdatedAt(Instant.now());
+        auctionRepository.save(auction);
     }
 
     @Override
@@ -395,6 +475,8 @@ public class AuctionServiceImpl implements AuctionService {
             return;
         }
 
+        auction = synchronizeAuctionOutcomeIfNeeded(auction);
+
         try {
             int bidCount = Math.toIntExact(bidRepository.countByAuctionId(auction.getId()));
             long favoriteCount = favoriteRepository.countByAuctionId(auction.getId());
@@ -406,6 +488,59 @@ public class AuctionServiceImpl implements AuctionService {
         } catch (Exception ex) {
             log.warn("Could not populate transient fields for auction {}", auction.getId(), ex);
         }
+    }
+
+    private Auction synchronizeAuctionOutcomeIfNeeded(Auction auction) {
+        if (auction == null || auction.getState() == null) {
+            return auction;
+        }
+
+        boolean changed = false;
+        Instant now = Instant.now();
+
+        if (auction.getState() == AuctionState.SCHEDULED
+                && auction.getStartTime() != null
+                && !now.isBefore(auction.getStartTime())
+                && (auction.getEndTime() == null || now.isBefore(auction.getEndTime()))) {
+            auction.setState(AuctionState.ACTIVE);
+            changed = true;
+        }
+
+        if (!isTerminalState(auction.getState())
+                && auction.getEndTime() != null
+                && !now.isBefore(auction.getEndTime())) {
+            auction.setState(AuctionState.FINISHED);
+            changed = true;
+        }
+
+        if ((auction.getLeaderId() == null || auction.getWinnerId() == null) && auction.getId() != null) {
+            List<BidTransaction> latestBids = bidRepository.findByAuctionIdOrderByCreatedAtDesc(auction.getId());
+            if (!latestBids.isEmpty()) {
+                BidTransaction latestBid = latestBids.get(0);
+                if (auction.getLeaderId() == null) {
+                    auction.setLeaderId(latestBid.getBidderId());
+                    changed = true;
+                }
+                if (auction.getState() == AuctionState.FINISHED && auction.getWinnerId() == null) {
+                    auction.setWinnerId(latestBid.getBidderId());
+                    changed = true;
+                }
+            }
+        }
+
+        if (auction.getState() == AuctionState.FINISHED
+                && auction.getWinnerId() == null
+                && auction.getLeaderId() != null) {
+            auction.setWinnerId(auction.getLeaderId());
+            changed = true;
+        }
+
+        if (!changed) {
+            return auction;
+        }
+
+        auction.setUpdatedAt(now);
+        return auctionRepository.save(auction);
     }
 
     private double resolveStartingPrice(AuctionCreateDto dto, Item item) {
@@ -424,6 +559,13 @@ public class AuctionServiceImpl implements AuctionService {
         auction.setUpdatedAt(Instant.now());
         auctionRepository.save(auction);
         registerAuctionClosedEvent(auction, reason);
+    }
+
+    private boolean isTerminalState(AuctionState state) {
+        return state == AuctionState.FINISHED
+                || state == AuctionState.CANCELLED
+                || state == AuctionState.REJECTED
+                || state == AuctionState.DELETED;
     }
 
     private void registerAuctionClosedEvent(Auction auction, String reason) {

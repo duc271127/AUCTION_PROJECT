@@ -209,6 +209,43 @@
     -fx-font-weight: 800;
 }
 
+.search-empty-state {
+    -fx-background-color: white;
+    -fx-background-radius: 24;
+    -fx-border-color: #e6ebf2;
+    -fx-border-width: 1;
+    -fx-border-radius: 24;
+    -fx-padding: 36 32;
+    -fx-alignment: center;
+    -fx-spacing: 14;
+}
+
+.search-empty-illustration {
+    -fx-opacity: 0.92;
+}
+
+.search-empty-title {
+    -fx-text-fill: #111827;
+    -fx-font-size: 30px;
+    -fx-font-weight: 800;
+}
+
+.search-empty-copy {
+    -fx-text-fill: #4b5563;
+    -fx-font-size: 15px;
+    -fx-font-weight: 600;
+    -fx-max-width: 520;
+    -fx-text-alignment: center;
+}
+
+.search-empty-hint {
+    -fx-text-fill: #8a94a6;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-max-width: 520;
+    -fx-text-alignment: center;
+}
+
 .product-card-media {
     -fx-background-color: #d9d9d9;
     -fx-background-radius: 7 7 0 0;
@@ -478,12 +515,53 @@
 }
 
 .market-card-badge {
-    -fx-background-color: #0033ff;
-    -fx-text-fill: white;
-    -fx-font-size: 10px;
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #1f2937;
+    -fx-font-size: 11px;
     -fx-font-weight: 800;
-    -fx-padding: 5 10;
-    -fx-background-radius: 999;
+    -fx-padding: 6 12;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: #d9e2ef;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.18), 14, 0.2, 0, 4);
+    -fx-letter-spacing: 0.4px;
+}
+
+.market-card-badge-active {
+    -fx-background-color: linear-gradient(to bottom right, #e6fbef, #d4f6e2);
+    -fx-text-fill: #0f9f52;
+    -fx-border-color: #8de0af;
+}
+
+.market-card-badge-pending {
+    -fx-background-color: linear-gradient(to bottom right, #fff4d8, #ffe7a8);
+    -fx-text-fill: #b77900;
+    -fx-border-color: #f3c766;
+}
+
+.market-card-badge-finished {
+    -fx-background-color: linear-gradient(to bottom right, #eef4ff, #dce8ff);
+    -fx-text-fill: #2559d6;
+    -fx-border-color: #9ebcff;
+}
+
+.market-card-badge-deleted {
+    -fx-background-color: linear-gradient(to bottom right, #eef2f7, #dce4ee);
+    -fx-text-fill: #516273;
+    -fx-border-color: #b5c2d3;
+}
+
+.market-card-badge-rejected {
+    -fx-background-color: linear-gradient(to bottom right, #fff0ef, #ffd9d6);
+    -fx-text-fill: #cc453d;
+    -fx-border-color: #f1a4a0;
+}
+
+.market-card-badge-trending {
+    -fx-background-color: linear-gradient(to bottom right, #1142ff, #3b82ff);
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #3b82ff;
 }
 
 .market-card-favorite {

@@ -5,10 +5,14 @@ import com.team.backend.dto.ItemCreateRequest;
 import com.team.backend.dto.ItemDto;
 import com.team.backend.dto.ItemResponse;
 import com.team.backend.dto.PublicItemDetailDto;
+import com.team.backend.entity.Auction;
+import com.team.backend.entity.AuctionState;
 import com.team.backend.entity.Item;
 import com.team.backend.entity.ItemStatus;
 import com.team.backend.exception.BusinessRuleException;
 import com.team.backend.repository.AuctionRepository;
+import com.team.backend.repository.AutoBidRepository;
+import com.team.backend.repository.FavoriteRepository;
 import com.team.backend.repository.ItemRepository;
 import com.team.backend.service.ItemService;
 import org.springframework.stereotype.Service;
@@ -40,11 +44,18 @@ public class ItemServiceImpl implements ItemService {
 
     private final ItemRepository itemRepository;
     private final AuctionRepository auctionRepository;
+    private final AutoBidRepository autoBidRepository;
+    private final FavoriteRepository favoriteRepository;
     private final DateTimeFormatter iso = DateTimeFormatter.ISO_INSTANT;
 
-    public ItemServiceImpl(ItemRepository itemRepository, AuctionRepository auctionRepository) {
+    public ItemServiceImpl(ItemRepository itemRepository,
+                           AuctionRepository auctionRepository,
+                           AutoBidRepository autoBidRepository,
+                           FavoriteRepository favoriteRepository) {
         this.itemRepository = itemRepository;
         this.auctionRepository = auctionRepository;
+        this.autoBidRepository = autoBidRepository;
+        this.favoriteRepository = favoriteRepository;
     }
 
     // -------------------------
@@ -195,8 +206,15 @@ public class ItemServiceImpl implements ItemService {
         if (!sellerId.equals(item.getSellerId())) {
             throw new BusinessRuleException("Item not found for this seller");
         }
-        if (auctionRepository.existsByItemId(itemId)) {
-            throw new BusinessRuleException("Cannot delete this listing because it already has an auction.");
+        Auction auction = auctionRepository.findByItemId(itemId).orElse(null);
+        if (auction != null) {
+            Instant now = Instant.now();
+            if (!canSellerDeleteLinkedAuction(auction, now)) {
+                throw new BusinessRuleException(resolveDeleteBlockedReason(auction, now));
+            }
+
+            cleanupLinkedAuctionData(auction.getId());
+            auctionRepository.delete(auction);
         }
         itemRepository.delete(item);
     }
@@ -403,11 +421,13 @@ public class ItemServiceImpl implements ItemService {
         r.setImageUrls(itemImageUrls(item));
         r.setStartDate(formatDate(item.getStartTime()));
         r.setEndDate(formatDate(item.getEndTime()));
-        boolean deletable = !auctionRepository.existsByItemId(item.getId());
+        Auction auction = auctionRepository.findByItemId(item.getId()).orElse(null);
+        Instant now = Instant.now();
+        boolean deletable = auction == null || canSellerDeleteLinkedAuction(auction, now);
         r.setDeletable(deletable);
         r.setDeleteBlockedReason(deletable
                 ? null
-                : "This listing already has an auction, so the seller cannot delete it.");
+                : resolveDeleteBlockedReason(auction, now));
         return r;
     }
 
@@ -503,5 +523,49 @@ public class ItemServiceImpl implements ItemService {
         if (looksLikeWindowsPath || looksLikeFileUri || looksLikeUncPath) {
             throw new BusinessRuleException("Image references must be uploaded URLs, not local file paths");
         }
+    }
+
+    private boolean canSellerDeleteLinkedAuction(Auction auction, Instant now) {
+        if (auction == null) {
+            return true;
+        }
+
+        if (auction.getState() != AuctionState.DRAFT && auction.getState() != AuctionState.SCHEDULED) {
+            return false;
+        }
+
+        return auction.getStartTime() == null || now.isBefore(auction.getStartTime());
+    }
+
+    private String resolveDeleteBlockedReason(Auction auction, Instant now) {
+        if (auction == null) {
+            return null;
+        }
+
+        if (canSellerDeleteLinkedAuction(auction, now)) {
+            return null;
+        }
+
+        if (auction.getState() == AuctionState.ACTIVE) {
+            return "This listing cannot be deleted because the auction is already live.";
+        }
+
+        if (auction.getState() == AuctionState.FINISHED
+                || auction.getState() == AuctionState.CANCELLED
+                || auction.getState() == AuctionState.REJECTED
+                || auction.getState() == AuctionState.DELETED) {
+            return "This listing cannot be deleted because the auction has already ended.";
+        }
+
+        return "This listing can only be deleted before the auction start time.";
+    }
+
+    private void cleanupLinkedAuctionData(UUID auctionId) {
+        if (auctionId == null) {
+            return;
+        }
+
+        autoBidRepository.deleteByAuctionId(auctionId);
+        favoriteRepository.deleteByAuctionId(auctionId);
     }
 }

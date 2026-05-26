@@ -7,6 +7,8 @@ import com.team.backend.entity.Auction;
 import com.team.backend.entity.AuctionState;
 import com.team.backend.exception.BusinessRuleException;
 import com.team.backend.repository.AuctionRepository;
+import com.team.backend.repository.AutoBidRepository;
+import com.team.backend.repository.FavoriteRepository;
 import com.team.backend.repository.ItemRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,9 +31,15 @@ class ItemServiceImplContractTest {
     @Autowired
     private AuctionRepository auctionRepository;
 
+    @Autowired
+    private AutoBidRepository autoBidRepository;
+
+    @Autowired
+    private FavoriteRepository favoriteRepository;
+
     @Test
     void createForSeller_keepsPrimaryImageFirstAndReturnsMultiImageContract() {
-        ItemServiceImpl itemService = new ItemServiceImpl(itemRepository, auctionRepository);
+        ItemServiceImpl itemService = new ItemServiceImpl(itemRepository, auctionRepository, autoBidRepository, favoriteRepository);
         ItemCreateRequest request = baseRequest();
         request.setImagePath("/api/uploads/images/main.png");
         request.setImageUrls(List.of(
@@ -52,7 +60,7 @@ class ItemServiceImplContractTest {
 
     @Test
     void createForSeller_rejectsNegativeQuantityAndLocalImagePath() {
-        ItemServiceImpl itemService = new ItemServiceImpl(itemRepository, auctionRepository);
+        ItemServiceImpl itemService = new ItemServiceImpl(itemRepository, auctionRepository, autoBidRepository, favoriteRepository);
         ItemCreateRequest quantityRequest = baseRequest();
         quantityRequest.setQuantity(-1);
 
@@ -68,7 +76,7 @@ class ItemServiceImplContractTest {
 
     @Test
     void publicItemDetail_contractDoesNotExposeReservePrice() {
-        ItemServiceImpl itemService = new ItemServiceImpl(itemRepository, auctionRepository);
+        ItemServiceImpl itemService = new ItemServiceImpl(itemRepository, auctionRepository, autoBidRepository, favoriteRepository);
         ItemCreateRequest request = baseRequest();
         request.setReservePrice(900.0);
 
@@ -83,8 +91,8 @@ class ItemServiceImplContractTest {
     }
 
     @Test
-    void deleteForSeller_rejectsItemsThatAlreadyHaveAnAuction() {
-        ItemServiceImpl itemService = new ItemServiceImpl(itemRepository, auctionRepository);
+    void deleteForSeller_allowsScheduledAuctionBeforeStartTime() {
+        ItemServiceImpl itemService = new ItemServiceImpl(itemRepository, auctionRepository, autoBidRepository, favoriteRepository);
         UUID sellerId = UUID.randomUUID();
         ItemResponse saved = itemService.createForSeller(sellerId, baseRequest());
 
@@ -94,18 +102,44 @@ class ItemServiceImplContractTest {
         auction.setDescription("Auction for camera");
         auction.setImageUrl(saved.getImagePath());
         auction.setCategory(saved.getCategory());
-        auction.setStartTime(Instant.now());
-        auction.setEndTime(Instant.now().plusSeconds(3600));
+        auction.setStartTime(Instant.now().plusSeconds(3600));
+        auction.setEndTime(Instant.now().plusSeconds(7200));
         auction.setCurrentPrice(saved.getStartingPrice());
         auction.setReservePrice(saved.getReservePrice());
         auction.setSellerId(sellerId);
         auction.setState(AuctionState.SCHEDULED);
         auctionRepository.save(auction);
 
+        itemService.deleteForSellerResponse(saved.getId(), sellerId);
+
+        assertTrue(itemRepository.findById(saved.getId()).isEmpty());
+        assertTrue(auctionRepository.findByItemId(saved.getId()).isEmpty());
+    }
+
+    @Test
+    void deleteForSeller_rejectsAuctionThatIsAlreadyLive() {
+        ItemServiceImpl itemService = new ItemServiceImpl(itemRepository, auctionRepository, autoBidRepository, favoriteRepository);
+        UUID sellerId = UUID.randomUUID();
+        ItemResponse saved = itemService.createForSeller(sellerId, baseRequest());
+
+        Auction auction = new Auction();
+        auction.setItemId(saved.getId());
+        auction.setTitle("Camera Auction");
+        auction.setDescription("Auction for camera");
+        auction.setImageUrl(saved.getImagePath());
+        auction.setCategory(saved.getCategory());
+        auction.setStartTime(Instant.now().minusSeconds(60));
+        auction.setEndTime(Instant.now().plusSeconds(3600));
+        auction.setCurrentPrice(saved.getStartingPrice());
+        auction.setReservePrice(saved.getReservePrice());
+        auction.setSellerId(sellerId);
+        auction.setState(AuctionState.ACTIVE);
+        auctionRepository.save(auction);
+
         BusinessRuleException exception = assertThrows(BusinessRuleException.class,
                 () -> itemService.deleteForSellerResponse(saved.getId(), sellerId));
 
-        assertEquals("Cannot delete this listing because it already has an auction.", exception.getMessage());
+        assertEquals("This listing cannot be deleted because the auction is already live.", exception.getMessage());
     }
 
     private ItemCreateRequest baseRequest() {
