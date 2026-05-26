@@ -57,9 +57,9 @@ class AutoBidEdgeCasesTest {
         auction.setCurrentPrice(100.0);
         auction.setLeaderId(null);
 
-        AutoBid a1 = new AutoBid(auctionId, UUID.randomUUID(), 150.0);
+        AutoBid a1 = new AutoBid(auctionId, UUID.randomUUID(), 150.0, 1.0);
         a1.setCreatedAt(Instant.now().minusSeconds(60)); // đăng ký sớm hơn
-        AutoBid a2 = new AutoBid(auctionId, UUID.randomUUID(), 150.0);
+        AutoBid a2 = new AutoBid(auctionId, UUID.randomUUID(), 150.0, 1.0);
         a2.setCreatedAt(Instant.now().minusSeconds(30)); // đăng ký sau
 
         when(auctionRepository.findByIdForUpdate(auctionId)).thenReturn(Optional.of(auction));
@@ -88,9 +88,9 @@ class AutoBidEdgeCasesTest {
         auction.setLeaderId(null);
 
         // two auto-bidders with different max amounts
-        AutoBid high = new AutoBid(auctionId, UUID.randomUUID(), 200.0);
-        AutoBid mid = new AutoBid(auctionId, UUID.randomUUID(), 150.0);
-        AutoBid low = new AutoBid(auctionId, UUID.randomUUID(), 120.0);
+        AutoBid high = new AutoBid(auctionId, UUID.randomUUID(), 200.0, 1.0);
+        AutoBid mid = new AutoBid(auctionId, UUID.randomUUID(), 150.0, 1.0);
+        AutoBid low = new AutoBid(auctionId, UUID.randomUUID(), 120.0, 1.0);
 
         when(auctionRepository.findByIdForUpdate(auctionId)).thenReturn(Optional.of(auction));
         when(auctionRepository.save(any(Auction.class))).thenAnswer(i -> i.getArgument(0));

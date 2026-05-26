@@ -26,6 +26,6 @@ public class BidSuccessDialogController {
     }
 
     private String formatMoney(double value) {
-        return "€ " + String.format("%,.0f", value);
+        return "USD " + String.format("%,.0f", value);
     }
 }

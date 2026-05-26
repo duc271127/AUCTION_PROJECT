@@ -43,6 +43,8 @@
                             </VBox>
 
                             <Label fx:id="connectionStatusLabel" styleClass="connection-badge" />
+
+                            <Button onAction="#handleLogout" styleClass="live-logout-button" text="Logout" />
                         </HBox>
 
                         <HBox spacing="12.0" styleClass="live-summary-row">
@@ -74,11 +76,11 @@
                               styleClass="live-auto-bid-banner">
 
                             <Label fx:id="autoBidBannerTitleLabel"
-                                   text="⚡ Auto-Bid Active"
+                                   text="Auto-Bid Active"
                                    styleClass="live-auto-bid-banner-title"/>
 
                             <Label fx:id="autoBidBannerSubtitleLabel"
-                                   text="Max: € 0"
+                                   text="Max: USD 0"
                                    styleClass="live-auto-bid-banner-subtitle"/>
                         </VBox>
 
@@ -117,7 +119,7 @@
                                     prefHeight="37.0"
                                     prefWidth="872.0"
                                     styleClass="live-auto-bid-button"
-                                    text="⚡ Open Auto-Bid" />
+                                    text="Open Auto-Bid" />
 
                             <Label fx:id="autoBidStatusLabel"
                                    styleClass="auto-bid-status"
@@ -164,7 +166,7 @@
               AnchorPane.bottomAnchor="32.0">
 
             <HBox alignment="CENTER_LEFT" spacing="10.0">
-                <Label text="↗" styleClass="live-toast-icon"/>
+                <Label text="+" styleClass="live-toast-icon"/>
                 <VBox spacing="2.0">
                     <Label fx:id="toastTitleLabel"
                            text="New bid placed!"
@@ -176,7 +178,7 @@
             </HBox>
 
             <Label fx:id="toastPriceLabel"
-                   text="€ 0"
+                   text="USD 0"
                    styleClass="live-toast-price"/>
         </VBox>
     </children>

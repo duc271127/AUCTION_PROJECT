@@ -206,11 +206,11 @@ public class WalletController {
 
     private String formatMoney(BigDecimal amount) {
         if (amount == null) {
-            return "€ 0";
+            return "USD 0";
         }
 
         BigDecimal rounded = amount.setScale(0, RoundingMode.HALF_UP);
-        return "€ " + String.format("%,.0f", rounded.doubleValue());
+        return "USD " + String.format("%,.0f", rounded.doubleValue());
     }
 
     private void showError(String message) {

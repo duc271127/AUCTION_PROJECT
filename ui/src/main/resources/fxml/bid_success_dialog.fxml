@@ -18,7 +18,7 @@
     <HBox alignment="CENTER_LEFT" spacing="12" styleClass="modal-header">
         <Label text="Place your bid" styleClass="modal-title"/>
         <Region HBox.hgrow="ALWAYS"/>
-        <Button text="×"
+        <Button text="X"
                 onAction="#handleClose"
                 focusTraversable="false"
                 styleClass="modal-close-button"/>

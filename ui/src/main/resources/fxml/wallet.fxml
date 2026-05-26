@@ -17,15 +17,15 @@
            styleClass="wallet-root">
 
     <VBox fx:id="walletCard"
-          prefWidth="430"
-          maxWidth="430"
+          prefWidth="448"
+          maxWidth="448"
           spacing="0"
           styleClass="wallet-modal-card">
 
         <HBox alignment="CENTER_LEFT" spacing="12" styleClass="wallet-modal-header">
-            <Label text="▣ Wallet" styleClass="wallet-modal-title"/>
+            <Label text="Wallet" styleClass="wallet-modal-title"/>
             <Region HBox.hgrow="ALWAYS"/>
-            <Button text="×"
+            <Button text="X"
                     focusTraversable="false"
                     onAction="#handleBack"
                     styleClass="modal-close-button"/>
@@ -39,20 +39,20 @@
             <VBox spacing="6" styleClass="wallet-balance-card">
                 <Label text="CURRENT BALANCE" styleClass="wallet-small-label"/>
                 <Label fx:id="walletBalanceLabel"
-                       text="€ 0"
+                       text="USD 0"
                        styleClass="wallet-balance-value"/>
             </VBox>
 
             <HBox spacing="10">
                 <Button fx:id="depositModeButton"
-                        text="↙ Deposit"
+                        text="Deposit"
                         onAction="#handleSelectDeposit"
                         maxWidth="Infinity"
                         HBox.hgrow="ALWAYS"
                         styleClass="segment-button-active"/>
 
                 <Button fx:id="withdrawModeButton"
-                        text="↗ Withdraw"
+                        text="Withdraw"
                         onAction="#handleSelectWithdraw"
                         maxWidth="Infinity"
                         HBox.hgrow="ALWAYS"
@@ -65,7 +65,7 @@
                        styleClass="field-label"/>
 
                 <TextField fx:id="amountField"
-                           promptText="€ 0.00"
+                           promptText="USD 0.00"
                            prefHeight="46"/>
             </VBox>
 
@@ -105,8 +105,8 @@
             </padding>
 
             <StackPane styleClass="wallet-success-circle">
-                <Label text="✓"
-                       style="-fx-text-fill:#16a34a;-fx-font-size:34px;-fx-font-weight:800;"/>
+                <Label text="OK"
+                       style="-fx-text-fill:#16a34a;-fx-font-size:18px;-fx-font-weight:800;"/>
             </StackPane>
 
             <Label fx:id="successTitleLabel"
@@ -114,7 +114,7 @@
                    styleClass="wallet-success-title"/>
 
             <Label fx:id="successDescriptionLabel"
-                   text="€ 0 has been added to your wallet."
+                   text="USD 0 has been added to your wallet."
                    wrapText="true"
                    styleClass="muted-text"/>
 

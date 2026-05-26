@@ -8,16 +8,13 @@ import com.auction.client.service.AuctionApiService;
 import com.auction.client.service.FavoriteApiService;
 import com.auction.client.service.ItemApiService;
 import com.auction.client.util.MockData;
+import com.auction.client.ui.AuctionCardData;
+import com.auction.client.ui.AuctionCardViewFactory;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.Button;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.layout.StackPane;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -25,7 +22,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import javafx.scene.layout.HBox;
 
 public class TrendingController {
 
@@ -43,6 +39,7 @@ public class TrendingController {
     private final AuctionApiService auctionApiService = new AuctionApiService();
     private final FavoriteApiService favoriteApiService = new FavoriteApiService();
     private final ItemApiService itemApiService = new ItemApiService();
+    private final AuctionCardViewFactory cardFactory = new AuctionCardViewFactory(itemApiService);
 
     private final List<TrendingCardItem> trendingItems = new ArrayList<>();
     private final Set<String> favoriteAuctionIds = new LinkedHashSet<>();
@@ -127,7 +124,7 @@ public class TrendingController {
 
         String seller = firstNonBlank(response.getSellerName(), "Verified Seller");
 
-        String currentBid = "€ " + String.format("%,.0f", response.getCurrentPrice());
+        String currentBid = "USD " + String.format("%,.0f", response.getCurrentPrice());
 
         String ending = formatEndTime(response.getEndTime());
 
@@ -165,7 +162,7 @@ public class TrendingController {
                     item.getName(),
                     item.getImagePath(),
                     "Verified Seller",
-                    item.getCurrentBid().replace("$", "€ "),
+                    item.getCurrentBid().replace("$", "USD "),
                     item.getTimeLeft(),
                     1200 + rank * 150,
                     234 + rank * 12,
@@ -199,75 +196,27 @@ public class TrendingController {
     }
 
     private VBox createTrendingCard(TrendingCardItem item, int rank) {
-        ImageView imageView = new ImageView();
-        imageView.setFitWidth(320);
-        imageView.setFitHeight(250);
-        imageView.setPreserveRatio(false);
-        imageView.getStyleClass().add("trending-card-image");
-        bindCardImage(imageView, item.imageUrl());
+        AuctionCardData cardData = new AuctionCardData(
+                item.id(),
+                item.sellerName().toUpperCase(Locale.ROOT),
+                item.title(),
+                item.currentBid(),
+                "Ending: " + item.ending(),
+                formatCompact(item.viewCount()) + " views / " + formatCompact(item.saveCount()) + " saves",
+                item.imageUrl(),
+                "#" + rank + " Trending",
+                "View Details",
+                String.valueOf(item.saveCount())
+        );
 
-        Label rankBadge = new Label("#" + rank + " Trending");
-        rankBadge.getStyleClass().add("trending-rank-badge");
-
-        Button favoriteButton = new Button(favoriteAuctionIds.contains(item.id()) ? "\u2665" : "\u2661");
-        favoriteButton.getStyleClass().add("trending-heart-button");
-        favoriteButton.setFocusTraversable(false);
-        favoriteButton.setOnAction(event -> toggleFavorite(item, favoriteButton));
-
-        StackPane media = new StackPane(imageView, rankBadge, favoriteButton);
-        StackPane.setAlignment(rankBadge, Pos.TOP_LEFT);
-        StackPane.setAlignment(favoriteButton, Pos.TOP_RIGHT);
-        StackPane.setMargin(rankBadge, new Insets(10, 0, 0, 10));
-        StackPane.setMargin(favoriteButton, new Insets(10, 10, 0, 0));
-
-        Label sellerLabel = new Label(item.sellerName().toUpperCase(Locale.ROOT));
-        sellerLabel.getStyleClass().add("trending-seller");
-
-        Label titleLabel = new Label(item.title());
-        titleLabel.setWrapText(true);
-        titleLabel.getStyleClass().add("trending-card-title");
-
-        Label bidLabel = new Label("Current Bid: " + item.currentBid());
-        bidLabel.getStyleClass().add("trending-card-meta");
-
-        Label endingLabel = new Label("Ending: " + item.ending());
-        endingLabel.getStyleClass().add("trending-card-meta");
-
-        Label viewsLabel = new Label(formatCompact(item.viewCount()) + " views");
-        viewsLabel.getStyleClass().add("trending-card-meta");
-
-        Label savesLabel = new Label(formatCompact(item.saveCount()) + " saves");
-        savesLabel.getStyleClass().add("trending-card-meta");
-
-        HBox metaRow = new HBox(12, viewsLabel, savesLabel);
-
-        Button viewButton = new Button("View Details");
-        viewButton.setMaxWidth(Double.MAX_VALUE);
-        viewButton.getStyleClass().add("ghost-button");
-        viewButton.setOnAction(event -> openDetail(item));
-
-        VBox card = new VBox(8, media, sellerLabel, titleLabel, bidLabel, endingLabel, metaRow, viewButton);
-        card.getStyleClass().add("trending-card");
-        card.setPrefWidth(320);
-        card.setMaxWidth(320);
-
-        return card;
-    }
-
-    private void bindCardImage(ImageView imageView, String imagePath) {
-        try {
-            if (imagePath != null &&
-                    (imagePath.startsWith("http://")
-                            || imagePath.startsWith("https://")
-                            || imagePath.startsWith("/uploads")
-                            || imagePath.startsWith("uploads/"))) {
-                imageView.setImage(new Image(itemApiService.toAbsoluteImageUrl(imagePath), true));
-            } else {
-                imageView.setImage(new Image(getClass().getResourceAsStream(imagePath)));
-            }
-        } catch (Exception e) {
-            imageView.setImage(null);
-        }
+        return cardFactory.createCard(
+                cardData,
+                320,
+                250,
+                favoriteAuctionIds.contains(item.id()),
+                selected -> toggleFavorite(item, selected),
+                () -> openDetail(item)
+        );
     }
 
     private void openDetail(TrendingCardItem item) {
@@ -283,22 +232,18 @@ public class TrendingController {
         SceneManager.goToProductDetail();
     }
 
-    private void toggleFavorite(TrendingCardItem item, Button button) {
-        boolean wasFavorite = favoriteAuctionIds.contains(item.id());
-
-        if (wasFavorite) {
-            favoriteAuctionIds.remove(item.id());
-            button.setText("\u2661");
-        } else {
+    private void toggleFavorite(TrendingCardItem item, boolean selected) {
+        if (selected) {
             favoriteAuctionIds.add(item.id());
-            button.setText("\u2665");
+        } else {
+            favoriteAuctionIds.remove(item.id());
         }
 
         try {
-            if (wasFavorite) {
-                favoriteApiService.removeFavorite(item.id());
-            } else {
+            if (selected) {
                 favoriteApiService.addFavorite(item.id());
+            } else {
+                favoriteApiService.removeFavorite(item.id());
             }
         } catch (Exception ignored) {
         }

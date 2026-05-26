@@ -174,8 +174,9 @@ public class BidTransactionalService {
             if (autoBid.getBidderId().equals(currentLeader)) {
                 continue;
             }
+            double autoBidStep = resolveAutoBidStep(autoBid, minIncrement);
             if (best == null) {
-                if (autoBid.getMaxAmount() >= auction.getCurrentPrice() + minIncrement) {
+                if (autoBid.getMaxAmount() >= auction.getCurrentPrice() + autoBidStep) {
                     best = autoBid;
                 }
             } else {
@@ -191,7 +192,8 @@ public class BidTransactionalService {
         double secondLimit = secondBestMax == null
                 ? auction.getCurrentPrice()
                 : Math.max(auction.getCurrentPrice(), secondBestMax);
-        double autoAmount = Math.min(best.getMaxAmount(), secondLimit + minIncrement);
+        double bestStep = resolveAutoBidStep(best, minIncrement);
+        double autoAmount = Math.min(best.getMaxAmount(), secondLimit + bestStep);
 
         if (autoAmount <= auction.getCurrentPrice()) {
             return false;
@@ -223,6 +225,14 @@ public class BidTransactionalService {
         }
 
         return true;
+    }
+
+    private double resolveAutoBidStep(AutoBid autoBid, double minIncrement) {
+        if (autoBid == null) {
+            return minIncrement;
+        }
+
+        return Math.max(minIncrement, autoBid.resolveBidStep(minIncrement));
     }
 
     private void ensureSufficientBalance(UUID bidderId, double amount) {

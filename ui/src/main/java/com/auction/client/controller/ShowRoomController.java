@@ -8,14 +8,12 @@ import com.auction.client.service.AuctionApiService;
 import com.auction.client.service.FavoriteApiService;
 import com.auction.client.service.ItemApiService;
 import com.auction.client.session.SessionManager;
+import com.auction.client.ui.AuctionCardData;
+import com.auction.client.ui.AuctionCardViewFactory;
 import com.auction.client.util.MockData;
 import javafx.fxml.FXML;
-import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.layout.StackPane;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
 
@@ -25,8 +23,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import javafx.geometry.Pos;
-
 
 public class ShowRoomController {
 
@@ -42,6 +38,7 @@ public class ShowRoomController {
     private final AuctionApiService auctionApiService = new AuctionApiService();
     private final FavoriteApiService favoriteApiService = new FavoriteApiService();
     private final ItemApiService itemApiService = new ItemApiService();
+    private final AuctionCardViewFactory cardFactory = new AuctionCardViewFactory(itemApiService);
     private final List<AuctionItem> items = new ArrayList<>();
     private final Set<String> favoriteAuctionIds = new LinkedHashSet<>();
     private ForYouFilter selectedFilter = ForYouFilter.ALL;
@@ -104,7 +101,7 @@ public class ShowRoomController {
         String imagePath = response.getImageUrl() == null || response.getImageUrl().isBlank()
                 ? getDefaultImagePath(index)
                 : response.getImageUrl();
-        String currentBid = "$" + String.format("%,.0f", response.getCurrentPrice());
+        String currentBid = "USD " + String.format("%,.0f", response.getCurrentPrice());
         String timeInfo = formatEndTime(response.getEndTime());
         String status = response.getState() == null ? "UNKNOWN" : response.getState();
         String idValue = response.getId() != null ? response.getId().toString() : "";
@@ -128,18 +125,6 @@ public class ShowRoomController {
             return "No end time";
         }
         return endTime.length() >= 16 ? endTime.substring(0, 16).replace("T", " ") : endTime;
-    }
-
-    private void bindCardImage(ImageView imageView, String imagePath) {
-        try {
-            if (imagePath != null && (imagePath.startsWith("http://") || imagePath.startsWith("https://") || imagePath.startsWith("/uploads") || imagePath.startsWith("uploads/"))) {
-                imageView.setImage(new Image(itemApiService.toAbsoluteImageUrl(imagePath), true));
-            } else {
-                imageView.setImage(new Image(getClass().getResourceAsStream(imagePath)));
-            }
-        } catch (Exception e) {
-            imageView.setImage(null);
-        }
     }
 
     @FXML
@@ -230,46 +215,27 @@ public class ShowRoomController {
     }
 
     private VBox createAuctionCard(AuctionItem item) {
-        ImageView imageView = new ImageView();
-        imageView.setFitWidth(320);
-        imageView.setFitHeight(230);
-        imageView.setPreserveRatio(false);
-        imageView.getStyleClass().add("auction-card-image");
-        bindCardImage(imageView, item.getImagePath());
+        AuctionCardData cardData = new AuctionCardData(
+                item.getId(),
+                item.getStatus(),
+                item.getName(),
+                item.getCurrentBid(),
+                item.getTimeLeft(),
+                "Personalized for you",
+                item.getImagePath(),
+                null,
+                "View Details",
+                String.valueOf(Math.max(36, favoriteAuctionIds.size()))
+        );
 
-        Button favoriteButton = new Button();
-        favoriteButton.getStyleClass().add("favorite-floating-button");
-        favoriteButton.setFocusTraversable(false);
-        updateFavoriteButton(favoriteButton, item);
-        favoriteButton.setOnAction(event -> toggleFavorite(item, favoriteButton));
-
-        StackPane media = new StackPane(imageView, favoriteButton);
-        StackPane.setAlignment(favoriteButton, Pos.TOP_RIGHT);
-        StackPane.setMargin(favoriteButton, new Insets(8, 8, 0, 0));
-
-        Label statusLabel = new Label(item.getStatus());
-        statusLabel.getStyleClass().add("auction-seller-label");
-
-        Label titleLabel = new Label(item.getName());
-        titleLabel.getStyleClass().add("auction-card-title");
-
-        Label bidLabel = new Label("Current Bid: " + item.getCurrentBid());
-        bidLabel.getStyleClass().add("auction-price-label");
-
-        Label endLabel = new Label("Ends: " + item.getTimeLeft());
-        endLabel.getStyleClass().add("auction-ending-label");
-
-        Button viewButton = new Button("View Details");
-        viewButton.setMaxWidth(Double.MAX_VALUE);
-        viewButton.getStyleClass().add("ghost-button");
-        viewButton.setOnAction(event -> openDetail(item));
-
-        VBox card = new VBox(8, media, statusLabel, titleLabel, bidLabel, endLabel, viewButton);
-        card.getStyleClass().add("for-you-auction-card");
-        card.setPrefWidth(320);
-        card.setMaxWidth(320);
-
-        return card;
+        return cardFactory.createCard(
+                cardData,
+                320,
+                230,
+                favoriteAuctionIds.contains(item.getId()),
+                selected -> toggleFavorite(item, selected),
+                () -> openDetail(item)
+        );
     }
 
     private VBox createEmptyState() {
@@ -289,25 +255,22 @@ public class ShowRoomController {
         SceneManager.goToProductDetail();
     }
 
-    private void toggleFavorite(AuctionItem item, Button button) {
-        boolean wasFavorite = favoriteAuctionIds.contains(item.getId());
-
-        if (wasFavorite) {
-            favoriteAuctionIds.remove(item.getId());
-        } else {
+    private void toggleFavorite(AuctionItem item, boolean selected) {
+        if (selected) {
             favoriteAuctionIds.add(item.getId());
+        } else {
+            favoriteAuctionIds.remove(item.getId());
         }
 
         try {
-            if (wasFavorite) {
-                favoriteApiService.removeFavorite(item.getId());
-            } else {
+            if (selected) {
                 favoriteApiService.addFavorite(item.getId());
+            } else {
+                favoriteApiService.removeFavorite(item.getId());
             }
         } catch (Exception ignored) {
         }
 
-        updateFavoriteButton(button, item);
         updateWishlistUi();
     }
 
@@ -373,15 +336,6 @@ public class ShowRoomController {
 
         button.getStyleClass().removeAll("filter-chip", "filter-chip-active");
         button.getStyleClass().add(active ? "filter-chip-active" : "filter-chip");
-    }
-
-    private void updateFavoriteButton(Button button, AuctionItem item) {
-        boolean selected = favoriteAuctionIds.contains(item.getId());
-        button.setText(selected ? "\u2665" : "\u2661");
-        button.getStyleClass().remove("favorite-button-active");
-        if (selected) {
-            button.getStyleClass().add("favorite-button-active");
-        }
     }
 
     private void updateWishlistUi() {

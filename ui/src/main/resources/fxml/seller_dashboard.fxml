@@ -66,7 +66,7 @@
                                 <String fx:value="seller-kpi-highlight" />
                             </styleClass>
                             <Label styleClass="seller-kpi-label-highlight" text="TOTAL REVENUE" />
-                            <Label fx:id="totalRevenueLabel" styleClass="seller-kpi-number-highlight" text="€0" />
+                            <Label fx:id="totalRevenueLabel" styleClass="seller-kpi-number-highlight" text="USD 0" />
                         </VBox>
 
                         <VBox spacing="7.0" HBox.hgrow="ALWAYS">
@@ -75,7 +75,7 @@
                                 <String fx:value="seller-kpi-highlight" />
                             </styleClass>
                             <Label styleClass="seller-kpi-label-highlight" text="AVG PRICE" />
-                            <Label fx:id="avgPriceLabel" styleClass="seller-kpi-number-highlight" text="€0" />
+                            <Label fx:id="avgPriceLabel" styleClass="seller-kpi-number-highlight" text="USD 0" />
                         </VBox>
 
                         <VBox managed="false" spacing="7.0" visible="false">
@@ -83,7 +83,7 @@
                                 <String fx:value="seller-kpi-card" />
                                 <String fx:value="seller-hidden-kpi" />
                             </styleClass>
-                            <Label fx:id="walletBalanceLabel" text="€0" />
+                            <Label fx:id="walletBalanceLabel" text="USD 0" />
                             <Label fx:id="pendingCountLabel" text="0" />
                             <Label fx:id="rejectedCountLabel" text="0" />
                         </VBox>

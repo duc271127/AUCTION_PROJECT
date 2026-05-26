@@ -49,6 +49,11 @@ public class AuthController {
     }
 
     @FXML
+    private void handleBack() {
+        SceneManager.goToHome();
+    }
+
+    @FXML
     private void handleLogin() {
         hideLoginError();
 

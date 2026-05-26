@@ -149,6 +149,15 @@ public class AuctionApiService {
         }
     }
 
+    public List<AutoBidResponse> listMyAutoBids() {
+        try {
+            String responseBody = apiClient.get("/api/auctions/me/auto-bids");
+            return objectMapper.readValue(responseBody, new TypeReference<List<AutoBidResponse>>() {});
+        } catch (Exception e) {
+            throw new ApiException("Load my auto-bids failed: " + e.getMessage(), e);
+        }
+    }
+
     public List<BidResponse> getBidHistory(String auctionId) {
         try {
             String responseBody = apiClient.get("/api/auctions/" + auctionId + "/bids");
@@ -163,6 +172,15 @@ public class AuctionApiService {
             apiClient.post("/api/auctions/" + auctionId + "/view", "");
         } catch (Exception e) {
             throw new ApiException("Track auction view failed: " + e.getMessage(), e);
+        }
+    }
+
+    public double getMinIncrement() {
+        try {
+            String responseBody = apiClient.get("/api/auctions/config/min-increment");
+            return objectMapper.readValue(responseBody, Double.class);
+        } catch (Exception e) {
+            throw new ApiException("Load minimum increment failed: " + e.getMessage(), e);
         }
     }
 

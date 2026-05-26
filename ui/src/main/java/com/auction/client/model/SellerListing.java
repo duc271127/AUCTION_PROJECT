@@ -17,6 +17,8 @@ public class SellerListing {
     private List<String> imageUrls;
     private String sku;
     private Integer quantity;
+    private boolean deletable = true;
+    private String deleteBlockedReason;
 
     public SellerListing() {
     }
@@ -24,7 +26,7 @@ public class SellerListing {
     public SellerListing(UUID id, UUID sellerId, String productName, String description, String category,
                          String startingPrice, String reservePrice,
                          String status, String startDate, String endDate, String imagePath, List<String> imageUrls,
-                         String sku, Integer quantity) {
+                         String sku, Integer quantity, boolean deletable, String deleteBlockedReason) {
         this.id = id;
         this.sellerId = sellerId;
         this.productName = productName;
@@ -39,6 +41,8 @@ public class SellerListing {
         this.imageUrls = imageUrls;
         this.sku = sku;
         this.quantity = quantity;
+        this.deletable = deletable;
+        this.deleteBlockedReason = deleteBlockedReason;
     }
 
     public UUID getId() {
@@ -136,4 +140,10 @@ public class SellerListing {
 
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
+
+    public boolean isDeletable() { return deletable; }
+    public void setDeletable(boolean deletable) { this.deletable = deletable; }
+
+    public String getDeleteBlockedReason() { return deleteBlockedReason; }
+    public void setDeleteBlockedReason(String deleteBlockedReason) { this.deleteBlockedReason = deleteBlockedReason; }
 }

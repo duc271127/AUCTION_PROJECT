@@ -99,9 +99,11 @@
                             hbarPolicy="NEVER"
                             styleClass="for-you-scroll">
                     <content>
-                        <VBox spacing="24.0" styleClass="for-you-page">
+                        <StackPane styleClass="page-shell">
+                            <children>
+                        <VBox spacing="24.0" styleClass="for-you-page page-content">
                             <padding>
-                                <Insets top="32" right="36" bottom="32" left="36"/>
+                                <Insets top="28" right="24" bottom="36" left="24"/>
                             </padding>
 
                             <VBox spacing="8.0">
@@ -173,6 +175,8 @@
                                       prefTileWidth="320.0"
                                       styleClass="for-you-auction-grid"/>
                         </VBox>
+                            </children>
+                        </StackPane>
                     </content>
                 </ScrollPane>
             </center>

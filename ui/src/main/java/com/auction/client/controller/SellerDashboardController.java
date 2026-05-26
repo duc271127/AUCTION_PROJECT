@@ -417,6 +417,11 @@ public class SellerDashboardController {
             return;
         }
 
+        if (!selectedListing.isDeletable()) {
+            showError(resolveDeleteBlockedReason(selectedListing));
+            return;
+        }
+
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Delete listing");
         alert.setHeaderText(null);
@@ -607,7 +612,9 @@ public class SellerDashboardController {
                 item.getImagePath(),
                 item.getImageUrls(),
                 item.getSku(),
-                item.getQuantity()
+                item.getQuantity(),
+                item.isDeletable(),
+                item.getDeleteBlockedReason()
         );
     }
 
@@ -745,6 +752,10 @@ public class SellerDashboardController {
 
         Button delete = new Button("Delete");
         delete.getStyleClass().add("seller-mini-danger-button");
+        delete.setDisable(!listing.isDeletable());
+        if (!listing.isDeletable()) {
+            delete.setTooltip(new Tooltip(resolveDeleteBlockedReason(listing)));
+        }
         delete.setOnAction(event -> {
             selectListing(listing);
             handleDeleteListing();
@@ -784,18 +795,18 @@ public class SellerDashboardController {
     }
 
     private String formatMoney(double value) {
-        return String.format("€ %,.0f", value);
+        return String.format("USD %,.0f", value);
     }
 
     private String formatMoneyValue(String value) {
         if (value == null || value.isBlank()) {
-            return "€ 0";
+            return "USD 0";
         }
 
         try {
             return formatMoney(Double.parseDouble(value));
         } catch (NumberFormatException e) {
-            return "€ " + value;
+            return "USD " + value;
         }
     }
 
@@ -831,6 +842,10 @@ public class SellerDashboardController {
 
         Button delete = new Button("Delete");
         delete.getStyleClass().add("seller-row-danger");
+        delete.setDisable(!listing.isDeletable());
+        if (!listing.isDeletable()) {
+            delete.setTooltip(new Tooltip(resolveDeleteBlockedReason(listing)));
+        }
         delete.setOnAction(event -> {
             selectListing(listing);
             handleDeleteListing();
@@ -857,6 +872,19 @@ public class SellerDashboardController {
         if (listingTable == null || listingTable.getSelectionModel().getSelectedItem() == null) {
             selectedListing = listing;
         }
+    }
+
+    private String resolveDeleteBlockedReason(SellerListing listing) {
+        if (listing == null) {
+            return "This listing cannot be deleted.";
+        }
+
+        String reason = listing.getDeleteBlockedReason();
+        if (reason != null && !reason.isBlank()) {
+            return reason;
+        }
+
+        return "This listing already has an auction, so the seller cannot delete it.";
     }
 
     private void openItemDialog(SellerListing listing) {

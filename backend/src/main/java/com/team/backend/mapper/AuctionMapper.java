@@ -2,6 +2,7 @@ package com.team.backend.mapper;
 
 import com.team.backend.dto.AuctionDetailResponse;
 import com.team.backend.entity.Auction;
+import com.team.backend.util.AuctionImageResolver;
 
 public final class AuctionMapper {
 
@@ -18,7 +19,7 @@ public final class AuctionMapper {
         response.itemId = auction.getItemId();
         response.title = auction.getTitle();
         response.description = auction.getDescription();
-        response.imageUrl = auction.getImageUrl();
+        response.imageUrl = AuctionImageResolver.resolvePrimaryImage(auction);
         response.category = auction.getCategory();
         response.sellerId = auction.getSellerId() != null ? auction.getSellerId() : auction.getCreatedBy();
         response.sellerName = sellerName;

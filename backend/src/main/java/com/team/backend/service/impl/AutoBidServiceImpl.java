@@ -41,12 +41,15 @@ public class AutoBidServiceImpl implements AutoBidService {
 
     @Override
     @Transactional
-    public AutoBid setAutoBid(UUID auctionId, UUID bidderId, double maxAmount) {
+    public AutoBid setAutoBid(UUID auctionId, UUID bidderId, double maxAmount, double bidStep) {
         if (auctionId == null || bidderId == null) {
             throw new InvalidBidException("auctionId and bidderId are required");
         }
         if (maxAmount <= 0.0) {
             throw new InvalidBidException("maxAmount must be greater than 0");
+        }
+        if (bidStep <= 0.0) {
+            throw new InvalidBidException("bidStep must be greater than 0");
         }
 
         Auction auction = auctionRepository.findById(auctionId)
@@ -80,17 +83,14 @@ public class AutoBidServiceImpl implements AutoBidService {
         }
 
         List<AutoBid> existing = autoBidRepository.findByAuctionIdAndBidderId(auctionId, bidderId);
-        AutoBid autoBid;
         if (existing != null && !existing.isEmpty()) {
-            autoBid = existing.get(0);
-            autoBid.setMaxAmount(maxAmount);
-            autoBid.setActive(true);
-            autoBid.setUpdatedAt(now);
-        } else {
-            autoBid = new AutoBid(auctionId, bidderId, maxAmount);
-            autoBid.setCreatedAt(now);
-            autoBid.setUpdatedAt(now);
+            autoBidRepository.deleteAll(existing);
+            autoBidRepository.flush();
         }
+
+        AutoBid autoBid = new AutoBid(auctionId, bidderId, maxAmount, bidStep);
+        autoBid.setCreatedAt(now);
+        autoBid.setUpdatedAt(now);
 
         return autoBidRepository.save(autoBid);
     }

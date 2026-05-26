@@ -9,6 +9,7 @@ public class AutoBidResponse {
     private UUID bidderId;
     private String bidderName;
     private double maxAmount;
+    private double bidStep;
     private boolean active;
     private String auctionState;
     private Instant endTime;
@@ -53,6 +54,14 @@ public class AutoBidResponse {
 
     public void setMaxAmount(double maxAmount) {
         this.maxAmount = maxAmount;
+    }
+
+    public double getBidStep() {
+        return bidStep;
+    }
+
+    public void setBidStep(double bidStep) {
+        this.bidStep = bidStep;
     }
 
     public boolean isActive() {

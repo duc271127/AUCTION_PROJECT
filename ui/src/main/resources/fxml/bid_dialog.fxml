@@ -17,9 +17,9 @@
       styleClass="modal-card">
 
     <HBox alignment="CENTER_LEFT" spacing="12" styleClass="modal-header">
-        <Label text="Set maximum bid" styleClass="modal-title" HBox.hgrow="ALWAYS"/>
+        <Label text="Place Bid" styleClass="modal-title" HBox.hgrow="ALWAYS"/>
         <Region HBox.hgrow="ALWAYS"/>
-        <Button text="×"
+        <Button text="X"
                 onAction="#handleClose"
                 focusTraversable="false"
                 styleClass="modal-close-button"/>
@@ -44,18 +44,18 @@
             </padding>
             <Label text="CURRENT BID" styleClass="balance-label"/>
             <Label fx:id="currentBidLabel"
-                   text="€ 0"
+                   text="USD 0"
                    styleClass="balance-value"/>
         </VBox>
 
         <VBox spacing="8">
-            <Label text="Your maximum bid" styleClass="field-label"/>
+            <Label text="Your bid amount" styleClass="field-label"/>
 
             <HBox alignment="CENTER_LEFT" spacing="0">
-                <Label text="€"
-                       minWidth="48"
+                <Label text="USD"
+                       minWidth="56"
                        alignment="CENTER"
-                       style="-fx-background-color:#f2f2f2;-fx-border-color:#e5e7eb;-fx-border-radius:7 0 0 7;-fx-background-radius:7 0 0 7;-fx-font-size:16px;-fx-font-weight:800;"/>
+                       style="-fx-background-color:#f2f2f2;-fx-border-color:#e5e7eb;-fx-border-radius:7 0 0 7;-fx-background-radius:7 0 0 7;-fx-font-size:14px;-fx-font-weight:800;"/>
                 <TextField fx:id="bidInputField"
                            promptText="1155"
                            HBox.hgrow="ALWAYS"
@@ -63,20 +63,20 @@
             </HBox>
 
             <Label fx:id="minimumBidLabel"
-                   text="Minimum bid: € 0"
+                   text="Minimum bid: USD 0"
                    styleClass="muted-text"/>
         </VBox>
 
         <VBox spacing="6" styleClass="info-box">
-            <Label text="ℹ How automatic bidding works"
+            <Label text="Bid confirmation"
                    styleClass="field-label"/>
-            <Label text="We'll automatically bid on your behalf up to your maximum bid, in small increments, against other bidders."
+            <Label text="Your bid will be submitted immediately and the detail screen will refresh with the latest price."
                    wrapText="true"
                    styleClass="muted-text"/>
         </VBox>
 
         <CheckBox fx:id="confirmCheckBox"
-                  text="I agree to the terms and conditions and confirm that I want to set this maximum bid."
+                  text="I confirm that I want to submit this bid."
                   wrapText="true"
                   styleClass="muted-text"/>
 
@@ -97,7 +97,7 @@
                     styleClass="secondary-button"/>
 
             <Button fx:id="submitBidButton"
-                    text="Set max bid"
+                    text="Place bid"
                     onAction="#handleSubmitBid"
                     maxWidth="Infinity"
                     HBox.hgrow="ALWAYS"

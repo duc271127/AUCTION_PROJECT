@@ -86,6 +86,7 @@ public class LiveBiddingController {
     private Timeline toastTimeline;
     private boolean isLoadingAuction = false;
     private Long realtimeRemainingSeconds;
+    private AutoBidResponse currentUserAutoBid;
     private final Set<String> handledEventIds = new HashSet<>();
 
     @FXML
@@ -138,6 +139,7 @@ public class LiveBiddingController {
 
             currentAuction = latest;
             bindAuctionToScreen(latest);
+            refreshCurrentUserAutoBidState();
 
             if (!firstLoad && previous != null) {
                 handleAuctionChange(previous, latest);
@@ -574,10 +576,17 @@ public class LiveBiddingController {
             autoBidButton.setDisable(true);
         }
 
-        CompletableFuture.supplyAsync(() -> auctionApiService.setAutoBid(selectedItem.getId(), new AutoBidRequest(maxAmount)))
+        double bidStep = currentAuction != null && currentAuction.getMinNextBid() > currentAuction.getCurrentPrice()
+                ? currentAuction.getMinNextBid() - currentAuction.getCurrentPrice()
+                : 1.0;
+
+        CompletableFuture.supplyAsync(() -> auctionApiService.setAutoBid(selectedItem.getId(), new AutoBidRequest(maxAmount, bidStep)))
                 .thenAccept(response -> runOnUiThread(() -> {
                     if (autoBidStatusLabel != null) {
-                        autoBidStatusLabel.setText("Auto-bid enabled up to " + formatMoney(response.getMaxAmount()));
+                        String stepText = response.getBidStep() > 0
+                                ? " with step " + formatMoney(response.getBidStep())
+                                : "";
+                        autoBidStatusLabel.setText("Auto-bid enabled up to " + formatMoney(response.getMaxAmount()) + stepText);
                     }
                     showSuccess("Auto-bid enabled.");
                     if (autoBidButton != null) {
@@ -624,7 +633,13 @@ public class LiveBiddingController {
             boolean demoMode = auctionForDialog.getId() == null;
 
             controller.setDialogStage(stage);
-            controller.setAuction(auctionForDialog, demoMode, this::applyAutoBidActivated);
+            controller.setAuction(
+                    auctionForDialog,
+                    demoMode,
+                    currentUserAutoBid,
+                    this::applyAutoBidActivated,
+                    this::applyAutoBidDisabled
+            );
 
             stage.setScene(scene);
             positionOverlayDialogStage(stage, ownerWindow);
@@ -695,7 +710,7 @@ public class LiveBiddingController {
     }
 
     private String formatMoney(double value) {
-        return "€" + String.format("%,.0f", value);
+        return "USD " + String.format("%,.0f", value);
     }
 
     private String getCurrentTimeText() {
@@ -749,14 +764,23 @@ public class LiveBiddingController {
             return;
         }
 
+        currentUserAutoBid = response;
         double maxAmount = response.getMaxAmount();
 
         if (autoBidStatusLabel != null) {
-            autoBidStatusLabel.setText("Auto-bid enabled up to " + formatMoney(maxAmount));
+            String stepText = response.getBidStep() > 0
+                    ? " with step " + formatMoney(response.getBidStep())
+                    : "";
+            autoBidStatusLabel.setText("Auto-bid enabled up to " + formatMoney(maxAmount) + stepText);
         }
 
         showAutoBidBanner(maxAmount);
         showSuccess("Auto-bid enabled.");
+    }
+
+    private void applyAutoBidDisabled() {
+        clearCurrentUserAutoBidState();
+        showSuccess("Auto-bid turned off.");
     }
 
     private AuctionListResponse buildAuctionListSnapshot() {
@@ -827,7 +851,7 @@ public class LiveBiddingController {
         autoBidBanner.setManaged(true);
 
         if (autoBidBannerTitleLabel != null) {
-            autoBidBannerTitleLabel.setText("⚡ Auto-Bid Active");
+            autoBidBannerTitleLabel.setText("Auto-Bid Active");
         }
 
         if (autoBidBannerSubtitleLabel != null) {
@@ -840,6 +864,63 @@ public class LiveBiddingController {
             autoBidBanner.setVisible(false);
             autoBidBanner.setManaged(false);
         }
+    }
+
+    private void refreshCurrentUserAutoBidState() {
+        if (!SessionManager.isAuthenticated() || selectedItem == null || selectedItem.getId() == null || selectedItem.getId().isBlank()) {
+            clearCurrentUserAutoBidState();
+            return;
+        }
+
+        CompletableFuture.supplyAsync(() -> auctionApiService.listMyAutoBids())
+                .thenAccept(autoBids -> runOnUiThread(() -> applyCurrentUserAutoBidState(autoBids)))
+                .exceptionally(error -> null);
+    }
+
+    private void applyCurrentUserAutoBidState(List<AutoBidResponse> autoBids) {
+        if (selectedItem == null || selectedItem.getId() == null) {
+            clearCurrentUserAutoBidState();
+            return;
+        }
+
+        AutoBidResponse matching = null;
+        if (autoBids != null) {
+            for (AutoBidResponse autoBid : autoBids) {
+                if (autoBid == null || !autoBid.isActive()) {
+                    continue;
+                }
+                if (selectedItem.getId().equals(autoBid.getAuctionId())) {
+                    matching = autoBid;
+                    break;
+                }
+            }
+        }
+
+        currentUserAutoBid = matching;
+
+        if (matching == null) {
+            clearCurrentUserAutoBidState();
+            return;
+        }
+
+        if (autoBidStatusLabel != null) {
+            String stepText = matching.getBidStep() > 0
+                    ? " with step " + formatMoney(matching.getBidStep())
+                    : "";
+            autoBidStatusLabel.setText("Auto-bid enabled up to " + formatMoney(matching.getMaxAmount()) + stepText);
+        }
+
+        showAutoBidBanner(matching.getMaxAmount());
+    }
+
+    private void clearCurrentUserAutoBidState() {
+        currentUserAutoBid = null;
+
+        if (autoBidStatusLabel != null) {
+            autoBidStatusLabel.setText("Auto-bid inactive");
+        }
+
+        hideAutoBidBanner();
     }
 
     private void showNewBidToast(String bidderName, double amount) {
@@ -1001,18 +1082,28 @@ public class LiveBiddingController {
 
     @FXML
     private void handleBack() {
+        shutdownLiveUpdates();
+        SceneManager.goToProductDetail();
+    }
+
+    @FXML
+    private void handleLogout() {
+        shutdownLiveUpdates();
+        SessionManager.clear();
+        SceneManager.goToAuth();
+    }
+
+    private void shutdownLiveUpdates() {
         if (refreshTimeline != null) {
             refreshTimeline.stop();
         }
         if (countdownTimeline != null) {
             countdownTimeline.stop();
         }
-
         if (toastTimeline != null) {
             toastTimeline.stop();
         }
 
         realtimeAuctionService.disconnect();
-        SceneManager.goToProductDetail();
     }
 }

@@ -99,9 +99,11 @@
                             hbarPolicy="NEVER"
                             styleClass="trending-scroll">
                     <content>
-                        <VBox spacing="22.0" styleClass="trending-page">
+                        <StackPane styleClass="page-shell">
+                            <children>
+                        <VBox spacing="22.0" styleClass="trending-page page-content">
                             <padding>
-                                <Insets top="0" right="36" bottom="36" left="36"/>
+                                <Insets top="0" right="24" bottom="36" left="24"/>
                             </padding>
 
                             <!-- Header xanh -->
@@ -142,11 +144,11 @@
                                         styleClass="trending-filter-active"
                                         onAction="#handleFilterHot"/>
 
-                                <Button fx:id="hotFilterButton"
-                                        text="Hot Right Now"
+                                <Button fx:id="viewedFilterButton"
+                                        text="Most Viewed"
                                         focusTraversable="false"
-                                        styleClass="trending-filter-active"
-                                        onAction="#handleFilterHot"/>
+                                        styleClass="trending-filter-button"
+                                        onAction="#handleFilterMostViewed"/>
 
                                 <Button fx:id="savedFilterButton"
                                         text="Most Saved"
@@ -176,6 +178,8 @@
                                         onAction="#handleLoadMore"/>
                             </HBox>
                         </VBox>
+                            </children>
+                        </StackPane>
                     </content>
                 </ScrollPane>
             </center>
