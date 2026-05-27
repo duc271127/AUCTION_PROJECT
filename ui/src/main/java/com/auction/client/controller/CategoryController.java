@@ -100,47 +100,16 @@ public class CategoryController {
             );
 
             if (page.getItems() != null) {
-                auctions.addAll(page.getItems());
+                auctions.addAll(page.getItems().stream()
+                        .filter(this::isVisibleToBidder)
+                        .toList());
             }
-
-            if (auctions.isEmpty() && !hasSearchQuery()) {
-                loadMockCategoryAuctions();
-            }
-
         } catch (Exception e) {
-            if (!hasSearchQuery()) {
-                loadMockCategoryAuctions();
-            } else {
-                auctions.clear();
-            }
+            auctions.clear();
         }
 
-        auctions.removeIf(this::isDeletedAuction);
         renderStats(auctions);
         renderCards(auctions);
-    }
-
-    private void loadMockCategoryAuctions() {
-        auctions.clear();
-
-        int index = 0;
-        for (AuctionItem item : MockData.getMockAuctionItems()) {
-            AuctionListResponse response = new AuctionListResponse();
-            response.setTitle(categoryTitleForMock(item.getName(), index));
-            response.setImageUrl(item.getImagePath());
-            response.setSellerName(mockSellerForCategory(index));
-            response.setCurrentPrice(parseMoney(item.getCurrentBid()));
-            response.setState(demoAuctionState(index));
-            response.setBidCount(8 + index * 3);
-            response.setFavoriteCount(0);
-            response.setViewCount(1200 + index * 250);
-            response.setCategory(selectedCategory);
-            response.setEndTime(item.getTimeLeft());
-            response.setId(null);
-
-            auctions.add(response);
-            index++;
-        }
     }
 
     private void renderStats(List<AuctionListResponse> items) {
@@ -164,17 +133,19 @@ public class CategoryController {
         }
     }
 
-    private boolean isDeletedAuction(AuctionListResponse auction) {
+    private boolean isVisibleToBidder(AuctionListResponse auction) {
         if (auction == null) {
             return false;
         }
 
-        return "DELETED".equalsIgnoreCase(AuctionStateViewHelper.resolveDisplayState(
+        String state = AuctionStateViewHelper.resolveDisplayState(
                 auction.getState(),
                 auction.getStartTime(),
                 auction.getEndTime()
-        ));
+        );
+        return isVisibleBidderState(state);
     }
+
     private VBox createEmptyState() {
         if (hasSearchQuery()) {
             return createSearchEmptyState();
@@ -320,60 +291,6 @@ public class CategoryController {
         };
     }
 
-    private String demoAuctionState(int index) {
-        return switch (index % 5) {
-            case 0, 1 -> "ACTIVE";
-            case 2 -> "SCHEDULED";
-            case 3 -> "FINISHED";
-            default -> "DELETED";
-        };
-    }
-
-    private String categoryTitleForMock(String fallback, int index) {
-        return switch (selectedCategory) {
-            case "Jewellery" -> switch (index) {
-                case 0 -> "Affordable Silver & Laminated Objects Auction";
-                case 1 -> "Emeralds, Rubies & Sapphires Auction";
-                default -> "Exclusive White Diamonds Auction";
-            };
-            case "Watches" -> switch (index) {
-                case 0 -> "Vintage Rolex Watch";
-                case 1 -> "Rare Chronograph Collection";
-                default -> "Luxury Watch Icons Auction";
-            };
-            case "Fashion" -> switch (index) {
-                case 0 -> "Archive Designer Handbag";
-                case 1 -> "Rare Couture Jacket";
-                default -> "Collectible Fashion Accessories";
-            };
-            default -> switch (index) {
-                case 0 -> "Contemporary Abstract Painting";
-                case 1 -> "Impressionist Landscape Oil";
-                default -> "Digital Art NFT Edition";
-            };
-        };
-    }
-
-    private String mockSellerForCategory(int index) {
-        return switch (index) {
-            case 0 -> "Sarah Mitchell";
-            case 1 -> "Marco Rossi";
-            default -> "Emma Chen";
-        };
-    }
-
-    private double parseMoney(String value) {
-        if (value == null || value.isBlank()) {
-            return 0;
-        }
-
-        try {
-            return Double.parseDouble(value.replaceAll("[^0-9.]", ""));
-        } catch (Exception e) {
-            return 0;
-        }
-    }
-
     private String formatPrice(double value) {
         return "USD " + String.format("%,.0f", value);
     }
@@ -385,6 +302,17 @@ public class CategoryController {
 
         String title = auction.getTitle() != null ? auction.getTitle() : auction.getItemName();
         return "mock-" + selectedCategory + "-" + title;
+    }
+
+    private boolean isVisibleBidderState(String state) {
+        String normalized = (state == null ? "" : state.trim()).toUpperCase();
+        return "ACTIVE".equals(normalized)
+                || "OPEN".equals(normalized)
+                || "LIVE".equals(normalized)
+                || "SCHEDULED".equals(normalized)
+                || "INCOMING".equals(normalized)
+                || "PENDING".equals(normalized)
+                || "DRAFT".equals(normalized);
     }
 
     @FXML

@@ -169,7 +169,7 @@
                                         onAction="#handleFilterNewListings"/>
 
                                 <Button fx:id="highDemandFilterButton"
-                                        text="High demand"
+                                        text="My Wishlist"
                                         focusTraversable="false"
                                         styleClass="filter-chip"
                                         onAction="#handleFilterHighDemand"/>

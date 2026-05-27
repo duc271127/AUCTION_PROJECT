@@ -102,6 +102,10 @@ public class AdminApiService {
             String responseBody = apiClient.post("/admin/items/" + itemId + "/approve-and-create-auction", jsonBody);
             return objectMapper.readValue(responseBody, AuctionListResponse.class);
         } catch (Exception e) {
+            if (shouldFallbackApproveAndCreate(e)) {
+                approveItem(itemId);
+                return createAuctionForItem(itemId, request);
+            }
             throw new ApiException("Approve and create auction failed: " + e.getMessage(), e);
         }
     }
@@ -132,6 +136,14 @@ public class AdminApiService {
         } catch (Exception e) {
             throw new ApiException("Delete auction failed: " + e.getMessage(), e);
         }
+    }
+
+    private boolean shouldFallbackApproveAndCreate(Exception exception) {
+        String message = exception == null ? "" : String.valueOf(exception.getMessage());
+        String normalized = message.toLowerCase();
+        return normalized.contains("404")
+                || normalized.contains("no static resource")
+                || normalized.contains("approve-and-create-auction");
     }
 
 }

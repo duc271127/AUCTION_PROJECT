@@ -23,6 +23,7 @@ public class AuctionDto {
     public String leaderName;
     public UUID winnerId;
     public String winnerName;
+    public Instant createdAt;
     public Instant startTime;
     public Instant endTime;
     public String state;

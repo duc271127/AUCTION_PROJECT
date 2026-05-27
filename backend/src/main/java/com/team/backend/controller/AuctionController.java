@@ -258,6 +258,7 @@ public class AuctionController {
         dto.leaderName = resolveUserName(userNames, auction.getLeaderId());
         dto.winnerId = auction.getWinnerId();
         dto.winnerName = resolveUserName(userNames, auction.getWinnerId());
+        dto.createdAt = auction.getCreatedAt();
         dto.startTime = auction.getStartTime();
         dto.endTime = auction.getEndTime();
         dto.state = auction.getState() == null ? null : auction.getState().name();

@@ -123,12 +123,16 @@
                         <Label styleClass="seller-section-title" text="Inventory" />
                         <TableView fx:id="listingTable" prefHeight="310" VBox.vgrow="ALWAYS">
                             <columns>
-                                <TableColumn fx:id="productNameColumn" prefWidth="250.0" text="Product Name" />
-                                <TableColumn fx:id="categoryColumn" prefWidth="160.0" text="Category" />
-                                <TableColumn fx:id="startingPriceColumn" prefWidth="150.0" text="Starting Price" />
-                                <TableColumn fx:id="statusColumn" prefWidth="130.0" text="Status" />
-                                <TableColumn fx:id="startDateColumn" prefWidth="130.0" text="Start Date" />
-                                <TableColumn fx:id="endDateColumn" prefWidth="130.0" text="End Date" />
+                                <TableColumn fx:id="productNameColumn" prefWidth="210.0" text="Product Name" />
+                                <TableColumn fx:id="categoryColumn" prefWidth="120.0" text="Category" />
+                                <TableColumn fx:id="startingPriceColumn" prefWidth="120.0" text="Start Price" />
+                                <TableColumn fx:id="reservePriceColumn" prefWidth="120.0" text="Reserve" />
+                                <TableColumn fx:id="statusColumn" prefWidth="110.0" text="Status" />
+                                <TableColumn fx:id="quantityColumn" prefWidth="80.0" text="Qty" />
+                                <TableColumn fx:id="skuColumn" prefWidth="120.0" text="SKU" />
+                                <TableColumn fx:id="startDateColumn" prefWidth="150.0" text="Start Date" />
+                                <TableColumn fx:id="endDateColumn" prefWidth="150.0" text="End Date" />
+                                <TableColumn fx:id="deletableColumn" prefWidth="90.0" text="Delete" />
                             </columns>
                         </TableView>
                     </VBox>

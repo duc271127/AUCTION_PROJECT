@@ -34,7 +34,13 @@ public final class EndpointConfig {
 
         String cached = resolvedHttpBaseUrl;
         if (cached != null) {
-            return cached;
+            if (LOCAL_HTTP_BASE_URL.equals(cached) || !isReachable(LOCAL_HTTP_BASE_URL)) {
+                return cached;
+            }
+
+            String normalizedLocal = normalizeHttpBaseUrl(LOCAL_HTTP_BASE_URL);
+            resolvedHttpBaseUrl = normalizedLocal;
+            return normalizedLocal;
         }
 
         String configuredDefault = firstNonBlank(

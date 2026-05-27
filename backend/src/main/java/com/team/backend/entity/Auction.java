@@ -133,7 +133,12 @@ public class Auction {
     public void setItemId(UUID itemId) { this.itemId = itemId; }
 
     public Item getItem() { return item; }
-    public void setItem(Item item) { this.item = item; }
+    public void setItem(Item item) {
+        this.item = item;
+        if (item != null && item.getId() != null) {
+            this.itemId = item.getId();
+        }
+    }
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
