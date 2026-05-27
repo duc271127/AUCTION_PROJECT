@@ -18,6 +18,8 @@ backend\mvnw.cmd -f ui\pom.xml javafx:run
 ```
 
 UI is configured to connect directly to `http://lungs-decree.with.playit.plus:1125`.
+It no longer auto-switches to `127.0.0.1:8081`, so every machine using the default config will see the same shared data.
+Use `AUCTION_API_BASE_URL` or the JVM property `auction.api.baseUrl` only when you intentionally want a different backend.
 UI needs JDK 21+.
 
 ## Notes for new clones
