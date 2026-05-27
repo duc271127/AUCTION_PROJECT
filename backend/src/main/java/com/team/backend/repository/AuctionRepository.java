@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,6 +36,7 @@ public interface AuctionRepository extends JpaRepository<Auction, UUID> {
     List<Auction> findByStateInAndStartTimeBefore(List<AuctionState> states, Instant now);
 
     Optional<Auction> findByItemId(UUID itemId);
+    List<Auction> findByItemIdIn(Collection<UUID> itemIds);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Auction a where a.id = :id")

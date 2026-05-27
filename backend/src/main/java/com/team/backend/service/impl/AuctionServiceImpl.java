@@ -9,6 +9,7 @@ import com.team.backend.entity.Item;
 import com.team.backend.exception.BusinessRuleException;
 import com.team.backend.exception.ResourceNotFoundException;
 import com.team.backend.mapper.AuctionMapper;
+import com.team.backend.repository.AuctionCountProjection;
 import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.AutoBidRepository;
 import com.team.backend.repository.BidRepository;
@@ -29,13 +30,17 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class AuctionServiceImpl implements AuctionService {
@@ -196,7 +201,7 @@ public class AuctionServiceImpl implements AuctionService {
     @Override
     public List<Auction> listAuctions() {
         List<Auction> auctions = auctionRepository.findAll();
-        auctions.forEach(this::populateTransientFields);
+        populateTransientFields(auctions);
         return auctions;
     }
 
@@ -206,7 +211,7 @@ public class AuctionServiceImpl implements AuctionService {
             return listAuctions();
         }
         List<Auction> auctions = auctionRepository.findByState(state);
-        auctions.forEach(this::populateTransientFields);
+        populateTransientFields(auctions);
         return auctions;
     }
 
@@ -217,14 +222,14 @@ public class AuctionServiceImpl implements AuctionService {
         }
 
         List<Auction> auctions = auctionRepository.findByWinnerIdOrderByEndTimeDesc(winnerId);
-        auctions.forEach(this::populateTransientFields);
+        populateTransientFields(auctions);
         return auctions;
     }
 
     @Override
     public Page<Auction> searchCatalog(String category, String q, AuctionState state, Pageable pageable) {
         Page<Auction> page = auctionRepository.searchCatalog(category, q, state, pageable);
-        page.forEach(this::populateTransientFields);
+        populateTransientFields(page.getContent());
         return page;
     }
 
@@ -414,8 +419,10 @@ public class AuctionServiceImpl implements AuctionService {
 
         populateTransientFields(auction);
 
-        String leaderName = auctionHelper.lookupUserName(auction.getLeaderId());
-        String sellerName = auctionHelper.lookupUserName(auction.getSellerId() != null ? auction.getSellerId() : auction.getCreatedBy());
+        UUID sellerId = auction.getSellerId() != null ? auction.getSellerId() : auction.getCreatedBy();
+        Map<UUID, String> userNames = auctionHelper.lookupUserNames(java.util.Arrays.asList(auction.getLeaderId(), sellerId));
+        String leaderName = userNames.get(auction.getLeaderId());
+        String sellerName = userNames.get(sellerId);
         return AuctionMapper.toDetail(
                 auction,
                 auction.getBidCount() == null ? 0 : auction.getBidCount(),
@@ -471,22 +478,54 @@ public class AuctionServiceImpl implements AuctionService {
     }
 
     private void populateTransientFields(Auction auction) {
-        if (auction == null) {
+        populateTransientFields(auction == null ? List.of() : List.of(auction));
+    }
+
+    private void populateTransientFields(List<Auction> auctions) {
+        if (auctions == null || auctions.isEmpty()) {
             return;
         }
 
-        auction = synchronizeAuctionOutcomeIfNeeded(auction);
+        List<Auction> normalizedAuctions = auctions.stream()
+                .filter(Objects::nonNull)
+                .map(this::synchronizeAuctionOutcomeIfNeeded)
+                .toList();
+
+        if (normalizedAuctions.isEmpty()) {
+            return;
+        }
+
+        List<UUID> auctionIds = normalizedAuctions.stream()
+                .map(Auction::getId)
+                .filter(Objects::nonNull)
+                .toList();
+
+        List<AuctionCountProjection> bidCountRows = auctionIds.isEmpty()
+                ? List.of()
+                : bidRepository.countByAuctionIds(auctionIds);
+        List<AuctionCountProjection> favoriteCountRows = auctionIds.isEmpty()
+                ? List.of()
+                : favoriteRepository.countByAuctionIds(auctionIds);
+
+        Map<UUID, Long> bidCounts = toCountMap(bidCountRows);
+        Map<UUID, Long> favoriteCounts = toCountMap(favoriteCountRows);
+        Map<UUID, String> sellerNames = auctionHelper.lookupUserNames(normalizedAuctions.stream()
+                .map(current -> current.getSellerId() != null ? current.getSellerId() : current.getCreatedBy())
+                .toList());
 
         try {
-            int bidCount = Math.toIntExact(bidRepository.countByAuctionId(auction.getId()));
-            long favoriteCount = favoriteRepository.countByAuctionId(auction.getId());
-            auction.setBidCount(bidCount);
-            auction.setFavoriteCount(favoriteCount);
-            auction.setMinNextBid(auction.getCurrentPrice() + DEFAULT_MIN_INCREMENT);
-            auction.setSellerName(auctionHelper.lookupUserName(auction.getSellerId() != null ? auction.getSellerId() : auction.getCreatedBy()));
-            auction.setTrendingScore(computeTrendingScore(auction));
+            for (Auction auction : normalizedAuctions) {
+                UUID auctionId = auction.getId();
+                UUID sellerId = auction.getSellerId() != null ? auction.getSellerId() : auction.getCreatedBy();
+
+                auction.setBidCount(Math.toIntExact(bidCounts.getOrDefault(auctionId, 0L)));
+                auction.setFavoriteCount(favoriteCounts.getOrDefault(auctionId, 0L));
+                auction.setMinNextBid(auction.getCurrentPrice() + DEFAULT_MIN_INCREMENT);
+                auction.setSellerName(sellerNames.get(sellerId));
+                auction.setTrendingScore(computeTrendingScore(auction));
+            }
         } catch (Exception ex) {
-            log.warn("Could not populate transient fields for auction {}", auction.getId(), ex);
+            log.warn("Could not populate transient fields for auctions {}", auctionIds, ex);
         }
     }
 
@@ -599,10 +638,14 @@ public class AuctionServiceImpl implements AuctionService {
         Set<String> preferredCategories = trendingOnly || userId == null
                 ? Set.of()
                 : resolvePreferredCategories(userId);
-        List<Auction> ranked = auctionRepository.findAll()
+        List<Auction> filtered = auctionRepository.findAll()
                 .stream()
                 .filter(auction -> matchesCatalogFilter(auction, category, q, state))
-                .peek(this::populateTransientFields)
+                .toList();
+        populateTransientFields(filtered);
+
+        List<Auction> ranked = filtered
+                .stream()
                 .sorted(trendingOnly
                         ? Comparator.comparingDouble(this::computeTrendingScore).reversed()
                         : Comparator.<Auction>comparingDouble(auction -> computePersonalizedScore(auction, preferredCategories)).reversed()
@@ -697,6 +740,16 @@ public class AuctionServiceImpl implements AuctionService {
             return;
         }
         categories.add(category.trim().toLowerCase(Locale.ROOT));
+    }
+
+    private Map<UUID, Long> toCountMap(Collection<AuctionCountProjection> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return Map.of();
+        }
+
+        return rows.stream()
+                .filter(row -> row.getAuctionId() != null)
+                .collect(Collectors.toMap(AuctionCountProjection::getAuctionId, AuctionCountProjection::getCount, Long::sum));
     }
 
     private String firstImage(Item item) {

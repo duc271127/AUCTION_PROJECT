@@ -28,7 +28,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -79,7 +82,8 @@ public class AdminServiceImpl implements AdminService {
     @Transactional(readOnly = true)
     public List<PendingItemDto> listPendingItems() {
         List<Item> items = itemRepository.findByStatus(ItemStatus.PENDING);
-        return items.stream().map(this::toPendingDto).collect(Collectors.toList());
+        Map<UUID, String> sellerNames = loadSellerNames(items);
+        return items.stream().map(item -> toPendingDto(item, sellerNames)).collect(Collectors.toList());
     }
 
     /**
@@ -195,10 +199,14 @@ public class AdminServiceImpl implements AdminService {
      * Helper: map Item -> PendingItemDto
      */
     private PendingItemDto toPendingDto(Item item) {
+        return toPendingDto(item, Map.of());
+    }
+
+    private PendingItemDto toPendingDto(Item item, Map<UUID, String> sellerNames) {
         PendingItemDto d = new PendingItemDto();
         d.id = item.getId();
         d.sellerId = item.getSellerId();
-        d.sellerName = auctionHelper.lookupUserName(item.getSellerId());
+        d.sellerName = sellerNames.getOrDefault(item.getSellerId(), auctionHelper.lookupUserName(item.getSellerId()));
         d.productName = item.getName();
         d.description = item.getDescription();
         d.category = item.getCategory();
@@ -284,9 +292,11 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional(readOnly = true)
     public List<PendingItemDto> listReportedItems() {
-        return itemRepository.findByStatus(ItemStatus.REJECTED)
+        List<Item> items = itemRepository.findByStatus(ItemStatus.REJECTED);
+        Map<UUID, String> sellerNames = loadSellerNames(items);
+        return items
                 .stream()
-                .map(this::toPendingDto)
+                .map(item -> toPendingDto(item, sellerNames))
                 .collect(Collectors.toList());
     }
 
@@ -372,5 +382,16 @@ public class AdminServiceImpl implements AdminService {
         notification.setCreatedAt(Instant.now());
         notification.setRead(false);
         adminNotificationRepository.save(notification);
+    }
+
+    private Map<UUID, String> loadSellerNames(Collection<Item> items) {
+        if (items == null || items.isEmpty()) {
+            return Map.of();
+        }
+
+        return auctionHelper.lookupUserNames(items.stream()
+                .map(Item::getSellerId)
+                .filter(Objects::nonNull)
+                .toList());
     }
 }

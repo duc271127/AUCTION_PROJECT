@@ -23,9 +23,13 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -231,18 +235,28 @@ public class ItemServiceImpl implements ItemService {
         if (sellerId == null) {
             throw new BusinessRuleException("sellerId is required");
         }
-        return itemRepository.findBySellerIdOrderByCreatedAtDesc(sellerId)
+        List<Item> items = itemRepository.findBySellerIdOrderByCreatedAtDesc(sellerId);
+        Map<UUID, Auction> auctionsByItemId = loadAuctionsByItemId(items);
+        return items
                 .stream()
-                .map(this::toResponse)
+                .map(item -> toResponse(item, auctionsByItemId.get(item.getId())))
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<ItemResponse> findRecentResponsesBySellerId(UUID sellerId, int limit) {
         int safeLimit = Math.max(1, Math.min(limit, 20));
-        return findResponsesBySellerId(sellerId)
+        if (sellerId == null) {
+            throw new BusinessRuleException("sellerId is required");
+        }
+
+        List<Item> items = itemRepository.findBySellerIdOrderByCreatedAtDesc(sellerId)
                 .stream()
                 .limit(safeLimit)
+                .toList();
+        Map<UUID, Auction> auctionsByItemId = loadAuctionsByItemId(items);
+        return items.stream()
+                .map(item -> toResponse(item, auctionsByItemId.get(item.getId())))
                 .collect(Collectors.toList());
     }
 
@@ -397,6 +411,10 @@ public class ItemServiceImpl implements ItemService {
     }
 
     private ItemResponse toResponse(Item item) {
+        return toResponse(item, null);
+    }
+
+    private ItemResponse toResponse(Item item, Auction auction) {
         if (item == null) return null;
 
         ItemResponse r = new ItemResponse();
@@ -421,7 +439,6 @@ public class ItemServiceImpl implements ItemService {
         r.setImageUrls(itemImageUrls(item));
         r.setStartDate(formatDate(item.getStartTime()));
         r.setEndDate(formatDate(item.getEndTime()));
-        Auction auction = auctionRepository.findByItemId(item.getId()).orElse(null);
         Instant now = Instant.now();
         boolean deletable = auction == null || canSellerDeleteLinkedAuction(auction, now);
         r.setDeletable(deletable);
@@ -429,6 +446,42 @@ public class ItemServiceImpl implements ItemService {
                 ? null
                 : resolveDeleteBlockedReason(auction, now));
         return r;
+    }
+
+    private Map<UUID, Auction> loadAuctionsByItemId(List<Item> items) {
+        if (items == null || items.isEmpty()) {
+            return Map.of();
+        }
+
+        List<UUID> itemIds = items.stream()
+                .map(Item::getId)
+                .filter(Objects::nonNull)
+                .toList();
+
+        if (itemIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<UUID, Auction> result = new HashMap<>();
+        for (Auction auction : auctionRepository.findByItemIdIn(itemIds)) {
+            if (auction == null || auction.getItemId() == null) {
+                continue;
+            }
+
+            Auction existing = result.get(auction.getItemId());
+            if (existing == null || compareAuctionFreshness(auction, existing) > 0) {
+                result.put(auction.getItemId(), auction);
+            }
+        }
+
+        return result;
+    }
+
+    private int compareAuctionFreshness(Auction left, Auction right) {
+        return Comparator
+                .comparing(Auction::getUpdatedAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(Auction::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                .compare(left, right);
     }
 
     private Instant parseStartDate(String value) {

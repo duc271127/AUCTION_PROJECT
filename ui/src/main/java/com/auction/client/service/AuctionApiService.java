@@ -10,6 +10,7 @@ import com.auction.client.dto.response.BidPlacementResponse;
 import com.auction.client.dto.response.BidResponse;
 import com.auction.client.exception.ApiException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.net.URLEncoder;
@@ -47,7 +48,7 @@ public class AuctionApiService {
             }
 
             String responseBody = apiClient.get(endpoint.toString());
-            return objectMapper.readValue(responseBody, AuctionPageResponse.class);
+            return parseAuctionPageResponse(responseBody);
         } catch (Exception e) {
             throw new ApiException("Load trending auctions failed: " + e.getMessage(), e);
         }
@@ -71,7 +72,7 @@ public class AuctionApiService {
             }
 
             String responseBody = apiClient.get(endpoint.toString());
-            return objectMapper.readValue(responseBody, AuctionPageResponse.class);
+            return parseAuctionPageResponse(responseBody);
         } catch (Exception e) {
             throw new ApiException("Load personalized auctions failed: " + e.getMessage(), e);
         }
@@ -97,7 +98,7 @@ public class AuctionApiService {
             }
 
             String responseBody = apiClient.get(endpoint.toString());
-            return objectMapper.readValue(responseBody, AuctionPageResponse.class);
+            return parseAuctionPageResponse(responseBody);
         } catch (Exception e) {
             throw new ApiException("Load auction list failed: " + e.getMessage(), e);
         }
@@ -195,5 +196,55 @@ public class AuctionApiService {
 
     private String encode(String value) {
         return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8);
+    }
+
+    private AuctionPageResponse parseAuctionPageResponse(String responseBody) throws Exception {
+        JsonNode root = objectMapper.readTree(responseBody);
+
+        if (root == null || root.isNull()) {
+            return buildAuctionPage(List.of(), 0, 0, 0, 0);
+        }
+
+        if (root.isArray()) {
+            List<AuctionListResponse> items = objectMapper.readValue(
+                    responseBody,
+                    new TypeReference<List<AuctionListResponse>>() {}
+            );
+            return buildAuctionPage(items, 0, items.size(), items.size(), items.isEmpty() ? 0 : 1);
+        }
+
+        if (root.isObject() && root.has("items")) {
+            return objectMapper.treeToValue(root, AuctionPageResponse.class);
+        }
+
+        if (root.isObject() && root.has("content")) {
+            List<AuctionListResponse> items = objectMapper.convertValue(
+                    root.get("content"),
+                    new TypeReference<List<AuctionListResponse>>() {}
+            );
+            return buildAuctionPage(
+                    items,
+                    root.path("number").asInt(0),
+                    root.path("size").asInt(items.size()),
+                    root.path("totalElements").asLong(items.size()),
+                    root.path("totalPages").asInt(items.isEmpty() ? 0 : 1)
+            );
+        }
+
+        throw new ApiException("Unsupported auction response format");
+    }
+
+    private AuctionPageResponse buildAuctionPage(List<AuctionListResponse> items,
+                                                 int page,
+                                                 int size,
+                                                 long totalElements,
+                                                 int totalPages) {
+        AuctionPageResponse response = new AuctionPageResponse();
+        response.setItems(items == null ? List.of() : items);
+        response.setPage(page);
+        response.setSize(size);
+        response.setTotalElements(totalElements);
+        response.setTotalPages(totalPages);
+        return response;
     }
 }
