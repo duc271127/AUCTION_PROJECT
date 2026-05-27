@@ -23,6 +23,8 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -90,6 +92,7 @@ public class ShowRoomController {
 
             if (responses != null) {
                 List<AuctionListResponse> sortedResponses = responses.stream()
+                        .filter(this::isVisibleToBidder)
                         .sorted(Comparator
                                 .comparingInt(this::auctionDisplayPriority)
                                 .thenComparing(AuctionListResponse::getStartTime, Comparator.nullsLast(String::compareTo))
@@ -101,35 +104,11 @@ public class ShowRoomController {
                 }
             }
 
-            if (items.isEmpty() && !hasSearchQuery()) {
-                loadMockAuctionsForDemo();
-            }
-
             renderAuctionGrid();
 
         } catch (Exception e) {
-            if (!hasSearchQuery()) {
-                loadMockAuctionsForDemo();
-            } else {
-                items.clear();
-            }
+            items.clear();
             renderAuctionGrid();
-        }
-    }
-
-    private void loadMockAuctionsForDemo() {
-        items.clear();
-        List<AuctionItem> mockItems = MockData.getMockAuctionItems();
-        for (int i = 0; i < mockItems.size(); i++) {
-            AuctionItem item = mockItems.get(i);
-            items.add(new AuctionItem(
-                    item.getId(),
-                    item.getName(),
-                    item.getImagePath(),
-                    item.getCurrentBid(),
-                    item.getTimeLeft(),
-                    demoAuctionState(i)
-            ));
         }
     }
 
@@ -149,7 +128,16 @@ public class ShowRoomController {
                 ? response.getTitle()
                 : response.getItemName();
 
-        return new AuctionItem(idValue, title == null ? "Unnamed Item" : title, imagePath, currentBid, timeInfo, status);
+        return new AuctionItem(
+                idValue,
+                title == null ? "Unnamed Item" : title,
+                imagePath,
+                currentBid,
+                timeInfo,
+                status,
+                response.getCreatedAt(),
+                response.getEndTime()
+        );
     }
 
     private String getDefaultImagePath(int index) {
@@ -190,7 +178,7 @@ public class ShowRoomController {
 
     @FXML
     private void handleFilterHighDemand() {
-        applyFilter(ForYouFilter.HIGH_DEMAND);
+        applyFilter(ForYouFilter.MY_WISHLIST);
     }
 
     @FXML
@@ -298,10 +286,10 @@ public class ShowRoomController {
             return createSearchEmptyState();
         }
 
-        Label title = new Label("No auctions match this filter.");
+        Label title = new Label("No active auctions match this filter.");
         title.getStyleClass().add("auction-card-title");
 
-        Label subtitle = new Label("Try All to see the current For You demo auctions.");
+        Label subtitle = new Label("Only scheduled or live auctions are shown to bidders.");
         subtitle.getStyleClass().add("page-subtitle");
 
         VBox emptyState = new VBox(8, title, subtitle);
@@ -366,6 +354,7 @@ public class ShowRoomController {
         }
 
         updateWishlistUi();
+        renderAuctionGrid();
     }
 
     private void applyFilter(ForYouFilter filter) {
@@ -379,9 +368,15 @@ public class ShowRoomController {
         visibleItems.removeIf(this::isDeletedAuction);
 
         switch (selectedFilter) {
-            case ENDING_SOON -> visibleItems.removeIf(item -> !hasEndingSoonStatus(item));
-            case NEW_LISTINGS -> visibleItems.removeIf(item -> !hasNewListingStatus(item));
-            case HIGH_DEMAND -> visibleItems.sort(Comparator.comparingDouble(this::parseBidAmount).reversed());
+            case ENDING_SOON -> {
+                visibleItems.removeIf(item -> !hasEndingSoonStatus(item));
+                visibleItems.sort(Comparator.comparing(this::parseAuctionEndInstant, Comparator.nullsLast(Comparator.naturalOrder())));
+            }
+            case NEW_LISTINGS -> {
+                visibleItems.removeIf(item -> !hasNewListingStatus(item));
+                visibleItems.sort(Comparator.comparing(this::parseAuctionCreatedInstant, Comparator.nullsLast(Comparator.reverseOrder())));
+            }
+            case MY_WISHLIST -> visibleItems.removeIf(item -> !favoriteAuctionIds.contains(item.getId()));
             case ALL -> {
             }
         }
@@ -390,7 +385,7 @@ public class ShowRoomController {
     }
 
     private boolean isDeletedAuction(AuctionItem item) {
-        return item != null && "DELETED".equalsIgnoreCase(item.getStatus());
+        return item != null && !isVisibleBidderState(item.getStatus());
     }
 
     private int auctionDisplayPriority(AuctionListResponse response) {
@@ -410,28 +405,72 @@ public class ShowRoomController {
         };
     }
 
+    private boolean isVisibleToBidder(AuctionListResponse response) {
+        if (response == null) {
+            return false;
+        }
+
+        String state = AuctionStateViewHelper.resolveDisplayState(
+                response.getState(),
+                response.getStartTime(),
+                response.getEndTime()
+        );
+        return isVisibleBidderState(state);
+    }
+
+    private boolean isVisibleBidderState(String state) {
+        String normalized = normalize(state).toUpperCase(Locale.ROOT);
+        return "ACTIVE".equals(normalized)
+                || "OPEN".equals(normalized)
+                || "LIVE".equals(normalized)
+                || "SCHEDULED".equals(normalized)
+                || "INCOMING".equals(normalized)
+                || "PENDING".equals(normalized)
+                || "DRAFT".equals(normalized);
+    }
+
     private boolean hasEndingSoonStatus(AuctionItem item) {
-        String status = normalize(item.getStatus());
-        String timeLeft = normalize(item.getTimeLeft());
-        return status.contains("ending") || timeLeft.contains("h") && !timeLeft.contains("d");
+        if (item == null) {
+            return false;
+        }
+
+        String normalizedState = firstNonBlank(item.getStatus(), "").trim().toUpperCase(Locale.ROOT);
+        if (!"ACTIVE".equals(normalizedState) && !"OPEN".equals(normalizedState) && !"LIVE".equals(normalizedState)) {
+            return false;
+        }
+
+        Instant endInstant = parseInstant(item.getEndTime());
+        if (endInstant == null) {
+            return false;
+        }
+
+        long secondsRemaining = Duration.between(Instant.now(), endInstant).getSeconds();
+        return secondsRemaining > 0 && secondsRemaining <= 600;
     }
 
     private boolean hasNewListingStatus(AuctionItem item) {
-        String status = normalize(item.getStatus());
-        return status.contains("upcoming") || status.contains("new") || status.contains("scheduled");
-    }
-
-    private double parseBidAmount(AuctionItem item) {
-        String bid = item.getCurrentBid();
-        if (bid == null || bid.isBlank()) {
-            return 0;
+        if (item == null) {
+            return false;
         }
 
-        try {
-            return Double.parseDouble(bid.replaceAll("[^0-9.]", ""));
-        } catch (Exception ignored) {
-            return 0;
+        Instant createdAt = parseInstant(item.getCreatedAt());
+        if (createdAt == null) {
+            return false;
         }
+
+        String normalizedState = firstNonBlank(item.getStatus(), "").trim().toUpperCase(Locale.ROOT);
+        boolean eligibleState = "ACTIVE".equals(normalizedState)
+                || "OPEN".equals(normalizedState)
+                || "LIVE".equals(normalizedState)
+                || "SCHEDULED".equals(normalizedState)
+                || "INCOMING".equals(normalizedState)
+                || "PENDING".equals(normalizedState)
+                || "DRAFT".equals(normalizedState);
+        if (!eligibleState) {
+            return false;
+        }
+
+        return Duration.between(createdAt, Instant.now()).toHours() <= 24;
     }
 
     private String normalize(String value) {
@@ -442,7 +481,7 @@ public class ShowRoomController {
         setFilterButtonState(allFilterButton, selectedFilter == ForYouFilter.ALL);
         setFilterButtonState(endingSoonFilterButton, selectedFilter == ForYouFilter.ENDING_SOON);
         setFilterButtonState(newListingsFilterButton, selectedFilter == ForYouFilter.NEW_LISTINGS);
-        setFilterButtonState(highDemandFilterButton, selectedFilter == ForYouFilter.HIGH_DEMAND);
+        setFilterButtonState(highDemandFilterButton, selectedFilter == ForYouFilter.MY_WISHLIST);
     }
 
     private void setFilterButtonState(Button button, boolean active) {
@@ -490,19 +529,30 @@ public class ShowRoomController {
         return currentQuery != null && !currentQuery.isBlank();
     }
 
-    private String demoAuctionState(int index) {
-        return switch (index % 5) {
-            case 0, 1 -> "ACTIVE";
-            case 2 -> "SCHEDULED";
-            case 3 -> "FINISHED";
-            default -> "DELETED";
-        };
+    private Instant parseInstant(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        try {
+            return Instant.parse(value);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private Instant parseAuctionCreatedInstant(AuctionItem item) {
+        return item == null ? null : parseInstant(item.getCreatedAt());
+    }
+
+    private Instant parseAuctionEndInstant(AuctionItem item) {
+        return item == null ? null : parseInstant(item.getEndTime());
     }
 
     private enum ForYouFilter {
         ALL,
         ENDING_SOON,
         NEW_LISTINGS,
-        HIGH_DEMAND
+        MY_WISHLIST
     }
 }

@@ -101,19 +101,15 @@ public class TrendingController {
                     auctionApiService.getTrendingAuctions(null, currentQuery, null, currentPage, PAGE_SIZE).getItems();
 
             if (responses != null) {
-                for (int i = 0; i < responses.size(); i++) {
-                    trendingItems.add(mapToTrendingItem(responses.get(i), trendingItems.size() + 1));
+                for (AuctionListResponse response : responses) {
+                    if (!isVisibleToBidder(response)) {
+                        continue;
+                    }
+                    trendingItems.add(mapToTrendingItem(response, trendingItems.size() + 1));
                 }
             }
-
-            if (trendingItems.isEmpty() && !hasSearchQuery()) {
-                loadMockTrendingItems();
-            }
-
         } catch (Exception e) {
-            if (trendingItems.isEmpty() && !hasSearchQuery()) {
-                loadMockTrendingItems();
-            } else if (hasSearchQuery()) {
+            if (hasSearchQuery() || reset) {
                 trendingItems.clear();
             }
         }
@@ -167,31 +163,6 @@ public class TrendingController {
                 rank,
                 score
         );
-    }
-
-    private void loadMockTrendingItems() {
-        trendingItems.clear();
-
-        List<AuctionItem> mockItems = MockData.getMockAuctionItems();
-
-        int rank = 1;
-        for (AuctionItem item : mockItems) {
-            trendingItems.add(new TrendingCardItem(
-                    item.getId(),
-                    item.getName(),
-                    item.getImagePath(),
-                    "Verified Seller",
-                    item.getCurrentBid().replace("$", "USD "),
-                    item.getTimeLeft(),
-                    "SCHEDULED",
-                    1200 + rank * 150,
-                    0,
-                    8 + rank,
-                    rank,
-                    1000 - rank
-            ));
-            rank++;
-        }
     }
 
     private void renderTrendingGrid() {
@@ -331,7 +302,7 @@ public class TrendingController {
     }
 
     private boolean isDeletedAuction(TrendingCardItem item) {
-        return item != null && "DELETED".equalsIgnoreCase(item.state());
+        return item != null && !isVisibleBidderState(item.state());
     }
 
     private void updateFilterButtons() {
@@ -438,6 +409,29 @@ public class TrendingController {
             case 2 -> "/images/item2.png";
             default -> "/images/item3.png";
         };
+    }
+
+    private boolean isVisibleToBidder(AuctionListResponse response) {
+        if (response == null) {
+            return false;
+        }
+
+        return isVisibleBidderState(AuctionStateViewHelper.resolveDisplayState(
+                response.getState(),
+                response.getStartTime(),
+                response.getEndTime()
+        ));
+    }
+
+    private boolean isVisibleBidderState(String state) {
+        String normalized = firstNonBlank(state, "").trim().toUpperCase(Locale.ROOT);
+        return "ACTIVE".equals(normalized)
+                || "OPEN".equals(normalized)
+                || "LIVE".equals(normalized)
+                || "SCHEDULED".equals(normalized)
+                || "INCOMING".equals(normalized)
+                || "PENDING".equals(normalized)
+                || "DRAFT".equals(normalized);
     }
 
     private String firstNonBlank(String... values) {

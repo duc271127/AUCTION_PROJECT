@@ -11,6 +11,7 @@ import com.team.backend.entity.Item;
 import com.team.backend.entity.User;
 import com.team.backend.exception.BusinessRuleException;
 import com.team.backend.service.AdminService;
+import com.team.backend.service.AuctionHelper;
 import com.team.backend.service.UserService;
 import com.team.backend.util.AuctionImageResolver;
 import org.springframework.http.ResponseEntity;
@@ -29,10 +30,12 @@ public class AdminController {
 
     private final AdminService adminService;
     private final UserService userService;
+    private final AuctionHelper auctionHelper;
 
-    public AdminController(AdminService adminService, UserService userService) {
+    public AdminController(AdminService adminService, UserService userService, AuctionHelper auctionHelper) {
         this.adminService = adminService;
         this.userService = userService;
+        this.auctionHelper = auctionHelper;
     }
 
     @PostMapping("/items/{itemId}/approve")
@@ -170,8 +173,11 @@ public class AdminController {
         d.bidCount = a.getBidCount() == null ? 0 : a.getBidCount();
         d.minNextBid = a.getMinNextBid() == null ? a.getCurrentPrice() + 1.0 : a.getMinNextBid();
         d.leaderId = a.getLeaderId();
-        d.sellerName = null;
-        d.leaderName = null;
+        d.sellerName = auctionHelper.lookupUserName(d.sellerId);
+        d.leaderName = auctionHelper.lookupUserName(a.getLeaderId());
+        d.winnerId = a.getWinnerId();
+        d.winnerName = auctionHelper.lookupUserName(a.getWinnerId());
+        d.createdAt = a.getCreatedAt();
         d.startTime = a.getStartTime();
         d.endTime = a.getEndTime();
         d.state = a.getState() == null ? null : a.getState().name();

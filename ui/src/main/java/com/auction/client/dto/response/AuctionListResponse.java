@@ -22,6 +22,7 @@ public class AuctionListResponse {
     private String leaderName;
     private UUID winnerId;
     private String winnerName;
+    private String createdAt;
     private String startTime;
     private String endTime;
     private String state;
@@ -179,6 +180,14 @@ public class AuctionListResponse {
 
     public void setWinnerName(String winnerName) {
         this.winnerName = winnerName;
+    }
+
+    public String getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(String createdAt) {
+        this.createdAt = createdAt;
     }
 
     public String getStartTime() {

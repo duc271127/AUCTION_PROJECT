@@ -7,14 +7,29 @@ public class AuctionItem {
     private String currentBid;
     private String timeLeft;
     private String status;
+    private String createdAt;
+    private String endTime;
 
     public AuctionItem(String id, String name, String imagePath, String currentBid, String timeLeft, String status) {
+        this(id, name, imagePath, currentBid, timeLeft, status, null, null);
+    }
+
+    public AuctionItem(String id,
+                       String name,
+                       String imagePath,
+                       String currentBid,
+                       String timeLeft,
+                       String status,
+                       String createdAt,
+                       String endTime) {
         this.id = id;
         this.name = name;
         this.imagePath = imagePath;
         this.currentBid = currentBid;
         this.timeLeft = timeLeft;
         this.status = status;
+        this.createdAt = createdAt;
+        this.endTime = endTime;
     }
 
     public String getId() {
@@ -39,5 +54,13 @@ public class AuctionItem {
 
     public String getStatus() {
         return status;
+    }
+
+    public String getCreatedAt() {
+        return createdAt;
+    }
+
+    public String getEndTime() {
+        return endTime;
     }
 }

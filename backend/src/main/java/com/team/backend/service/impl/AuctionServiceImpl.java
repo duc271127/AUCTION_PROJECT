@@ -94,6 +94,10 @@ public class AuctionServiceImpl implements AuctionService {
             auction.setItem(item);
         }
 
+        if (auction.getItemId() == null && auction.getItem() != null && auction.getItem().getId() != null) {
+            auction.setItemId(auction.getItem().getId());
+        }
+
         if (auction.getItemId() != null && auctionRepository.existsByItemId(auction.getItemId())) {
             throw new BusinessRuleException("Auction already exists for item: " + auction.getItemId());
         }
@@ -177,17 +181,7 @@ public class AuctionServiceImpl implements AuctionService {
         auction.setCreatedBy(actorId == null ? sellerId : actorId);
         auction.setSellerId(sellerId);
         applyDerivedAuctionFields(auction, item, sellerId);
-        applyInitialState(auction);
-
-        if (auction.getId() == null) {
-            auction.setId(UUID.randomUUID());
-        }
-        if (auction.getCreatedAt() == null) {
-            auction.setCreatedAt(Instant.now());
-        }
-        auction.setUpdatedAt(Instant.now());
-
-        return auctionRepository.save(auction);
+        return createAuction(auction);
     }
 
     @Override

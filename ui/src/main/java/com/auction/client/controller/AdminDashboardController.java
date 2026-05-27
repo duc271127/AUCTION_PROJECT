@@ -111,16 +111,9 @@ public class AdminDashboardController {
             closedAuctionsLabel.setText(String.valueOf(stats.getClosedAuctions()));
             newSellersLabel.setText(String.valueOf(stats.getNewSellersThisMonth()));
             successRateLabel.setText(String.format("%.0f%%", stats.getAuctionSuccessRate()));
-            revenueLabel.setText("USD " + String.format("%,.1fk", stats.getRevenue() / 1000.0));
+            revenueLabel.setText(formatCompactRevenue(stats.getRevenue()));
         } catch (Exception e) {
-            totalUsersLabel.setText("-");
-            activeSellersLabel.setText("-");
-            totalAuctionsLabel.setText("-");
-            activeAuctionsLabel.setText("-");
-            closedAuctionsLabel.setText("-");
-            newSellersLabel.setText("-");
-            successRateLabel.setText("-");
-            revenueLabel.setText("-");
+            populateAdminStatsFallback();
         }
     }
 
@@ -618,16 +611,27 @@ public class AdminDashboardController {
     private Node buildAuctionRow(AuctionListResponse auction) {
         Label title = new Label(firstNonBlank(auction.getTitle(), auction.getItemName(), "Untitled auction"));
         title.getStyleClass().add("admin-management-title");
+        title.setWrapText(true);
 
-        Label subtitle = new Label(formatAdminDate(auction.getStartTime()));
+        Label subtitle = new Label("Category " + firstNonBlank(auction.getCategory(), "General")
+                + " | Start " + formatAdminDate(auction.getStartTime())
+                + " | End " + formatAdminDate(auction.getEndTime()));
         subtitle.getStyleClass().add("admin-management-subtitle");
+        subtitle.setWrapText(true);
 
         VBox titleBox = new VBox(4, title, subtitle);
         HBox.setHgrow(titleBox, Priority.ALWAYS);
 
         Label seller = new Label(firstNonBlank(auction.getSellerName(), "Unknown seller"));
-        seller.getStyleClass().add("admin-management-subtitle");
-        seller.setMinWidth(170);
+        seller.getStyleClass().add("admin-management-title");
+
+        Label sellerMeta = new Label("Seller ID " + shortUuid(auction.getSellerId())
+                + " | Item ID " + shortUuid(auction.getItemId()));
+        sellerMeta.getStyleClass().add("admin-management-subtitle");
+        sellerMeta.setWrapText(true);
+
+        VBox sellerBox = new VBox(4, seller, sellerMeta);
+        sellerBox.setMinWidth(210);
 
         Label status = new Label(formatAuctionState(auction));
         status.getStyleClass().addAll("admin-status-pill", adminStateClass(auction));
@@ -635,14 +639,21 @@ public class AdminDashboardController {
 
         Label currentBid = new Label(formatCurrency(BigDecimal.valueOf(auction.getCurrentPrice())));
         currentBid.getStyleClass().add("admin-management-title");
-        currentBid.setMinWidth(140);
+
+        Label currentBidMeta = new Label("Bids " + auction.getBidCount()
+                + " | Min next " + formatCurrency(auction.getMinNextBid()));
+        currentBidMeta.getStyleClass().add("admin-management-subtitle");
+        currentBidMeta.setWrapText(true);
+
+        VBox priceBox = new VBox(4, currentBid, currentBidMeta);
+        priceBox.setMinWidth(170);
 
         Button review = new Button("Review");
         review.getStyleClass().add("admin-inline-link");
         review.setOnAction(event -> reviewAuctionRow(auction));
         review.setMinWidth(110);
 
-        HBox row = new HBox(18, titleBox, seller, status, currentBid, review);
+        HBox row = new HBox(18, titleBox, sellerBox, status, priceBox, review);
         row.setAlignment(Pos.CENTER_LEFT);
         row.getStyleClass().addAll("admin-management-row", adminRowClass(auction));
         return row;
@@ -651,16 +662,27 @@ public class AdminDashboardController {
     private Node buildPendingRow(AdminApprovalItem item) {
         Label title = new Label(firstNonBlank(item == null ? null : item.getProductName(), "Untitled pending item"));
         title.getStyleClass().add("admin-management-title");
+        title.setWrapText(true);
 
-        Label subtitle = new Label(formatAdminDate(item == null ? null : item.getStartDate()));
+        Label subtitle = new Label("Category " + firstNonBlank(item == null ? null : item.getCategory(), "General")
+                + " | Start " + formatAdminDate(item == null ? null : item.getStartDate())
+                + " | End " + formatAdminDate(item == null ? null : item.getEndDate()));
         subtitle.getStyleClass().add("admin-management-subtitle");
+        subtitle.setWrapText(true);
 
         VBox titleBox = new VBox(4, title, subtitle);
         HBox.setHgrow(titleBox, Priority.ALWAYS);
 
         Label seller = new Label(firstNonBlank(item == null ? null : item.getSellerName(), "Unknown seller"));
-        seller.getStyleClass().add("admin-management-subtitle");
-        seller.setMinWidth(170);
+        seller.getStyleClass().add("admin-management-title");
+
+        Label sellerMeta = new Label("Seller ID " + shortUuid(item == null ? null : item.getSellerId())
+                + " | Item ID " + shortUuid(item == null ? null : item.getId()));
+        sellerMeta.getStyleClass().add("admin-management-subtitle");
+        sellerMeta.setWrapText(true);
+
+        VBox sellerBox = new VBox(4, seller, sellerMeta);
+        sellerBox.setMinWidth(210);
 
         Label status = new Label(formatPendingState(item));
         status.getStyleClass().addAll("admin-status-pill", adminStateClass(item));
@@ -668,14 +690,22 @@ public class AdminDashboardController {
 
         Label currentBid = new Label(item == null ? "-" : item.getStartingPriceText());
         currentBid.getStyleClass().add("admin-management-title");
-        currentBid.setMinWidth(140);
+
+        String reserveText = item == null || item.getReservePrice() == null
+                ? "-"
+                : formatCurrency(item.getReservePrice());
+        Label currentBidMeta = new Label("Reserve " + reserveText);
+        currentBidMeta.getStyleClass().add("admin-management-subtitle");
+
+        VBox priceBox = new VBox(4, currentBid, currentBidMeta);
+        priceBox.setMinWidth(170);
 
         Button review = new Button("Review");
         review.getStyleClass().add("admin-inline-link");
         review.setOnAction(event -> reviewPendingItem(item));
         review.setMinWidth(110);
 
-        HBox row = new HBox(18, titleBox, seller, status, currentBid, review);
+        HBox row = new HBox(18, titleBox, sellerBox, status, priceBox, review);
         row.setAlignment(Pos.CENTER_LEFT);
         row.getStyleClass().addAll("admin-management-row", adminRowClass(item));
         return row;
@@ -955,5 +985,56 @@ public class AdminDashboardController {
             double target = panelY / Math.max(1, contentHeight - viewportHeight);
             adminScrollPane.setVvalue(Math.max(0, Math.min(target, 1)));
         });
+    }
+
+    private void populateAdminStatsFallback() {
+        long totalAuctions = managedAuctions.size();
+        long activeAuctions = managedAuctions.stream()
+                .filter(auction -> "active".equals(normalizeAuctionState(auction)))
+                .count();
+        long closedAuctions = managedAuctions.stream()
+                .filter(auction -> "closed".equals(normalizeAuctionState(auction)))
+                .count();
+        long activeSellers = managedAuctions.stream()
+                .map(AuctionListResponse::getSellerId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .count();
+        long successfulAuctions = managedAuctions.stream()
+                .filter(auction -> "closed".equals(normalizeAuctionState(auction)))
+                .filter(auction -> auction.getWinnerId() != null || auction.getLeaderId() != null)
+                .count();
+        double revenue = managedAuctions.stream()
+                .filter(auction -> "closed".equals(normalizeAuctionState(auction)))
+                .filter(auction -> auction.getWinnerId() != null || auction.getLeaderId() != null)
+                .mapToDouble(AuctionListResponse::getCurrentPrice)
+                .sum();
+
+        totalUsersLabel.setText("-");
+        activeSellersLabel.setText(String.valueOf(activeSellers));
+        totalAuctionsLabel.setText(String.valueOf(totalAuctions));
+        activeAuctionsLabel.setText(String.valueOf(activeAuctions));
+        closedAuctionsLabel.setText(String.valueOf(closedAuctions));
+        newSellersLabel.setText("-");
+        successRateLabel.setText(closedAuctions == 0
+                ? "0%"
+                : String.format("%.0f%%", (successfulAuctions * 100.0) / closedAuctions));
+        revenueLabel.setText(formatCompactRevenue(revenue));
+    }
+
+    private String formatCompactRevenue(double revenue) {
+        if (Math.abs(revenue) >= 1000) {
+            return "USD " + String.format("%,.1fk", revenue / 1000.0);
+        }
+        return "USD " + String.format("%,.0f", revenue);
+    }
+
+    private String shortUuid(UUID value) {
+        if (value == null) {
+            return "-";
+        }
+
+        String text = value.toString();
+        return text.length() <= 8 ? text : text.substring(0, 8);
     }
 }

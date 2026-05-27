@@ -69,9 +69,13 @@ public class SellerDashboardController {
     @FXML private TableColumn<SellerListing, String> productNameColumn;
     @FXML private TableColumn<SellerListing, String> categoryColumn;
     @FXML private TableColumn<SellerListing, String> startingPriceColumn;
+    @FXML private TableColumn<SellerListing, String> reservePriceColumn;
     @FXML private TableColumn<SellerListing, String> statusColumn;
+    @FXML private TableColumn<SellerListing, String> quantityColumn;
+    @FXML private TableColumn<SellerListing, String> skuColumn;
     @FXML private TableColumn<SellerListing, String> startDateColumn;
     @FXML private TableColumn<SellerListing, String> endDateColumn;
+    @FXML private TableColumn<SellerListing, String> deletableColumn;
 
     @FXML private TextField productNameField;
     @FXML private TextArea descriptionArea;
@@ -118,10 +122,14 @@ public class SellerDashboardController {
         }
         productNameColumn.setCellValueFactory(new PropertyValueFactory<>("productName"));
         categoryColumn.setCellValueFactory(new PropertyValueFactory<>("category"));
-        startingPriceColumn.setCellValueFactory(new PropertyValueFactory<>("startingPrice"));
+        startingPriceColumn.setCellValueFactory(new PropertyValueFactory<>("startingPriceText"));
+        reservePriceColumn.setCellValueFactory(new PropertyValueFactory<>("reservePriceText"));
         statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
-        startDateColumn.setCellValueFactory(new PropertyValueFactory<>("startDate"));
-        endDateColumn.setCellValueFactory(new PropertyValueFactory<>("endDate"));
+        quantityColumn.setCellValueFactory(new PropertyValueFactory<>("quantityText"));
+        skuColumn.setCellValueFactory(new PropertyValueFactory<>("sku"));
+        startDateColumn.setCellValueFactory(new PropertyValueFactory<>("startDateText"));
+        endDateColumn.setCellValueFactory(new PropertyValueFactory<>("endDateText"));
+        deletableColumn.setCellValueFactory(new PropertyValueFactory<>("deletePermissionText"));
     }
 
     private void setupSelectionListener() {
@@ -606,12 +614,12 @@ public class SellerDashboardController {
                 item.getCategory(),
                 String.valueOf(item.getStartingPrice()),
                 String.valueOf(item.getReservePrice()),
-                item.getStatus(),
+                normalizeStatus(item.getStatus()),
                 item.getStartDate(),
                 item.getEndDate(),
                 item.getImagePath(),
                 item.getImageUrls(),
-                item.getSku(),
+                firstNonBlank(item.getSku(), "-"),
                 item.getQuantity(),
                 item.isDeletable(),
                 item.getDeleteBlockedReason()
@@ -800,6 +808,14 @@ public class SellerDashboardController {
 
     private String formatMoney(double value) {
         return String.format("USD %,.0f", value);
+    }
+
+    private String normalizeStatus(String value) {
+        if (value == null || value.isBlank()) {
+            return "PENDING";
+        }
+
+        return value.trim().toUpperCase();
     }
 
     private String formatMoneyValue(String value) {

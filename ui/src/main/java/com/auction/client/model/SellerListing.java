@@ -1,6 +1,7 @@
 package com.auction.client.model;
 import java.util.UUID;
 import java.util.List;
+import java.util.Locale;
 
 public class SellerListing {
     private UUID id;
@@ -146,4 +147,59 @@ public class SellerListing {
 
     public String getDeleteBlockedReason() { return deleteBlockedReason; }
     public void setDeleteBlockedReason(String deleteBlockedReason) { this.deleteBlockedReason = deleteBlockedReason; }
+
+    public String getQuantityText() {
+        return quantity == null ? "0" : String.valueOf(quantity);
+    }
+
+    public String getDeletePermissionText() {
+        return deletable ? "Yes" : "No";
+    }
+
+    public String getStartingPriceText() {
+        return formatMoney(startingPrice);
+    }
+
+    public String getReservePriceText() {
+        if (reservePrice == null || reservePrice.isBlank()) {
+            return "-";
+        }
+
+        try {
+            double value = Double.parseDouble(reservePrice);
+            return value <= 0 ? "-" : formatMoney(reservePrice);
+        } catch (NumberFormatException e) {
+            return reservePrice;
+        }
+    }
+
+    public String getStartDateText() {
+        return formatDate(startDate);
+    }
+
+    public String getEndDateText() {
+        return formatDate(endDate);
+    }
+
+    private String formatMoney(String value) {
+        if (value == null || value.isBlank()) {
+            return "USD 0";
+        }
+
+        try {
+            return "USD " + String.format(Locale.US, "%,.0f", Double.parseDouble(value));
+        } catch (NumberFormatException e) {
+            return value;
+        }
+    }
+
+    private String formatDate(String value) {
+        if (value == null || value.isBlank()) {
+            return "-";
+        }
+
+        return value.length() >= 16
+                ? value.substring(0, 16).replace("T", " ")
+                : value;
+    }
 }
