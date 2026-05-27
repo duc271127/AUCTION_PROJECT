@@ -9,11 +9,16 @@ import com.team.backend.repository.BidRepository;
 import com.team.backend.repository.UserRepository;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Component
 public class AuctionHelper {
@@ -22,6 +27,7 @@ public class AuctionHelper {
     private final BidRepository bidRepository;
     private final AutoBidRepository autoBidRepository;
     private final UserRepository userRepository;
+    private final Map<UUID, String> userNameCache = new ConcurrentHashMap<>();
 
     public AuctionHelper(AuctionRepository auctionRepository,
                          BidRepository bidRepository,
@@ -38,20 +44,36 @@ public class AuctionHelper {
             return null;
         }
 
-        return userRepository.findById(userId)
-                .map(user -> {
-                    if (user.getDisplayName() != null && !user.getDisplayName().isBlank()) {
-                        return user.getDisplayName();
-                    }
-                    if (user.getUsername() != null && !user.getUsername().isBlank()) {
-                        return user.getUsername();
-                    }
-                    if (user.getEmail() != null && !user.getEmail().isBlank()) {
-                        return user.getEmail();
-                    }
-                    return shortId(userId);
-                })
-                .orElseGet(() -> shortId(userId));
+        return userNameCache.computeIfAbsent(userId, this::loadUserName);
+    }
+
+    public Map<UUID, String> lookupUserNames(Collection<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+
+        LinkedHashSet<UUID> uniqueIds = userIds.stream()
+                .filter(id -> id != null)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        if (uniqueIds.isEmpty()) {
+            return Map.of();
+        }
+
+        LinkedHashSet<UUID> missingIds = uniqueIds.stream()
+                .filter(id -> !userNameCache.containsKey(id))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        if (!missingIds.isEmpty()) {
+            userRepository.findAllById(missingIds).forEach(user ->
+                    userNameCache.put(user.getId(), resolveUserName(user.getId(), user.getDisplayName(), user.getUsername(), user.getEmail())));
+
+            missingIds.stream()
+                    .filter(id -> !userNameCache.containsKey(id))
+                    .forEach(id -> userNameCache.put(id, shortId(id)));
+        }
+
+        return uniqueIds.stream().collect(Collectors.toMap(id -> id, this::lookupUserName));
     }
 
     public long computeRemainingSeconds(UUID auctionId) {
@@ -102,5 +124,24 @@ public class AuctionHelper {
     private String shortId(UUID userId) {
         String value = userId.toString().replace("-", "");
         return value.length() > 8 ? value.substring(0, 8) : value;
+    }
+
+    private String loadUserName(UUID userId) {
+        return userRepository.findById(userId)
+                .map(user -> resolveUserName(userId, user.getDisplayName(), user.getUsername(), user.getEmail()))
+                .orElseGet(() -> shortId(userId));
+    }
+
+    private String resolveUserName(UUID userId, String displayName, String username, String email) {
+        if (displayName != null && !displayName.isBlank()) {
+            return displayName;
+        }
+        if (username != null && !username.isBlank()) {
+            return username;
+        }
+        if (email != null && !email.isBlank()) {
+            return email;
+        }
+        return shortId(userId);
     }
 }

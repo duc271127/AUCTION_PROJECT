@@ -43,8 +43,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -158,13 +160,7 @@ public class AuctionController {
         PageRequest pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), sortSpec);
         Page<Auction> result = auctionService.searchCatalog(category, q, parseState(state), pageable);
 
-        AuctionPageResponse response = new AuctionPageResponse();
-        response.setItems(result.getContent().stream().map(this::toDto).toList());
-        response.setPage(result.getNumber());
-        response.setSize(result.getSize());
-        response.setTotalElements(result.getTotalElements());
-        response.setTotalPages(result.getTotalPages());
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(toPageResponse(result));
     }
 
     @GetMapping("/trending")
@@ -234,6 +230,10 @@ public class AuctionController {
     }
 
     private AuctionDto toDto(Auction auction) {
+        return toDto(auction, Map.of());
+    }
+
+    private AuctionDto toDto(Auction auction, Map<UUID, String> userNames) {
         if (auction == null) {
             return null;
         }
@@ -247,7 +247,7 @@ public class AuctionController {
         dto.imageUrl = AuctionImageResolver.resolvePrimaryImage(auction);
         dto.category = auction.getCategory();
         dto.sellerId = auction.getSellerId() != null ? auction.getSellerId() : auction.getCreatedBy();
-        dto.sellerName = auction.getSellerName() != null ? auction.getSellerName() : auctionHelper.lookupUserName(dto.sellerId);
+        dto.sellerName = auction.getSellerName() != null ? auction.getSellerName() : resolveUserName(userNames, dto.sellerId);
         dto.currentPrice = auction.getCurrentPrice();
         dto.viewCount = Math.max(0L, auction.getViewCount());
         dto.favoriteCount = auction.getFavoriteCount() == null ? 0L : auction.getFavoriteCount();
@@ -255,9 +255,9 @@ public class AuctionController {
         dto.bidCount = auction.getBidCount() == null ? 0 : auction.getBidCount();
         dto.minNextBid = auction.getMinNextBid() == null ? auction.getCurrentPrice() + bidService.getMinIncrement() : auction.getMinNextBid();
         dto.leaderId = auction.getLeaderId();
-        dto.leaderName = auctionHelper.lookupUserName(auction.getLeaderId());
+        dto.leaderName = resolveUserName(userNames, auction.getLeaderId());
         dto.winnerId = auction.getWinnerId();
-        dto.winnerName = auctionHelper.lookupUserName(auction.getWinnerId());
+        dto.winnerName = resolveUserName(userNames, auction.getWinnerId());
         dto.startTime = auction.getStartTime();
         dto.endTime = auction.getEndTime();
         dto.state = auction.getState() == null ? null : auction.getState().name();
@@ -319,8 +319,10 @@ public class AuctionController {
     }
 
     private AuctionPageResponse toPageResponse(Page<Auction> result) {
+        List<Auction> auctions = result.getContent();
+        Map<UUID, String> userNames = auctionHelper.lookupUserNames(collectUserIds(auctions));
         AuctionPageResponse response = new AuctionPageResponse();
-        response.setItems(result.getContent().stream().map(this::toDto).toList());
+        response.setItems(auctions.stream().map(auction -> toDto(auction, userNames)).toList());
         response.setPage(result.getNumber());
         response.setSize(result.getSize());
         response.setTotalElements(result.getTotalElements());
@@ -359,5 +361,28 @@ public class AuctionController {
                 ? Sort.Direction.DESC
                 : Sort.Direction.ASC;
         return Sort.by(direction, property);
+    }
+
+    private List<UUID> collectUserIds(List<Auction> auctions) {
+        List<UUID> ids = new ArrayList<>();
+        for (Auction auction : auctions) {
+            if (auction == null) {
+                continue;
+            }
+            ids.add(auction.getSellerId() != null ? auction.getSellerId() : auction.getCreatedBy());
+            ids.add(auction.getLeaderId());
+            ids.add(auction.getWinnerId());
+        }
+        return ids;
+    }
+
+    private String resolveUserName(Map<UUID, String> userNames, UUID userId) {
+        if (userId == null) {
+            return null;
+        }
+        if (userNames != null && userNames.containsKey(userId)) {
+            return userNames.get(userId);
+        }
+        return auctionHelper.lookupUserName(userId);
     }
 }

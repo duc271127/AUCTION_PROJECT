@@ -98,8 +98,9 @@ public class AdminApiService {
 
     public AuctionListResponse approveAndCreateAuction(String itemId, CreateAuctionRequest request) {
         try {
-            approveItem(itemId);
-            return createAuctionForItem(itemId, request);
+            String jsonBody = objectMapper.writeValueAsString(request);
+            String responseBody = apiClient.post("/admin/items/" + itemId + "/approve-and-create-auction", jsonBody);
+            return objectMapper.readValue(responseBody, AuctionListResponse.class);
         } catch (Exception e) {
             throw new ApiException("Approve and create auction failed: " + e.getMessage(), e);
         }

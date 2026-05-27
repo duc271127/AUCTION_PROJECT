@@ -646,14 +646,18 @@ public class SellerDashboardController {
             return;
         }
 
-        try {
-            recentListingsGrid.getChildren().clear();
-            for (ItemResponse item : sellerItemApiService.getRecentItems(4)) {
-                recentListingsGrid.getChildren().add(buildRecentListingCard(mapToSellerListing(item)));
-            }
-        } catch (Exception e) {
-            recentListingsGrid.getChildren().clear();
-            recentListingsGrid.getChildren().add(new Label("Cannot load recent listings."));
+        recentListingsGrid.getChildren().clear();
+        List<SellerListing> recentListings = sellerListing.stream()
+                .limit(4)
+                .toList();
+
+        if (recentListings.isEmpty()) {
+            recentListingsGrid.getChildren().add(new Label("No recent listings."));
+            return;
+        }
+
+        for (SellerListing listing : recentListings) {
+            recentListingsGrid.getChildren().add(buildRecentListingCard(listing));
         }
     }
 
