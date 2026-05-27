@@ -114,7 +114,7 @@ public class AuthController {
             navigateByRole(responseNormalizedRole);
 
         } catch (Exception e) {
-            showLoginError(e.getMessage());
+            showLoginError(toFriendlyError(e.getMessage()));
         }
     }
 
@@ -199,7 +199,7 @@ public class AuthController {
             showLoginSuccess("Register successful: " + identity + ". Please sign in.");
 
         } catch (Exception e) {
-            showRegisterError(e.getMessage());
+            showRegisterError(toFriendlyError(e.getMessage()));
         }
     }
 
@@ -249,11 +249,6 @@ public class AuthController {
         registerErrorLabel.setStyle("-fx-text-fill: #dc2626;");
     }
 
-    private void showRegisterSuccess(String message) {
-        registerErrorLabel.setText(message);
-        registerErrorLabel.setStyle("-fx-text-fill: #16a34a;");
-    }
-
     private void hideRegisterError() {
         registerErrorLabel.setText("");
     }
@@ -264,5 +259,17 @@ public class AuthController {
             case "ADMIN" -> "Admin";
             default -> "Bidder";
         };
+    }
+
+    private String toFriendlyError(String message) {
+        if (message == null || message.isBlank()) {
+            return "Unknown error.";
+        }
+
+        if (message.contains("Cannot connect to server")) {
+            return message + ". Make sure backend is reachable at lungs-decree.with.playit.plus:1125.";
+        }
+
+        return message;
     }
 }

@@ -20,8 +20,6 @@ import java.util.UUID;
 
 public class ApiClient {
 
-    private static final String BASE_URL = EndpointConfig.getHttpBaseUrl();
-
     private final HttpClient httpClient;
     private final Gson gson;
 
@@ -31,9 +29,11 @@ public class ApiClient {
     }
 
     public String get(String endpoint) {
+        String baseUrl = getBaseUrl();
+
         try {
             HttpRequest.Builder builder = HttpRequest.newBuilder()
-                    .uri(URI.create(BASE_URL + endpoint))
+                    .uri(URI.create(baseUrl + endpoint))
                     .header("Content-Type", "application/json")
                     .GET();
 
@@ -55,16 +55,18 @@ public class ApiClient {
 
         } catch (IOException | InterruptedException e) {
             throw new ApiException(
-                    "Cannot connect to server: " + e.getMessage(),
+                    "Cannot connect to server at " + baseUrl + ": " + e.getMessage(),
                     e
             );
         }
     }
 
     public String post(String endpoint, String jsonBody) {
+        String baseUrl = getBaseUrl();
+
         try {
             HttpRequest.Builder builder = HttpRequest.newBuilder()
-                    .uri(URI.create(BASE_URL + endpoint))
+                    .uri(URI.create(baseUrl + endpoint))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody));
 
@@ -86,7 +88,7 @@ public class ApiClient {
 
         } catch (IOException | InterruptedException e) {
             throw new ApiException(
-                    "Cannot connect to server: " + e.getMessage(),
+                    "Cannot connect to server at " + baseUrl + ": " + e.getMessage(),
                     e
             );
         }
@@ -106,6 +108,8 @@ public class ApiClient {
                                    String fieldName,
                                    Path filePath,
                                    Class<T> responseType) {
+        String baseUrl = getBaseUrl();
+
         try {
             String boundary = "AuctionUploadBoundary" + UUID.randomUUID();
             String fileName = filePath.getFileName().toString();
@@ -129,7 +133,7 @@ public class ApiClient {
             );
 
             HttpRequest.Builder builder = HttpRequest.newBuilder()
-                    .uri(URI.create(BASE_URL + endpoint))
+                    .uri(URI.create(baseUrl + endpoint))
                     .header("Content-Type", "multipart/form-data; boundary=" + boundary)
                     .POST(body);
 
@@ -149,11 +153,13 @@ public class ApiClient {
                             response.body()
             );
         } catch (IOException | InterruptedException e) {
-            throw new ApiException("Cannot upload file: " + e.getMessage(), e);
+            throw new ApiException("Cannot upload file to " + baseUrl + ": " + e.getMessage(), e);
         }
     }
 
     public String toAbsoluteUrl(String path) {
+        String baseUrl = getBaseUrl();
+
         if (path == null || path.isBlank()) {
             return "";
         }
@@ -162,18 +168,19 @@ public class ApiClient {
             return path;
         }
 
-        return BASE_URL + (path.startsWith("/") ? path : "/" + path);
+        return baseUrl + (path.startsWith("/") ? path : "/" + path);
     }
 
     public <T> T put(String endpoint,
                      Object requestBody,
                      Class<T> responseType) {
+        String baseUrl = getBaseUrl();
 
         try {
             String jsonBody = gson.toJson(requestBody);
 
             HttpRequest.Builder builder = HttpRequest.newBuilder()
-                    .uri(URI.create(BASE_URL + endpoint))
+                    .uri(URI.create(baseUrl + endpoint))
                     .header("Content-Type", "application/json")
                     .PUT(HttpRequest.BodyPublishers.ofString(jsonBody));
 
@@ -195,17 +202,18 @@ public class ApiClient {
 
         } catch (IOException | InterruptedException e) {
             throw new ApiException(
-                    "Cannot connect to server: " + e.getMessage(),
+                    "Cannot connect to server at " + baseUrl + ": " + e.getMessage(),
                     e
             );
         }
     }
 
     public void delete(String endpoint) {
+        String baseUrl = getBaseUrl();
 
         try {
             HttpRequest.Builder builder = HttpRequest.newBuilder()
-                    .uri(URI.create(BASE_URL + endpoint))
+                    .uri(URI.create(baseUrl + endpoint))
                     .header("Content-Type", "application/json")
                     .DELETE();
 
@@ -227,7 +235,7 @@ public class ApiClient {
 
         } catch (IOException | InterruptedException e) {
             throw new ApiException(
-                    "Cannot connect to server: " + e.getMessage(),
+                    "Cannot connect to server at " + baseUrl + ": " + e.getMessage(),
                     e
             );
         }
@@ -260,5 +268,9 @@ public class ApiClient {
             builder.header("X-Seller-Id", userId);
             builder.header("X-Admin-Id", userId);
         }
+    }
+
+    private String getBaseUrl() {
+        return EndpointConfig.getHttpBaseUrl();
     }
 }

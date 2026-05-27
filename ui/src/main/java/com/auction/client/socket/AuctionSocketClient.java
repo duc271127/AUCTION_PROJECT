@@ -20,11 +20,11 @@ public class AuctionSocketClient {
 
     private WebSocketClient client;
 
-    private static final String WS_URL = EndpointConfig.getWebSocketUrl();
-
     public boolean connectBlockingToServer() {
+        String wsUrl = EndpointConfig.getWebSocketUrl();
+
         try {
-            client = new WebSocketClient(new URI(WS_URL)) {
+            client = new WebSocketClient(new URI(wsUrl)) {
                 @Override
                 public void onOpen(ServerHandshake handshakedata) {
                     connected = true;
@@ -61,7 +61,7 @@ public class AuctionSocketClient {
             return ok;
 
         } catch (Exception e) {
-            notifyError(e.getMessage());
+            notifyError("Cannot connect to realtime server at " + wsUrl + ": " + e.getMessage());
             return false;
         }
     }
