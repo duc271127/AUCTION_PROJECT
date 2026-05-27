@@ -1,22 +1,15 @@
 package com.auction.client.config;
 
 import java.io.InputStream;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.Properties;
 
 public final class EndpointConfig {
 
-    private static final String LOCAL_HTTP_BASE_URL = "http://127.0.0.1:8081";
     private static final String DEFAULT_HTTP_BASE_URL = "http://lungs-decree.with.playit.plus:1125";
     private static final String DEFAULT_WS_URL = "ws://lungs-decree.with.playit.plus:1125/ws/websocket";
     private static final String HTTP_BASE_URL_KEY = "auction.api.baseUrl";
     private static final String WS_URL_KEY = "auction.ws.url";
     private static final String CLASSPATH_CONFIG = "auction-client.properties";
-    private static final Duration CONNECT_TIMEOUT = Duration.ofMillis(800);
     private static volatile String resolvedHttpBaseUrl;
 
     private EndpointConfig() {
@@ -34,13 +27,7 @@ public final class EndpointConfig {
 
         String cached = resolvedHttpBaseUrl;
         if (cached != null) {
-            if (LOCAL_HTTP_BASE_URL.equals(cached) || !isReachable(LOCAL_HTTP_BASE_URL)) {
-                return cached;
-            }
-
-            String normalizedLocal = normalizeHttpBaseUrl(LOCAL_HTTP_BASE_URL);
-            resolvedHttpBaseUrl = normalizedLocal;
-            return normalizedLocal;
+            return cached;
         }
 
         String configuredDefault = firstNonBlank(
@@ -48,10 +35,7 @@ public final class EndpointConfig {
                 DEFAULT_HTTP_BASE_URL
         );
 
-        String preferred = isReachable(LOCAL_HTTP_BASE_URL)
-                ? LOCAL_HTTP_BASE_URL
-                : configuredDefault;
-        String normalized = normalizeHttpBaseUrl(preferred);
+        String normalized = normalizeHttpBaseUrl(configuredDefault);
         resolvedHttpBaseUrl = normalized;
         return normalized;
     }
@@ -98,23 +82,6 @@ public final class EndpointConfig {
         }
 
         return DEFAULT_WS_URL;
-    }
-
-    private static boolean isReachable(String httpBaseUrl) {
-        try {
-            HttpClient httpClient = HttpClient.newBuilder()
-                    .connectTimeout(CONNECT_TIMEOUT)
-                    .build();
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(normalizeHttpBaseUrl(httpBaseUrl) + "/api/auctions?page=0&size=1"))
-                    .timeout(CONNECT_TIMEOUT)
-                    .GET()
-                    .build();
-            HttpResponse<Void> response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
-            return response.statusCode() >= 200 && response.statusCode() < 500;
-        } catch (Exception e) {
-            return false;
-        }
     }
 
     private static String normalizeWebSocketUrl(String value) {
