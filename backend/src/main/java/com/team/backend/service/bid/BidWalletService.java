@@ -1,38 +1,81 @@
 package com.team.backend.service.bid;
 
 import com.team.backend.entity.Auction;
+import com.team.backend.entity.AuctionState;
 import com.team.backend.entity.Wallet;
 import com.team.backend.entity.WalletTransaction;
 import com.team.backend.entity.WalletTransactionType;
 import com.team.backend.exception.InvalidBidException;
+import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.WalletRepository;
 import com.team.backend.repository.WalletTransactionRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
 public class BidWalletService {
 
+    private static final List<AuctionState> RESERVED_BID_STATES = List.of(AuctionState.SCHEDULED, AuctionState.ACTIVE);
+
+    private final AuctionRepository auctionRepository;
     private final WalletRepository walletRepository;
     private final WalletTransactionRepository walletTransactionRepository;
 
-    public BidWalletService(WalletRepository walletRepository,
+    public BidWalletService(AuctionRepository auctionRepository,
+                            WalletRepository walletRepository,
                             WalletTransactionRepository walletTransactionRepository) {
+        this.auctionRepository = auctionRepository;
         this.walletRepository = walletRepository;
         this.walletTransactionRepository = walletTransactionRepository;
     }
 
-    public void ensureSufficientBalanceForBid(UUID bidderId, double requestedAmount) {
-        BigDecimal availableBalance = walletRepository.findByUserId(bidderId)
+    public void ensureSufficientBalanceForBid(UUID bidderId, UUID auctionId, double requestedAmount) {
+        ensureSufficientCapacity(bidderId, auctionId, BigDecimal.valueOf(requestedAmount), "Insufficient wallet balance for this bid");
+    }
+
+    public void ensureSufficientBalanceForAutoBid(UUID bidderId, UUID auctionId, double maxAmount) {
+        ensureSufficientCapacity(bidderId, auctionId, BigDecimal.valueOf(maxAmount), "Insufficient wallet balance for this auto-bid limit");
+    }
+
+    public BigDecimal calculateOutstandingDebt(UUID userId) {
+        return calculateOutstandingDebtExcludingAuction(userId, null);
+    }
+
+    public BigDecimal calculateOutstandingDebtExcludingAuction(UUID userId, UUID excludedAuctionId) {
+        if (userId == null) {
+            return BigDecimal.ZERO;
+        }
+
+        return auctionRepository.findOutstandingWalletDebtAuctions(userId, RESERVED_BID_STATES, AuctionState.FINISHED)
+                .stream()
+                .filter(auction -> auction != null
+                        && auction.getId() != null
+                        && (excludedAuctionId == null || !excludedAuctionId.equals(auction.getId()))
+                        && auction.getCurrentPrice() > 0.0d)
+                .map(auction -> BigDecimal.valueOf(auction.getCurrentPrice()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public BigDecimal calculateAvailableToWithdraw(UUID userId, BigDecimal walletBalance) {
+        BigDecimal reservedDebt = calculateOutstandingDebt(userId);
+        BigDecimal safeBalance = walletBalance == null ? BigDecimal.ZERO : walletBalance;
+        BigDecimal available = safeBalance.subtract(reservedDebt);
+        return available.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : available;
+    }
+
+    private void ensureSufficientCapacity(UUID bidderId, UUID auctionId, BigDecimal requiredAmount, String message) {
+        BigDecimal walletBalance = walletRepository.findByUserId(bidderId)
                 .map(wallet -> wallet.getBalance() == null ? BigDecimal.ZERO : wallet.getBalance())
                 .orElse(BigDecimal.ZERO);
+        BigDecimal reservedDebt = calculateOutstandingDebtExcludingAuction(bidderId, auctionId);
+        BigDecimal availableBalance = walletBalance.subtract(reservedDebt);
 
-        BigDecimal required = BigDecimal.valueOf(requestedAmount);
-        if (availableBalance.compareTo(required) < 0) {
-            throw new InvalidBidException("Insufficient wallet balance for this bid");
+        if (availableBalance.compareTo(requiredAmount) < 0) {
+            throw new InvalidBidException(message);
         }
     }
 

@@ -7,16 +7,15 @@ import com.team.backend.exception.InvalidBidException;
 import com.team.backend.exception.ResourceNotFoundException;
 import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.AutoBidRepository;
-import com.team.backend.repository.WalletRepository;
 import com.team.backend.service.AutoBidService;
 import com.team.backend.service.EventPublisher;
+import com.team.backend.service.bid.BidWalletService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -28,15 +27,15 @@ public class AutoBidServiceImpl implements AutoBidService {
 
     private final AutoBidRepository autoBidRepository;
     private final AuctionRepository auctionRepository;
-    private final WalletRepository walletRepository;
+    private final BidWalletService bidWalletService;
 
     public AutoBidServiceImpl(AutoBidRepository autoBidRepository,
                               AuctionRepository auctionRepository,
-                              WalletRepository walletRepository,
+                              BidWalletService bidWalletService,
                               ObjectProvider<EventPublisher> eventPublisherProvider) {
         this.autoBidRepository = autoBidRepository;
         this.auctionRepository = auctionRepository;
-        this.walletRepository = walletRepository;
+        this.bidWalletService = bidWalletService;
     }
 
     @Override
@@ -77,12 +76,7 @@ public class AutoBidServiceImpl implements AutoBidService {
         if (maxAmount < minAllowed) {
             throw new InvalidBidException("Auto-bid maximum must be at least " + minAllowed);
         }
-        BigDecimal balance = walletRepository.findByUserId(bidderId)
-                .map(wallet -> wallet.getBalance() == null ? BigDecimal.ZERO : wallet.getBalance())
-                .orElse(BigDecimal.ZERO);
-        if (balance.compareTo(BigDecimal.valueOf(maxAmount)) < 0) {
-            throw new InvalidBidException("Insufficient wallet balance for this auto-bid limit");
-        }
+        bidWalletService.ensureSufficientBalanceForAutoBid(bidderId, auctionId, maxAmount);
 
         List<AutoBid> existing = autoBidRepository.findByAuctionIdAndBidderId(auctionId, bidderId);
         if (existing != null && !existing.isEmpty()) {

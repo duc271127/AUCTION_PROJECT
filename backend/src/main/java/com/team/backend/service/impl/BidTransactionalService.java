@@ -140,7 +140,7 @@ public class BidTransactionalService {
             throw new InvalidBidException("Seller cannot bid on their own auction");
         }
 
-        bidWalletService.ensureSufficientBalanceForBid(bidderId, amount);
+        bidWalletService.ensureSufficientBalanceForBid(bidderId, auction.getId(), amount);
 
         Instant now = Instant.now();
         if (auction.getStartTime() != null && now.isBefore(auction.getStartTime())) {
@@ -201,6 +201,8 @@ public class BidTransactionalService {
         if (autoAmount <= auction.getCurrentPrice()) {
             return false;
         }
+
+        bidWalletService.ensureSufficientBalanceForBid(best.getBidderId(), auction.getId(), autoAmount);
 
         UUID previousLeader = currentLeader;
         auction.setCurrentPrice(autoAmount);

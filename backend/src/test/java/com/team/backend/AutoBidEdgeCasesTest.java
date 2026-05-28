@@ -50,12 +50,14 @@ class AutoBidEdgeCasesTest {
                 auctionRepository,
                 bidRepository,
                 autoBidRepository,
-                new BidWalletService(walletRepository, walletTransactionRepository)
+                new BidWalletService(auctionRepository, walletRepository, walletTransactionRepository)
         );
         when(walletRepository.findByUserId(any(UUID.class))).thenReturn(Optional.of(walletWithBalance("1000.00")));
         when(walletRepository.findByUserIdForUpdate(any(UUID.class))).thenReturn(Optional.of(walletWithBalance("1000.00")));
         when(walletRepository.save(any(com.team.backend.entity.Wallet.class))).thenAnswer(i -> i.getArgument(0));
         when(walletTransactionRepository.save(any(com.team.backend.entity.WalletTransaction.class))).thenAnswer(i -> i.getArgument(0));
+        when(auctionRepository.findOutstandingWalletDebtAuctions(any(UUID.class), anyCollection(), any(AuctionState.class)))
+                .thenReturn(List.of());
     }
 
     @Test

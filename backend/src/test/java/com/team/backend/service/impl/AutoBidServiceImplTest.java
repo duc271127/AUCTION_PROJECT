@@ -7,7 +7,9 @@ import com.team.backend.entity.Wallet;
 import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.AutoBidRepository;
 import com.team.backend.repository.WalletRepository;
+import com.team.backend.repository.WalletTransactionRepository;
 import com.team.backend.service.EventPublisher;
+import com.team.backend.service.bid.BidWalletService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
@@ -22,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -32,6 +35,7 @@ class AutoBidServiceImplTest {
     private AutoBidRepository autoBidRepository;
     private AuctionRepository auctionRepository;
     private WalletRepository walletRepository;
+    private WalletTransactionRepository walletTransactionRepository;
     private AutoBidServiceImpl autoBidService;
 
     @BeforeEach
@@ -39,16 +43,24 @@ class AutoBidServiceImplTest {
         autoBidRepository = mock(AutoBidRepository.class);
         auctionRepository = mock(AuctionRepository.class);
         walletRepository = mock(WalletRepository.class);
+        walletTransactionRepository = mock(WalletTransactionRepository.class);
 
         @SuppressWarnings("unchecked")
         ObjectProvider<EventPublisher> eventPublisherProvider = mock(ObjectProvider.class);
+        BidWalletService bidWalletService = new BidWalletService(
+                auctionRepository,
+                walletRepository,
+                walletTransactionRepository
+        );
 
         autoBidService = new AutoBidServiceImpl(
                 autoBidRepository,
                 auctionRepository,
-                walletRepository,
+                bidWalletService,
                 eventPublisherProvider
         );
+        when(auctionRepository.findOutstandingWalletDebtAuctions(any(UUID.class), anyCollection(), any(AuctionState.class)))
+                .thenReturn(List.of());
     }
 
     @Test
