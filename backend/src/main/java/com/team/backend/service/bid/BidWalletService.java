@@ -54,6 +54,7 @@ public class BidWalletService {
                 .stream()
                 .filter(auction -> auction != null
                         && auction.getId() != null
+                        && !auction.isWinnerPaymentCaptured()
                         && (excludedAuctionId == null || !excludedAuctionId.equals(auction.getId()))
                         && auction.getCurrentPrice() > 0.0d)
                 .map(auction -> BigDecimal.valueOf(auction.getCurrentPrice()))
