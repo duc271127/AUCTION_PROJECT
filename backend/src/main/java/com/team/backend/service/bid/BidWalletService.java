@@ -54,6 +54,7 @@ public class BidWalletService {
                 .stream()
                 .filter(auction -> auction != null
                         && auction.getId() != null
+                        && !auction.isWinnerPaymentCaptured()
                         && (excludedAuctionId == null || !excludedAuctionId.equals(auction.getId()))
                         && auction.getCurrentPrice() > 0.0d)
                 .map(auction -> BigDecimal.valueOf(auction.getCurrentPrice()))
@@ -65,6 +66,21 @@ public class BidWalletService {
         BigDecimal safeBalance = walletBalance == null ? BigDecimal.ZERO : walletBalance;
         BigDecimal available = safeBalance.subtract(reservedDebt);
         return available.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : available;
+    }
+
+    public void reconcileWinnerPayments(UUID userId) {
+        if (userId == null) {
+            return;
+        }
+
+        auctionRepository.findOutstandingWalletDebtAuctions(userId, RESERVED_BID_STATES, AuctionState.FINISHED)
+                .stream()
+                .filter(auction -> auction != null
+                        && auction.getState() == AuctionState.FINISHED
+                        && !auction.isWinnerPaymentCaptured()
+                        && userId.equals(auction.getWinnerId())
+                        && auction.getCurrentPrice() > 0.0d)
+                .forEach(this::captureWinnerPayment);
     }
 
     private void ensureSufficientCapacity(UUID bidderId, UUID auctionId, BigDecimal requiredAmount, String message) {
