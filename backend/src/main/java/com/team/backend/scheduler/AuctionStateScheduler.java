@@ -14,8 +14,8 @@ public class AuctionStateScheduler {
         this.auctionService = auctionService;
     }
 
-    // run every 15 seconds
-    @Scheduled(fixedDelayString = "${auction.scheduler.delay-ms:15000}")
+    // run every second by default so auction close state and wallet settlement stay near-realtime
+    @Scheduled(fixedDelayString = "${auction.scheduler.delay-ms:1000}")
     @Transactional
     public void transitionAuctions() {
         auctionService.refreshStates();

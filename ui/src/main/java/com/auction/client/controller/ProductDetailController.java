@@ -104,6 +104,7 @@ public class ProductDetailController {
     private String thumb1ImageKey;
     private String thumb2ImageKey;
     private boolean walletBalanceLoaded;
+    private boolean auctionCloseRefreshTriggered;
 
     @FXML
     public void initialize() {
@@ -424,6 +425,7 @@ public class ProductDetailController {
     private void updateCountdown(String endTime) {
         countdownLabel.setText("Ends at " + formatDateTime(endTime));
         countdownEndInstant = parseEndInstant(endTime);
+        auctionCloseRefreshTriggered = false;
         refreshCountdown();
         startCountdownTimer();
     }
@@ -1182,7 +1184,12 @@ public class ProductDetailController {
                 updateAuctionTiming(currentAuction);
                 if (countdownEndInstant != null
                         && java.time.Duration.between(Instant.now(), countdownEndInstant).getSeconds() > 0) {
+                    auctionCloseRefreshTriggered = false;
                     return;
+                }
+                if (!auctionCloseRefreshTriggered) {
+                    auctionCloseRefreshTriggered = true;
+                    refreshAuctionDetailSilently();
                 }
             }
 
@@ -1257,6 +1264,7 @@ public class ProductDetailController {
         }
 
         if (scheduled) {
+            auctionCloseRefreshTriggered = false;
             countdownLabel.setText("Starts at " + formatDateTime(response.getStartTime()));
             if (startInstant != null && now.isBefore(startInstant)) {
                 countdownEndInstant = startInstant;
@@ -1273,6 +1281,7 @@ public class ProductDetailController {
         }
 
         if (active) {
+            auctionCloseRefreshTriggered = false;
             updateCountdown(response.getEndTime());
             setBidControlsDisabled(false, "Place Bid", "Auto-Bid");
             statusLabel.setText("ACTIVE | Live bidding");
