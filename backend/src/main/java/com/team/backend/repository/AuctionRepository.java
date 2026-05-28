@@ -42,6 +42,16 @@ public interface AuctionRepository extends JpaRepository<Auction, UUID> {
     @Query("select a from Auction a where a.id = :id")
     Optional<Auction> findByIdForUpdate(@Param("id") UUID id);
 
+    @Query("""
+            select a from Auction a
+            where (a.leaderId = :userId and a.state in :reservedStates)
+               or (a.winnerId = :userId and a.state = :finishedState and a.winnerPaymentCaptured = false)
+            order by a.endTime desc
+            """)
+    List<Auction> findOutstandingWalletDebtAuctions(@Param("userId") UUID userId,
+                                                    @Param("reservedStates") Collection<AuctionState> reservedStates,
+                                                    @Param("finishedState") AuctionState finishedState);
+
     Page<Auction> findByCategoryContainingIgnoreCaseAndTitleContainingIgnoreCase(String category, String q, Pageable pageable);
 
     @Query("""

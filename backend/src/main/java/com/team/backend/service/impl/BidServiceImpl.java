@@ -240,7 +240,7 @@ public class BidServiceImpl implements BidService {
         if (sellerId != null && sellerId.equals(bidderId)) {
             throw new InvalidBidException("Seller cannot bid on their own auction");
         }
-        bidWalletService.ensureSufficientBalanceForBid(bidderId, amount);
+        bidWalletService.ensureSufficientBalanceForBid(bidderId, auction.getId(), amount);
         if (auction.getStartTime() != null && now.isBefore(auction.getStartTime())) {
             throw new InvalidBidException("Auction has not started");
         }

@@ -2,13 +2,10 @@ package com.team.backend.service.impl;
 
 import com.team.backend.dto.WalletBalanceDto;
 import com.team.backend.dto.WalletTransactionDto;
-import com.team.backend.entity.Auction;
-import com.team.backend.entity.AuctionState;
 import com.team.backend.entity.Wallet;
 import com.team.backend.entity.WalletTransaction;
 import com.team.backend.entity.WalletTransactionType;
 import com.team.backend.exception.BusinessRuleException;
-import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.UserRepository;
 import com.team.backend.repository.WalletRepository;
 import com.team.backend.repository.WalletTransactionRepository;
@@ -26,20 +23,17 @@ import java.util.stream.Collectors;
 @Service
 public class WalletServiceImpl implements WalletService {
 
-    private final AuctionRepository auctionRepository;
     private final WalletRepository walletRepository;
     private final WalletTransactionRepository transactionRepository;
     private final UserRepository userRepository;
     private final BidWalletService bidWalletService;
 
     public WalletServiceImpl(
-            AuctionRepository auctionRepository,
             WalletRepository walletRepository,
             WalletTransactionRepository transactionRepository,
             UserRepository userRepository,
             BidWalletService bidWalletService
     ) {
-        this.auctionRepository = auctionRepository;
         this.walletRepository = walletRepository;
         this.transactionRepository = transactionRepository;
         this.userRepository = userRepository;
@@ -49,9 +43,8 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletBalanceDto getBalance(UUID userId) {
-        reconcileOutstandingWinnerPayments(userId);
         Wallet wallet = getOrCreateWallet(userId);
-        return new WalletBalanceDto(userId, wallet.getBalance());
+        return toBalanceDto(userId, wallet.getBalance());
     }
 
     @Override
@@ -66,19 +59,19 @@ public class WalletServiceImpl implements WalletService {
 
         saveTransaction(saved, WalletTransactionType.DEPOSIT, amount);
 
-        return new WalletBalanceDto(userId, saved.getBalance());
+        return toBalanceDto(userId, saved.getBalance());
     }
 
     @Override
     @Transactional
     public WalletBalanceDto withdraw(UUID userId, BigDecimal amount) {
         validateAmount(amount);
-        reconcileOutstandingWinnerPayments(userId);
 
         Wallet wallet = getOrCreateWalletForUpdate(userId);
+        BigDecimal availableToWithdraw = bidWalletService.calculateAvailableToWithdraw(userId, wallet.getBalance());
 
-        if (wallet.getBalance().compareTo(amount) < 0) {
-            throw new BusinessRuleException("Insufficient wallet balance");
+        if (availableToWithdraw.compareTo(amount) < 0) {
+            throw new BusinessRuleException("Withdraw amount exceeds your available balance because some funds are reserved for active bids");
         }
 
         BigDecimal newBalance = wallet.getBalance().subtract(amount);
@@ -87,13 +80,12 @@ public class WalletServiceImpl implements WalletService {
 
         saveTransaction(saved, WalletTransactionType.WITHDRAW, amount);
 
-        return new WalletBalanceDto(userId, saved.getBalance());
+        return toBalanceDto(userId, saved.getBalance());
     }
 
     @Override
     @Transactional
     public List<WalletTransactionDto> getHistory(UUID userId) {
-        reconcileOutstandingWinnerPayments(userId);
         validateUser(userId);
 
         return transactionRepository.findByUserIdOrderByCreatedAtDesc(userId)
@@ -143,33 +135,6 @@ public class WalletServiceImpl implements WalletService {
         }
     }
 
-    private void reconcileOutstandingWinnerPayments(UUID userId) {
-        validateUser(userId);
-
-        List<UUID> outstandingAuctionIds = auctionRepository.findByWinnerIdOrderByEndTimeDesc(userId)
-                .stream()
-                .filter(auction -> auction != null
-                        && auction.getId() != null
-                        && auction.getState() == AuctionState.FINISHED
-                        && !auction.isWinnerPaymentCaptured())
-                .map(Auction::getId)
-                .toList();
-
-        for (UUID auctionId : outstandingAuctionIds) {
-            auctionRepository.findByIdForUpdate(auctionId).ifPresent(auction -> {
-                if (auction.getWinnerId() == null
-                        || !userId.equals(auction.getWinnerId())
-                        || auction.getState() != AuctionState.FINISHED
-                        || auction.isWinnerPaymentCaptured()) {
-                    return;
-                }
-
-                bidWalletService.captureWinnerPayment(auction);
-                auctionRepository.save(auction);
-            });
-        }
-    }
-
     private void saveTransaction(Wallet wallet, WalletTransactionType type, BigDecimal amount) {
         WalletTransaction tx = new WalletTransaction();
         tx.setWalletId(wallet.getId());
@@ -179,6 +144,13 @@ public class WalletServiceImpl implements WalletService {
         tx.setBalanceAfter(wallet.getBalance());
         tx.setCreatedAt(Instant.now());
         transactionRepository.save(tx);
+    }
+
+    private WalletBalanceDto toBalanceDto(UUID userId, BigDecimal balance) {
+        BigDecimal safeBalance = balance == null ? BigDecimal.ZERO : balance;
+        BigDecimal reservedAmount = bidWalletService.calculateOutstandingDebt(userId);
+        BigDecimal availableToWithdraw = bidWalletService.calculateAvailableToWithdraw(userId, safeBalance);
+        return new WalletBalanceDto(userId, safeBalance, reservedAmount, availableToWithdraw);
     }
 
     private WalletTransactionDto toDto(WalletTransaction tx) {

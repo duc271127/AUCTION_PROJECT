@@ -35,6 +35,7 @@ public class WalletController {
 
     private boolean depositMode = true;
     private BigDecimal currentBalance = BigDecimal.ZERO;
+    private BigDecimal currentAvailableToWithdraw = BigDecimal.ZERO;
     private boolean walletBalanceLoaded;
 
     @FXML
@@ -72,8 +73,8 @@ public class WalletController {
             return;
         }
 
-        if (!depositMode && amount.compareTo(currentBalance) > 0) {
-            showError("Withdraw amount cannot exceed your current balance.");
+        if (!depositMode && amount.compareTo(currentAvailableToWithdraw) > 0) {
+            showError("Withdraw amount cannot exceed your available balance.");
             return;
         }
 
@@ -84,7 +85,7 @@ public class WalletController {
                     ? walletApiService.deposit(request)
                     : walletApiService.withdraw(request);
 
-            updateCurrentBalance(balance.getBalance());
+            updateCurrentBalance(balance);
 
             showSuccessState(amount);
 
@@ -140,7 +141,7 @@ public class WalletController {
 
         try {
             WalletBalanceResponse balance = walletApiService.getBalance();
-            updateCurrentBalance(balance.getBalance());
+            updateCurrentBalance(balance);
         } catch (Exception e) {
             if (!hadLoadedBalance) {
                 walletBalanceLoaded = false;
@@ -201,8 +202,13 @@ public class WalletController {
         return "USD --";
     }
 
-    private void updateCurrentBalance(BigDecimal balance) {
-        currentBalance = balance;
+    private void updateCurrentBalance(WalletBalanceResponse balanceResponse) {
+        currentBalance = balanceResponse == null || balanceResponse.getBalance() == null
+                ? BigDecimal.ZERO
+                : balanceResponse.getBalance();
+        currentAvailableToWithdraw = balanceResponse == null || balanceResponse.getAvailableToWithdraw() == null
+                ? currentBalance
+                : balanceResponse.getAvailableToWithdraw();
         walletBalanceLoaded = true;
         walletBalanceLabel.setText(formatMoney(currentBalance));
     }

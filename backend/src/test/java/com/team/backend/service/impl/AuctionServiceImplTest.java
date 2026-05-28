@@ -27,6 +27,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -55,7 +56,11 @@ class AuctionServiceImplTest {
         walletRepository = mock(WalletRepository.class);
         walletTransactionRepository = mock(WalletTransactionRepository.class);
 
-        BidWalletService bidWalletService = new BidWalletService(walletRepository, walletTransactionRepository);
+        BidWalletService bidWalletService = new BidWalletService(
+                auctionRepository,
+                walletRepository,
+                walletTransactionRepository
+        );
         auctionService = new AuctionServiceImpl(
                 auctionRepository,
                 itemRepository,
@@ -73,6 +78,8 @@ class AuctionServiceImplTest {
         when(bidRepository.countByAuctionIds(any())).thenReturn(List.of());
         when(favoriteRepository.countByAuctionIds(any())).thenReturn(List.of());
         when(auctionHelper.lookupUserNames(any())).thenReturn(new HashMap<>());
+        when(auctionRepository.findOutstandingWalletDebtAuctions(any(UUID.class), anyCollection(), any(AuctionState.class)))
+                .thenReturn(List.of());
     }
 
     @Test

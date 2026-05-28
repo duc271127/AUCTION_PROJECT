@@ -61,7 +61,7 @@ class BidServiceImplTest {
         walletRepository = mock(WalletRepository.class);
         walletTransactionRepository = mock(WalletTransactionRepository.class);
 
-        bidWalletService = new BidWalletService(walletRepository, walletTransactionRepository);
+        bidWalletService = new BidWalletService(auctionRepository, walletRepository, walletTransactionRepository);
 
         BidTransactionalService realTransactionalService = new BidTransactionalService(
                 auctionRepository,
@@ -112,6 +112,8 @@ class BidServiceImplTest {
         lenient().when(walletRepository.findByUserIdForUpdate(any(UUID.class))).thenReturn(Optional.of(walletWithBalance("1000.00")));
         lenient().when(walletRepository.save(any(Wallet.class))).thenAnswer(i -> i.getArgument(0));
         lenient().when(walletTransactionRepository.save(any(WalletTransaction.class))).thenAnswer(i -> i.getArgument(0));
+        lenient().when(auctionRepository.findOutstandingWalletDebtAuctions(any(UUID.class), anyCollection(), any(AuctionState.class)))
+                .thenReturn(List.of());
     }
 
     @Test
@@ -314,6 +316,34 @@ class BidServiceImplTest {
 
         assertEquals(0, bidderWallet.getBalance().compareTo(new java.math.BigDecimal("100.00")));
         verify(walletTransactionRepository, never()).save(any(WalletTransaction.class));
+    }
+
+    @Test
+    void placeBid_rejectsWhenOtherReservedDebtConsumesAvailableBalance() {
+        UUID auctionId = UUID.randomUUID();
+        UUID bidderId = UUID.randomUUID();
+        Wallet bidderWallet = walletWithBalance("100.00");
+
+        Auction auction = new Auction();
+        auction.setId(auctionId);
+        auction.setStartTime(Instant.now().minusSeconds(10));
+        auction.setEndTime(Instant.now().plusSeconds(60));
+        auction.setState(AuctionState.ACTIVE);
+        auction.setCurrentPrice(10.0);
+
+        Auction reservedAuction = new Auction();
+        reservedAuction.setId(UUID.randomUUID());
+        reservedAuction.setLeaderId(bidderId);
+        reservedAuction.setState(AuctionState.ACTIVE);
+        reservedAuction.setCurrentPrice(80.0);
+
+        when(auctionRepository.findByIdForUpdate(auctionId)).thenReturn(Optional.of(auction));
+        when(walletRepository.findByUserId(bidderId)).thenReturn(Optional.of(bidderWallet));
+        when(auctionRepository.findOutstandingWalletDebtAuctions(any(UUID.class), anyCollection(), any(AuctionState.class)))
+                .thenReturn(List.of(reservedAuction));
+
+        assertThrows(InvalidBidException.class, () -> bidService.placeBid(auctionId, bidderId, 30.0));
+        verify(bidRepository, never()).save(any(BidTransaction.class));
     }
 
     private Wallet walletWithBalance(String balance) {
