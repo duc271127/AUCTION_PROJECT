@@ -70,6 +70,10 @@
                                               maxWidth="Infinity"
                                               styleClass="auth-input"/>
 
+                                    <Label text="Demo accounts: admin / Admin@123, bidder / 123456"
+                                           wrapText="true"
+                                           styleClass="password-rule"/>
+
                                     <HBox alignment="CENTER_LEFT" spacing="10.0">
                                         <CheckBox text="Remember me" focusTraversable="false" styleClass="auth-checkbox"/>
                                         <Region HBox.hgrow="ALWAYS"/>
