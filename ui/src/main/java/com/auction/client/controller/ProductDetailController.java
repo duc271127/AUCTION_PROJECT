@@ -103,6 +103,7 @@ public class ProductDetailController {
     private String mainImageKey;
     private String thumb1ImageKey;
     private String thumb2ImageKey;
+    private boolean walletBalanceLoaded;
 
     @FXML
     public void initialize() {
@@ -867,6 +868,7 @@ public class ProductDetailController {
         }
 
         if (!SessionManager.isAuthenticated()) {
+            walletBalanceLoaded = false;
             balanceValueLabel.setText(formatMoney(BigDecimal.ZERO));
             return;
         }
@@ -874,8 +876,11 @@ public class ProductDetailController {
         try {
             WalletBalanceResponse balance = walletApiService.getBalance();
             balanceValueLabel.setText(formatMoney(balance.getBalance()));
+            walletBalanceLoaded = true;
         } catch (Exception e) {
-            balanceValueLabel.setText(formatMoney(BigDecimal.ZERO));
+            if (!walletBalanceLoaded) {
+                balanceValueLabel.setText(formatUnavailableMoney());
+            }
         }
     }
 
@@ -884,7 +889,11 @@ public class ProductDetailController {
     }
 
     private String formatMoney(BigDecimal value) {
-        return "USD " + (value == null ? "0" : String.format("%,.0f", value.doubleValue()));
+        return value == null ? formatUnavailableMoney() : "USD " + String.format("%,.0f", value.doubleValue());
+    }
+
+    private String formatUnavailableMoney() {
+        return "USD --";
     }
 
     private String firstNonBlank(String... values) {
