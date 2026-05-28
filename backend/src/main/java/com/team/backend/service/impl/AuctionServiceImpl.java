@@ -189,6 +189,7 @@ public class AuctionServiceImpl implements AuctionService {
     }
 
     @Override
+    @Transactional
     public Auction getAuction(UUID auctionId) {
         Auction auction = auctionRepository.findById(auctionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));
@@ -197,6 +198,7 @@ public class AuctionServiceImpl implements AuctionService {
     }
 
     @Override
+    @Transactional
     public List<Auction> listAuctions() {
         List<Auction> auctions = auctionRepository.findAll();
         populateTransientFields(auctions);
@@ -204,6 +206,7 @@ public class AuctionServiceImpl implements AuctionService {
     }
 
     @Override
+    @Transactional
     public List<Auction> listAuctionsByState(AuctionState state) {
         if (state == null) {
             return listAuctions();
@@ -214,6 +217,7 @@ public class AuctionServiceImpl implements AuctionService {
     }
 
     @Override
+    @Transactional
     public List<Auction> listWonAuctions(UUID winnerId) {
         if (winnerId == null) {
             return List.of();
@@ -225,6 +229,7 @@ public class AuctionServiceImpl implements AuctionService {
     }
 
     @Override
+    @Transactional
     public Page<Auction> searchCatalog(String category, String q, AuctionState state, Pageable pageable) {
         Page<Auction> page = auctionRepository.searchCatalog(category, q, state, pageable);
         populateTransientFields(page.getContent());
@@ -232,11 +237,13 @@ public class AuctionServiceImpl implements AuctionService {
     }
 
     @Override
+    @Transactional
     public Page<Auction> searchTrendingCatalog(String category, String q, AuctionState state, Pageable pageable) {
         return rankCatalog(category, q, state, pageable, null, true);
     }
 
     @Override
+    @Transactional
     public Page<Auction> searchPersonalizedCatalog(UUID userId, String category, String q, AuctionState state, Pageable pageable) {
         return rankCatalog(category, q, state, pageable, userId, false);
     }
@@ -715,7 +722,7 @@ public class AuctionServiceImpl implements AuctionService {
                 .sorted(trendingOnly
                         ? Comparator.comparingDouble(this::computeTrendingScore).reversed()
                         : Comparator.<Auction>comparingDouble(auction -> computePersonalizedScore(auction, preferredCategories)).reversed()
-                            .thenComparing(Auction::getEndTime, Comparator.nullsLast(Comparator.naturalOrder())))
+                        .thenComparing(Auction::getEndTime, Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
 
         int start = (int) pageable.getOffset();
