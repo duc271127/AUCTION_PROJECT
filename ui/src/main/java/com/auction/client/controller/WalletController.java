@@ -35,6 +35,7 @@ public class WalletController {
 
     private boolean depositMode = true;
     private BigDecimal currentBalance = BigDecimal.ZERO;
+    private boolean walletBalanceLoaded;
 
     @FXML
     public void initialize() {
@@ -83,19 +84,12 @@ public class WalletController {
                     ? walletApiService.deposit(request)
                     : walletApiService.withdraw(request);
 
-            currentBalance = balance.getBalance() == null ? currentBalance : balance.getBalance();
-            walletBalanceLabel.setText(formatMoney(currentBalance));
+            updateCurrentBalance(balance.getBalance());
 
             showSuccessState(amount);
 
         } catch (Exception e) {
-            /*
-             * Demo fallback:
-             * Khi backend wallet chưa sẵn sàng, UI vẫn demo được flow deposit/withdraw.
-             * Khi backend chạy ổn, code phía trên sẽ dùng dữ liệu thật.
-             */
-            simulateWalletMutation(amount);
-            showSuccessState(amount);
+            showError(extractFriendlyMessage(e.getMessage()));
         }
     }
 
@@ -142,28 +136,18 @@ public class WalletController {
     }
 
     private void refreshWallet() {
+        boolean hadLoadedBalance = walletBalanceLoaded;
+
         try {
             WalletBalanceResponse balance = walletApiService.getBalance();
-            currentBalance = balance.getBalance() == null ? BigDecimal.ZERO : balance.getBalance();
+            updateCurrentBalance(balance.getBalance());
         } catch (Exception e) {
-            /*
-             * Demo fallback balance.
-             * Đổi về ZERO nếu bạn muốn bắt buộc phải có backend.
-             */
-            currentBalance = new BigDecimal("5000");
+            if (!hadLoadedBalance) {
+                walletBalanceLoaded = false;
+                walletBalanceLabel.setText(formatUnavailableMoney());
+            }
+            showError(extractFriendlyMessage(e.getMessage()));
         }
-
-        walletBalanceLabel.setText(formatMoney(currentBalance));
-    }
-
-    private void simulateWalletMutation(BigDecimal amount) {
-        if (depositMode) {
-            currentBalance = currentBalance.add(amount);
-        } else {
-            currentBalance = currentBalance.subtract(amount);
-        }
-
-        walletBalanceLabel.setText(formatMoney(currentBalance));
     }
 
     private BigDecimal parseAmount() {
@@ -206,11 +190,21 @@ public class WalletController {
 
     private String formatMoney(BigDecimal amount) {
         if (amount == null) {
-            return "USD 0";
+            return formatUnavailableMoney();
         }
 
         BigDecimal rounded = amount.setScale(0, RoundingMode.HALF_UP);
         return "USD " + String.format("%,.0f", rounded.doubleValue());
+    }
+
+    private String formatUnavailableMoney() {
+        return "USD --";
+    }
+
+    private void updateCurrentBalance(BigDecimal balance) {
+        currentBalance = balance;
+        walletBalanceLoaded = true;
+        walletBalanceLabel.setText(formatMoney(currentBalance));
     }
 
     private void showError(String message) {
@@ -225,5 +219,22 @@ public class WalletController {
         walletMessageLabel.setText("");
         walletMessageLabel.setVisible(false);
         walletMessageLabel.setManaged(false);
+    }
+
+    private String extractFriendlyMessage(String rawMessage) {
+        if (rawMessage == null || rawMessage.isBlank()) {
+            return "Wallet operation failed.";
+        }
+
+        int idx = rawMessage.indexOf("\"message\":\"");
+        if (idx >= 0) {
+            int start = idx + 11;
+            int end = rawMessage.indexOf("\"", start);
+            if (end > start) {
+                return rawMessage.substring(start, end);
+            }
+        }
+
+        return rawMessage;
     }
 }
