@@ -18,6 +18,7 @@ import java.util.UUID;
 
 public interface AuctionRepository extends JpaRepository<Auction, UUID> {
     List<Auction> findByState(AuctionState state);
+    List<Auction> findByStateAndWinnerPaymentCapturedFalse(AuctionState state);
     List<Auction> findBySellerId(UUID sellerId);
     List<Auction> findByWinnerIdOrderByEndTimeDesc(UUID winnerId);
 

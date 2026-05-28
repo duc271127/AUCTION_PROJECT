@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -109,10 +110,9 @@ class AuctionServiceImplTest {
     }
 
     @Test
-    void getAuction_expiredAuctionSynchronizesStateAndChargesWinnerImmediately() {
+    void getAuction_expiredAuctionSynchronizesStateWithoutChargingOutsideTransaction() {
         UUID auctionId = UUID.randomUUID();
         UUID winnerId = UUID.randomUUID();
-        Wallet winnerWallet = walletWithBalance("600.00");
 
         Auction auction = new Auction();
         auction.setId(auctionId);
@@ -123,15 +123,13 @@ class AuctionServiceImplTest {
         auction.setLeaderId(winnerId);
 
         when(auctionRepository.findById(auctionId)).thenReturn(Optional.of(auction));
-        when(walletRepository.findByUserIdForUpdate(winnerId)).thenReturn(Optional.of(winnerWallet));
 
         auctionService.getAuction(auctionId);
 
         assertEquals(AuctionState.FINISHED, auction.getState());
         assertEquals(winnerId, auction.getWinnerId());
-        assertTrue(auction.isWinnerPaymentCaptured());
-        assertEquals(0, winnerWallet.getBalance().compareTo(new BigDecimal("400.00")));
-        verify(walletTransactionRepository).save(any(WalletTransaction.class));
+        assertFalse(auction.isWinnerPaymentCaptured());
+        verify(walletTransactionRepository, never()).save(any(WalletTransaction.class));
     }
 
     @Test
