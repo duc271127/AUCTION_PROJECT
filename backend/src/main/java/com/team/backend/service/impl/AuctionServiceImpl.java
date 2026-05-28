@@ -544,13 +544,6 @@ public class AuctionServiceImpl implements AuctionService {
             changed = true;
         }
 
-        if (!isTerminalState(auction.getState())
-                && auction.getEndTime() != null
-                && !now.isBefore(auction.getEndTime())) {
-            auction.setState(AuctionState.FINISHED);
-            changed = true;
-        }
-
         if ((auction.getLeaderId() == null || auction.getWinnerId() == null) && auction.getId() != null) {
             List<BidTransaction> latestBids = bidRepository.findByAuctionIdOrderByCreatedAtDesc(auction.getId());
             if (!latestBids.isEmpty()) {
@@ -566,10 +559,25 @@ public class AuctionServiceImpl implements AuctionService {
             }
         }
 
+        if (!isTerminalState(auction.getState())
+                && auction.getEndTime() != null
+                && !now.isBefore(auction.getEndTime())) {
+            closeAuctionInternal(auction, "Auction finished.");
+            return auction;
+        }
+
         if (auction.getState() == AuctionState.FINISHED
                 && auction.getWinnerId() == null
                 && auction.getLeaderId() != null) {
             auction.setWinnerId(auction.getLeaderId());
+            changed = true;
+        }
+
+        if (auction.getState() == AuctionState.FINISHED
+                && !auction.isWinnerPaymentCaptured()
+                && auction.getWinnerId() != null
+                && auction.getCurrentPrice() > 0.0d) {
+            bidWalletService.captureWinnerPayment(auction);
             changed = true;
         }
 

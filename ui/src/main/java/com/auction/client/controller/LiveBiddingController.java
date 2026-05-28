@@ -84,6 +84,7 @@ public class LiveBiddingController {
     private Timeline refreshTimeline;
     private Timeline countdownTimeline;
     private Timeline toastTimeline;
+    private boolean auctionCloseRefreshTriggered;
     private boolean isLoadingAuction = false;
     private Long realtimeRemainingSeconds;
     private AutoBidResponse currentUserAutoBid;
@@ -306,6 +307,8 @@ public class LiveBiddingController {
     private void handleAuctionFinishedEvent(AuctionEventDto event) {
         realtimeRemainingSeconds = 0L;
         countdownLabel.setText("00:00:00");
+        auctionCloseRefreshTriggered = false;
+        loadAuctionDetail(false);
 
         if (countdownTimeline != null) {
             countdownTimeline.stop();
@@ -340,6 +343,10 @@ public class LiveBiddingController {
         currentBidLabel.setText(formatMoney(auction.getCurrentPrice()));
         countdownLabel.setText(formatCountdown(auction.getEndTime()));
         leaderLabel.setText("Leader: " + safeLeaderName(auction.getLeaderName()));
+
+        if (!"FINISHED".equalsIgnoreCase(auction.getState()) && !"CANCELLED".equalsIgnoreCase(auction.getState())) {
+            auctionCloseRefreshTriggered = false;
+        }
 
         if ("FINISHED".equalsIgnoreCase(auction.getState()) || "CANCELLED".equalsIgnoreCase(auction.getState())) {
             lockBiddingControls();
@@ -698,15 +705,31 @@ public class LiveBiddingController {
             if (realtimeRemainingSeconds != null) {
                 realtimeRemainingSeconds = Math.max(0, realtimeRemainingSeconds - 1);
                 countdownLabel.setText(formatSeconds(realtimeRemainingSeconds));
+                if (realtimeRemainingSeconds <= 0) {
+                    requestImmediateAuctionClosureSync();
+                }
                 return;
             }
 
             if (currentAuction != null) {
-                countdownLabel.setText(formatCountdown(currentAuction.getEndTime()));
+                String countdownText = formatCountdown(currentAuction.getEndTime());
+                countdownLabel.setText(countdownText);
+                if ("00:00:00".equals(countdownText)) {
+                    requestImmediateAuctionClosureSync();
+                }
             }
         }));
         countdownTimeline.setCycleCount(Timeline.INDEFINITE);
         countdownTimeline.play();
+    }
+
+    private void requestImmediateAuctionClosureSync() {
+        if (auctionCloseRefreshTriggered || selectedItem == null || selectedItem.getId() == null || selectedItem.getId().isBlank()) {
+            return;
+        }
+
+        auctionCloseRefreshTriggered = true;
+        loadAuctionDetail(false);
     }
 
     private String formatMoney(double value) {
