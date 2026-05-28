@@ -1,4 +1,6 @@
 .idea/
+ui/src/.idea/
+ui/src/*.iml
 backend/target/
 ui/target/
 backend/data/
