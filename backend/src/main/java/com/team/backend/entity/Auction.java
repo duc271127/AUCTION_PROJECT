@@ -59,6 +59,9 @@ public class Auction {
     @Column(name = "leader_id", columnDefinition = "uuid")
     private UUID leaderId;
 
+    @Column(name = "winner_payment_captured", nullable = false, columnDefinition = "boolean default false")
+    private boolean winnerPaymentCaptured = false;
+
     @Column(name = "winner_id")
     private UUID winnerId;
 
@@ -175,6 +178,9 @@ public class Auction {
 
     public UUID getLeaderId() { return leaderId; }
     public void setLeaderId(UUID leaderId) { this.leaderId = leaderId; }
+
+    public boolean isWinnerPaymentCaptured() { return winnerPaymentCaptured; }
+    public void setWinnerPaymentCaptured(boolean winnerPaymentCaptured) { this.winnerPaymentCaptured = winnerPaymentCaptured; }
 
     public UUID getWinnerId() { return winnerId; }
     public void setWinnerId(UUID winnerId) { this.winnerId = winnerId; }

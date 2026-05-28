@@ -8,6 +8,8 @@ import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.AutoBidRepository;
 import com.team.backend.repository.BidRepository;
 import com.team.backend.repository.WalletRepository;
+import com.team.backend.repository.WalletTransactionRepository;
+import com.team.backend.service.bid.BidWalletService;
 import com.team.backend.service.impl.BidTransactionalService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +36,7 @@ class AutoBidEdgeCasesTest {
     private AutoBidRepository autoBidRepository;
     private BidTransactionalService bidTransactionalService;
     private WalletRepository walletRepository;
+    private WalletTransactionRepository walletTransactionRepository;
 
     @BeforeEach
     void setUp() {
@@ -41,9 +44,18 @@ class AutoBidEdgeCasesTest {
         bidRepository = mock(BidRepository.class);
         autoBidRepository = mock(AutoBidRepository.class);
         walletRepository = mock(WalletRepository.class);
+        walletTransactionRepository = mock(WalletTransactionRepository.class);
 
-        bidTransactionalService = new BidTransactionalService(auctionRepository, bidRepository, autoBidRepository, walletRepository);
+        bidTransactionalService = new BidTransactionalService(
+                auctionRepository,
+                bidRepository,
+                autoBidRepository,
+                new BidWalletService(walletRepository, walletTransactionRepository)
+        );
         when(walletRepository.findByUserId(any(UUID.class))).thenReturn(Optional.of(walletWithBalance("1000.00")));
+        when(walletRepository.findByUserIdForUpdate(any(UUID.class))).thenReturn(Optional.of(walletWithBalance("1000.00")));
+        when(walletRepository.save(any(com.team.backend.entity.Wallet.class))).thenAnswer(i -> i.getArgument(0));
+        when(walletTransactionRepository.save(any(com.team.backend.entity.WalletTransaction.class))).thenAnswer(i -> i.getArgument(0));
     }
 
     @Test

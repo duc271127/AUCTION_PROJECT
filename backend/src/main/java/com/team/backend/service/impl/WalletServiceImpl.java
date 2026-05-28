@@ -2,14 +2,18 @@ package com.team.backend.service.impl;
 
 import com.team.backend.dto.WalletBalanceDto;
 import com.team.backend.dto.WalletTransactionDto;
+import com.team.backend.entity.Auction;
+import com.team.backend.entity.AuctionState;
 import com.team.backend.entity.Wallet;
 import com.team.backend.entity.WalletTransaction;
 import com.team.backend.entity.WalletTransactionType;
 import com.team.backend.exception.BusinessRuleException;
+import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.UserRepository;
 import com.team.backend.repository.WalletRepository;
 import com.team.backend.repository.WalletTransactionRepository;
 import com.team.backend.service.WalletService;
+import com.team.backend.service.bid.BidWalletService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,23 +26,30 @@ import java.util.stream.Collectors;
 @Service
 public class WalletServiceImpl implements WalletService {
 
+    private final AuctionRepository auctionRepository;
     private final WalletRepository walletRepository;
     private final WalletTransactionRepository transactionRepository;
     private final UserRepository userRepository;
+    private final BidWalletService bidWalletService;
 
     public WalletServiceImpl(
+            AuctionRepository auctionRepository,
             WalletRepository walletRepository,
             WalletTransactionRepository transactionRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            BidWalletService bidWalletService
     ) {
+        this.auctionRepository = auctionRepository;
         this.walletRepository = walletRepository;
         this.transactionRepository = transactionRepository;
         this.userRepository = userRepository;
+        this.bidWalletService = bidWalletService;
     }
 
     @Override
     @Transactional
     public WalletBalanceDto getBalance(UUID userId) {
+        reconcileOutstandingWinnerPayments(userId);
         Wallet wallet = getOrCreateWallet(userId);
         return new WalletBalanceDto(userId, wallet.getBalance());
     }
@@ -62,6 +73,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public WalletBalanceDto withdraw(UUID userId, BigDecimal amount) {
         validateAmount(amount);
+        reconcileOutstandingWinnerPayments(userId);
 
         Wallet wallet = getOrCreateWalletForUpdate(userId);
 
@@ -79,8 +91,9 @@ public class WalletServiceImpl implements WalletService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<WalletTransactionDto> getHistory(UUID userId) {
+        reconcileOutstandingWinnerPayments(userId);
         validateUser(userId);
 
         return transactionRepository.findByUserIdOrderByCreatedAtDesc(userId)
@@ -127,6 +140,33 @@ public class WalletServiceImpl implements WalletService {
     private void validateAmount(BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessRuleException("amount must be positive");
+        }
+    }
+
+    private void reconcileOutstandingWinnerPayments(UUID userId) {
+        validateUser(userId);
+
+        List<UUID> outstandingAuctionIds = auctionRepository.findByWinnerIdOrderByEndTimeDesc(userId)
+                .stream()
+                .filter(auction -> auction != null
+                        && auction.getId() != null
+                        && auction.getState() == AuctionState.FINISHED
+                        && !auction.isWinnerPaymentCaptured())
+                .map(Auction::getId)
+                .toList();
+
+        for (UUID auctionId : outstandingAuctionIds) {
+            auctionRepository.findByIdForUpdate(auctionId).ifPresent(auction -> {
+                if (auction.getWinnerId() == null
+                        || !userId.equals(auction.getWinnerId())
+                        || auction.getState() != AuctionState.FINISHED
+                        || auction.isWinnerPaymentCaptured()) {
+                    return;
+                }
+
+                bidWalletService.captureWinnerPayment(auction);
+                auctionRepository.save(auction);
+            });
         }
     }
 
