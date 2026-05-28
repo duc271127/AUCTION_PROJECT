@@ -60,8 +60,6 @@ public class AuthController {
 
         String credential = loginUsernameField.getText().trim();
         String password = loginPasswordField.getText().trim();
-        String selectedRole = loginRoleComboBox.getValue();
-
         if (credential.isEmpty()) {
             showLoginError("Username or email is required.");
             return;
@@ -77,11 +75,6 @@ public class AuthController {
             return;
         }
 
-        if (selectedRole == null || selectedRole.isEmpty()) {
-            showLoginError("Please select a role.");
-            return;
-        }
-
         try {
             LoginResponse response = authApiService.login(credential, password);
 
@@ -89,14 +82,7 @@ public class AuthController {
                 showLoginError("Role returned from server is empty.");
                 return;
             }
-
-            String selectedNormalizedRole = SessionManager.normalizeRole(selectedRole);
             String responseNormalizedRole = SessionManager.normalizeRole(response.getRole());
-
-            if (!selectedNormalizedRole.equals(responseNormalizedRole)) {
-                showLoginError("Selected role does not match this account.");
-                return;
-            }
 
             String sessionDisplayName = firstNonBlank(
                     response.getUsername(),
@@ -107,6 +93,7 @@ public class AuthController {
             SessionManager.setUsername(sessionDisplayName);
             SessionManager.setRole(responseNormalizedRole);
             SessionManager.setUserId(response.getId());
+            loginRoleComboBox.setValue(toDisplayRole(responseNormalizedRole));
 
             if (response.getToken() != null && !response.getToken().isBlank()) {
                 SessionManager.setToken(response.getToken());
