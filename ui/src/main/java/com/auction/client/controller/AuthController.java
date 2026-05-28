@@ -1,5 +1,6 @@
 package com.auction.client.controller;
 
+import com.auction.client.config.EndpointConfig;
 import com.auction.client.dto.response.LoginResponse;
 import com.auction.client.dto.response.RegisterResponse;
 import com.auction.client.navigation.SceneManager;
@@ -267,7 +268,7 @@ public class AuthController {
         }
 
         if (message.contains("Cannot connect to server")) {
-            return message + ". Make sure backend is reachable at lungs-decree.with.playit.plus:1125.";
+            return message + ". Make sure backend is reachable at " + EndpointConfig.getHttpBaseUrl() + ".";
         }
 
         return message;

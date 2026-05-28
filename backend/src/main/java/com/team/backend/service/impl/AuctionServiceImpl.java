@@ -382,6 +382,11 @@ public class AuctionServiceImpl implements AuctionService {
         for (Auction auction : toFinish) {
             closeAuctionInternal(auction, "Auction finished.");
         }
+
+        List<Auction> pendingSettlement = auctionRepository.findByStateAndWinnerPaymentCapturedFalse(AuctionState.FINISHED);
+        for (Auction auction : pendingSettlement) {
+            settleFinishedAuctionIfNeeded(auction, now);
+        }
     }
 
     @Override
@@ -487,7 +492,7 @@ public class AuctionServiceImpl implements AuctionService {
 
         List<Auction> normalizedAuctions = auctions.stream()
                 .filter(Objects::nonNull)
-                .map(this::synchronizeAuctionOutcomeIfNeeded)
+                .map(this::safelySynchronizeAuctionOutcome)
                 .toList();
 
         if (normalizedAuctions.isEmpty()) {
@@ -528,6 +533,16 @@ public class AuctionServiceImpl implements AuctionService {
         }
     }
 
+    private Auction safelySynchronizeAuctionOutcome(Auction auction) {
+        try {
+            return synchronizeAuctionOutcomeIfNeeded(auction);
+        } catch (Exception ex) {
+            UUID auctionId = auction == null ? null : auction.getId();
+            log.warn("Skipping auction outcome synchronization for auction {}", auctionId, ex);
+            return auction;
+        }
+    }
+
     private Auction synchronizeAuctionOutcomeIfNeeded(Auction auction) {
         if (auction == null || auction.getState() == null) {
             return auction;
@@ -535,6 +550,7 @@ public class AuctionServiceImpl implements AuctionService {
 
         boolean changed = false;
         Instant now = Instant.now();
+        boolean transactionActive = TransactionSynchronizationManager.isActualTransactionActive();
 
         if (auction.getState() == AuctionState.SCHEDULED
                 && auction.getStartTime() != null
@@ -562,6 +578,14 @@ public class AuctionServiceImpl implements AuctionService {
         if (!isTerminalState(auction.getState())
                 && auction.getEndTime() != null
                 && !now.isBefore(auction.getEndTime())) {
+            if (!transactionActive) {
+                auction.setState(AuctionState.FINISHED);
+                if (auction.getWinnerId() == null) {
+                    auction.setWinnerId(auction.getLeaderId());
+                }
+                auction.setUpdatedAt(now);
+                return auction;
+            }
             closeAuctionInternal(auction, "Auction finished.");
             return auction;
         }
@@ -577,6 +601,9 @@ public class AuctionServiceImpl implements AuctionService {
                 && !auction.isWinnerPaymentCaptured()
                 && auction.getWinnerId() != null
                 && auction.getCurrentPrice() > 0.0d) {
+            if (!transactionActive) {
+                return auction;
+            }
             bidWalletService.captureWinnerPayment(auction);
             changed = true;
         }
@@ -585,8 +612,39 @@ public class AuctionServiceImpl implements AuctionService {
             return auction;
         }
 
+        if (!transactionActive) {
+            return auction;
+        }
+
         auction.setUpdatedAt(now);
         return auctionRepository.save(auction);
+    }
+
+    private void settleFinishedAuctionIfNeeded(Auction auction, Instant now) {
+        if (auction == null || auction.getState() != AuctionState.FINISHED) {
+            return;
+        }
+
+        boolean changed = false;
+
+        if (auction.getWinnerId() == null && auction.getLeaderId() != null) {
+            auction.setWinnerId(auction.getLeaderId());
+            changed = true;
+        }
+
+        if (!auction.isWinnerPaymentCaptured()
+                && auction.getWinnerId() != null
+                && auction.getCurrentPrice() > 0.0d) {
+            bidWalletService.captureWinnerPayment(auction);
+            changed = true;
+        }
+
+        if (!changed) {
+            return;
+        }
+
+        auction.setUpdatedAt(now);
+        auctionRepository.save(auction);
     }
 
     private double resolveStartingPrice(AuctionCreateDto dto, Item item) {
