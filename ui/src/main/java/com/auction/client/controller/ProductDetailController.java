@@ -105,6 +105,11 @@ public class ProductDetailController {
     private String thumb2ImageKey;
     private boolean walletBalanceLoaded;
     private boolean auctionCloseRefreshTriggered;
+    private BigDecimal lastKnownWalletBalance = BigDecimal.ZERO;
+    private String pendingWinnerBalanceAuctionId;
+    private BigDecimal pendingWinnerBalanceValue;
+    private Timeline winnerBalanceRefreshTimeline;
+    private int winnerBalanceRefreshAttemptsRemaining;
 
     @FXML
     public void initialize() {
@@ -160,7 +165,7 @@ public class ProductDetailController {
                         currentAuction = response;
                         bindDetailFromApi(response);
                         if (!wasClosed && isAuctionClosed(response) && SessionManager.isAuthenticated()) {
-                            loadWalletBalance();
+                            handleAuctionClosureWalletUpdate(response);
                         }
                     } finally {
                         detailLoading = false;
@@ -494,6 +499,7 @@ public class ProductDetailController {
     private void handleBack() {
         stopAuctionRefreshTimer();
         stopCountdownTimer();
+        stopWinnerBalanceRefresh();
         SceneManager.goToShowroom();
     }
 
@@ -510,6 +516,7 @@ public class ProductDetailController {
         System.out.println("selectedItem id = " + selectedItem.getId());
         stopAuctionRefreshTimer();
         stopCountdownTimer();
+        stopWinnerBalanceRefresh();
         SceneManager.goToLiveBidding();
     }
 
@@ -679,6 +686,7 @@ public class ProductDetailController {
     private void handleLogout() {
         stopAuctionRefreshTimer();
         stopCountdownTimer();
+        stopWinnerBalanceRefresh();
         clearCurrentUserAutoBidState(false);
         SessionManager.clear();
         SceneManager.goToAuth();
@@ -871,19 +879,135 @@ public class ProductDetailController {
 
         if (!SessionManager.isAuthenticated()) {
             walletBalanceLoaded = false;
+            lastKnownWalletBalance = BigDecimal.ZERO;
+            clearPendingWinnerBalancePreview();
             balanceValueLabel.setText(formatMoney(BigDecimal.ZERO));
             return;
         }
 
-        try {
-            WalletBalanceResponse balance = walletApiService.getBalance();
-            balanceValueLabel.setText(formatMoney(balance.getBalance()));
-            walletBalanceLoaded = true;
-        } catch (Exception e) {
-            if (!walletBalanceLoaded) {
-                balanceValueLabel.setText(formatUnavailableMoney());
-            }
+        CompletableFuture.supplyAsync(walletApiService::getBalance)
+                .thenAccept(balance -> Platform.runLater(() -> applyWalletBalance(balance)))
+                .exceptionally(error -> {
+                    Platform.runLater(this::handleWalletBalanceLoadFailure);
+                    return null;
+                });
+    }
+
+    private void applyWalletBalance(WalletBalanceResponse balance) {
+        BigDecimal actualBalance = balance == null || balance.getBalance() == null
+                ? BigDecimal.ZERO
+                : balance.getBalance();
+
+        lastKnownWalletBalance = actualBalance;
+        walletBalanceLoaded = true;
+
+        if (shouldKeepWinnerBalancePreview(actualBalance)) {
+            balanceValueLabel.setText(formatMoney(pendingWinnerBalanceValue));
+            return;
         }
+
+        clearPendingWinnerBalancePreview();
+        balanceValueLabel.setText(formatMoney(actualBalance));
+    }
+
+    private void handleWalletBalanceLoadFailure() {
+        if (!walletBalanceLoaded) {
+            balanceValueLabel.setText(formatUnavailableMoney());
+        }
+    }
+
+    private void handleAuctionClosureWalletUpdate(AuctionListResponse auction) {
+        if (auction == null || !SessionManager.isAuthenticated()) {
+            return;
+        }
+
+        if (isCurrentUserWinner(auction)) {
+            previewWinnerBalanceDeduction(auction);
+            scheduleWinnerBalanceRefresh();
+        } else {
+            clearPendingWinnerBalancePreview();
+        }
+
+        loadWalletBalance();
+    }
+
+    private void previewWinnerBalanceDeduction(AuctionListResponse auction) {
+        if (!walletBalanceLoaded || balanceValueLabel == null || auction == null || auction.getId() == null) {
+            return;
+        }
+
+        String auctionId = auction.getId().toString();
+        if (auctionId.equals(pendingWinnerBalanceAuctionId)) {
+            return;
+        }
+
+        BigDecimal deductedBalance = lastKnownWalletBalance.subtract(BigDecimal.valueOf(Math.max(0, auction.getCurrentPrice())));
+        if (deductedBalance.compareTo(BigDecimal.ZERO) < 0) {
+            deductedBalance = BigDecimal.ZERO;
+        }
+
+        pendingWinnerBalanceAuctionId = auctionId;
+        pendingWinnerBalanceValue = deductedBalance;
+        balanceValueLabel.setText(formatMoney(deductedBalance));
+    }
+
+    private boolean shouldKeepWinnerBalancePreview(BigDecimal actualBalance) {
+        if (pendingWinnerBalanceAuctionId == null
+                || pendingWinnerBalanceValue == null
+                || currentAuction == null
+                || currentAuction.getId() == null) {
+            return false;
+        }
+
+        if (!pendingWinnerBalanceAuctionId.equals(currentAuction.getId().toString())) {
+            return false;
+        }
+
+        if (!isAuctionClosed(currentAuction) || !isCurrentUserWinner(currentAuction)) {
+            return false;
+        }
+
+        return actualBalance.compareTo(pendingWinnerBalanceValue) > 0;
+    }
+
+    private void scheduleWinnerBalanceRefresh() {
+        winnerBalanceRefreshAttemptsRemaining = 6;
+
+        if (winnerBalanceRefreshTimeline == null) {
+            winnerBalanceRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(2), event -> {
+                if (pendingWinnerBalanceAuctionId == null || winnerBalanceRefreshAttemptsRemaining <= 0) {
+                    stopWinnerBalanceRefresh();
+                    return;
+                }
+
+                winnerBalanceRefreshAttemptsRemaining--;
+                loadWalletBalance();
+            }));
+            winnerBalanceRefreshTimeline.setCycleCount(Timeline.INDEFINITE);
+        }
+
+        winnerBalanceRefreshTimeline.playFromStart();
+    }
+
+    private void stopWinnerBalanceRefresh() {
+        if (winnerBalanceRefreshTimeline != null) {
+            winnerBalanceRefreshTimeline.stop();
+        }
+    }
+
+    private void clearPendingWinnerBalancePreview() {
+        pendingWinnerBalanceAuctionId = null;
+        pendingWinnerBalanceValue = null;
+        stopWinnerBalanceRefresh();
+    }
+
+    private boolean isCurrentUserWinner(AuctionListResponse auction) {
+        if (auction == null || SessionManager.getUserId() == null) {
+            return false;
+        }
+
+        java.util.UUID resolvedWinnerId = auction.getWinnerId() != null ? auction.getWinnerId() : auction.getLeaderId();
+        return resolvedWinnerId != null && resolvedWinnerId.equals(SessionManager.getUserId());
     }
 
     private String formatMoney(double value) {
@@ -1419,7 +1543,7 @@ public class ProductDetailController {
             winnerNoticeCard.getStyleClass().add("winner-notice-card-success");
             winnerNoticeTitleLabel.setText("You won this auction");
             winnerNoticeSubtitleLabel.setText(
-                    formatMoney(auction.getCurrentPrice()) + " final price. Open Wins to review your successful auction."
+                    formatMoney(auction.getCurrentPrice()) + " final price deducted from your balance. Open Wins to review your successful auction."
             );
             if (winnerNoticeButton != null) {
                 winnerNoticeButton.setManaged(true);
@@ -1428,7 +1552,7 @@ public class ProductDetailController {
         } else if (resolvedWinnerId != null) {
             winnerNoticeCard.getStyleClass().add("winner-notice-card-muted");
             winnerNoticeTitleLabel.setText("Winning bidder confirmed");
-            winnerNoticeSubtitleLabel.setText(winnerName + " won this auction at " + formatMoney(auction.getCurrentPrice()) + ".");
+            winnerNoticeSubtitleLabel.setText(winnerName + " won this auction at " + formatMoney(auction.getCurrentPrice()) + ". Your balance stays unchanged.");
             if (winnerNoticeButton != null) {
                 winnerNoticeButton.setManaged(false);
                 winnerNoticeButton.setVisible(false);
