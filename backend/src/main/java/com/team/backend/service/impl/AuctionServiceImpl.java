@@ -573,13 +573,6 @@ public class AuctionServiceImpl implements AuctionService {
             changed = true;
         }
 
-        if (auction.getState() == AuctionState.FINISHED
-                && auction.getWinnerId() != null
-                && !auction.isWinnerPaymentCaptured()) {
-            bidWalletService.captureWinnerPayment(auction);
-            changed = true;
-        }
-
         if (!changed) {
             return auction;
         }
