@@ -102,7 +102,7 @@ class AuctionServiceImplTest {
     }
 
     @Test
-    void getAuction_expiredAuctionCapturesWinnerPaymentDuringStateSync() {
+    void getAuction_expiredAuctionSynchronizesStateWithoutChargingWinner() {
         UUID auctionId = UUID.randomUUID();
         UUID winnerId = UUID.randomUUID();
         Wallet winnerWallet = walletWithBalance("600.00");
@@ -122,9 +122,8 @@ class AuctionServiceImplTest {
 
         assertEquals(AuctionState.FINISHED, auction.getState());
         assertEquals(winnerId, auction.getWinnerId());
-        assertTrue(auction.isWinnerPaymentCaptured());
-        assertEquals(0, winnerWallet.getBalance().compareTo(new BigDecimal("400.00")));
-        verify(walletTransactionRepository).save(any(WalletTransaction.class));
+        assertEquals(0, winnerWallet.getBalance().compareTo(new BigDecimal("600.00")));
+        verify(walletTransactionRepository, never()).save(any(WalletTransaction.class));
     }
 
     @Test
