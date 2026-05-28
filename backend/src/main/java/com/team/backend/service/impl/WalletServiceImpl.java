@@ -43,6 +43,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletBalanceDto getBalance(UUID userId) {
+        bidWalletService.reconcileWinnerPayments(userId);
         Wallet wallet = getOrCreateWallet(userId);
         return toBalanceDto(userId, wallet.getBalance());
     }

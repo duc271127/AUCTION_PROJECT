@@ -63,10 +63,9 @@ class WalletServiceImplTest {
     }
 
     @Test
-    void getBalance_returnsStoredWalletBalanceWithoutReconcilingAuctions() {
+    void getBalance_returnsStoredWalletBalanceWhenNoOutstandingWinnerPaymentExists() {
         UUID userId = UUID.randomUUID();
         Wallet wallet = walletWithBalance("600.00");
-        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
         when(walletRepository.findByUserId(userId)).thenReturn(Optional.of(wallet));
 
         WalletBalanceDto balance = walletService.getBalance(userId);
@@ -76,6 +75,32 @@ class WalletServiceImplTest {
         assertEquals(0, balance.getAvailableToWithdraw().compareTo(new BigDecimal("600.00")));
         assertEquals(0, wallet.getBalance().compareTo(new BigDecimal("600.00")));
         verify(walletTransactionRepository, never()).save(any(WalletTransaction.class));
+    }
+
+    @Test
+    void getBalance_reconcilesFinishedAuctionWinnerPaymentBeforeReturningBalance() {
+        UUID userId = UUID.randomUUID();
+        Wallet wallet = walletWithBalance("1000.00");
+
+        Auction finishedAuction = new Auction();
+        finishedAuction.setId(UUID.randomUUID());
+        finishedAuction.setWinnerId(userId);
+        finishedAuction.setLeaderId(userId);
+        finishedAuction.setState(AuctionState.FINISHED);
+        finishedAuction.setCurrentPrice(100.0);
+        finishedAuction.setWinnerPaymentCaptured(false);
+
+        when(walletRepository.findByUserId(userId)).thenReturn(Optional.of(wallet));
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
+        when(auctionRepository.findOutstandingWalletDebtAuctions(any(UUID.class), anyCollection(), any(AuctionState.class)))
+                .thenReturn(List.of(finishedAuction));
+
+        WalletBalanceDto balance = walletService.getBalance(userId);
+
+        assertEquals(0, balance.getBalance().compareTo(new BigDecimal("900.00")));
+        assertEquals(0, balance.getAvailableToWithdraw().compareTo(new BigDecimal("900.00")));
+        assertEquals(0, wallet.getBalance().compareTo(new BigDecimal("900.00")));
+        verify(walletTransactionRepository).save(any(WalletTransaction.class));
     }
 
     @Test

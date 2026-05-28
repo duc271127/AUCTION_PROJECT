@@ -67,6 +67,21 @@ public class BidWalletService {
         return available.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : available;
     }
 
+    public void reconcileWinnerPayments(UUID userId) {
+        if (userId == null) {
+            return;
+        }
+
+        auctionRepository.findOutstandingWalletDebtAuctions(userId, RESERVED_BID_STATES, AuctionState.FINISHED)
+                .stream()
+                .filter(auction -> auction != null
+                        && auction.getState() == AuctionState.FINISHED
+                        && !auction.isWinnerPaymentCaptured()
+                        && userId.equals(auction.getWinnerId())
+                        && auction.getCurrentPrice() > 0.0d)
+                .forEach(this::captureWinnerPayment);
+    }
+
     private void ensureSufficientCapacity(UUID bidderId, UUID auctionId, BigDecimal requiredAmount, String message) {
         BigDecimal walletBalance = walletRepository.findByUserId(bidderId)
                 .map(wallet -> wallet.getBalance() == null ? BigDecimal.ZERO : wallet.getBalance())
