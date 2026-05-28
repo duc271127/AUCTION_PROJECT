@@ -10,15 +10,18 @@ import java.util.concurrent.TimeUnit;
 import com.team.backend.entity.Auction;
 import com.team.backend.entity.AuctionState;
 import com.team.backend.entity.BidTransaction;
+import com.team.backend.entity.Wallet;
+import com.team.backend.entity.WalletTransaction;
 import com.team.backend.exception.InvalidBidException;
 import com.team.backend.exception.ResourceNotFoundException;
 import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.BidRepository;
 import com.team.backend.repository.WalletRepository;
+import com.team.backend.repository.WalletTransactionRepository;
+import com.team.backend.service.bid.BidWalletService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
@@ -45,6 +48,8 @@ class BidServiceImplTest {
     private BidTransactionalService bidTransactionalService;
     private EventPublisher eventPublisher;
     private WalletRepository walletRepository;
+    private WalletTransactionRepository walletTransactionRepository;
+    private BidWalletService bidWalletService;
 
 
     @BeforeEach
@@ -54,12 +59,15 @@ class BidServiceImplTest {
         autoBidRepository = mock(AutoBidRepository.class);
         eventPublisher = mock(EventPublisher.class);
         walletRepository = mock(WalletRepository.class);
+        walletTransactionRepository = mock(WalletTransactionRepository.class);
+
+        bidWalletService = new BidWalletService(walletRepository, walletTransactionRepository);
 
         BidTransactionalService realTransactionalService = new BidTransactionalService(
                 auctionRepository,
                 bidRepository,
                 autoBidRepository,
-                walletRepository
+                bidWalletService
         );
 
         Object transactionalLock = new Object();
@@ -91,8 +99,8 @@ class BidServiceImplTest {
                 auctionRepository,
                 bidRepository,
                 autoBidRepository,
-                walletRepository,
                 bidTransactionalService,
+                bidWalletService,
                 minIncrement,
                 30,
                 60,
@@ -101,12 +109,16 @@ class BidServiceImplTest {
         );
 
         lenient().when(walletRepository.findByUserId(any(UUID.class))).thenReturn(Optional.of(walletWithBalance("1000.00")));
+        lenient().when(walletRepository.findByUserIdForUpdate(any(UUID.class))).thenReturn(Optional.of(walletWithBalance("1000.00")));
+        lenient().when(walletRepository.save(any(Wallet.class))).thenAnswer(i -> i.getArgument(0));
+        lenient().when(walletTransactionRepository.save(any(WalletTransaction.class))).thenAnswer(i -> i.getArgument(0));
     }
 
     @Test
     void placeBid_success_updatesAuctionAndCreatesTx() {
         UUID auctionId = UUID.randomUUID();
         UUID bidderId = UUID.randomUUID();
+        Wallet bidderWallet = walletWithBalance("1000.00");
 
         Auction a = new Auction();
         a.setId(auctionId);
@@ -120,13 +132,15 @@ class BidServiceImplTest {
         when(bidRepository.save(any(BidTransaction.class))).thenAnswer(i -> i.getArgument(0));
         when(autoBidRepository.findByAuctionIdAndActiveTrueOrderByMaxAmountDescCreatedAtAsc(auctionId))
                 .thenReturn(List.of());
-
+        when(walletRepository.findByUserId(bidderId)).thenReturn(Optional.of(bidderWallet));
         BidTransaction tx = bidService.placeBid(auctionId, bidderId, 12.0);
 
         assertNotNull(tx);
         assertEquals(12.0, tx.getAmount());
+        assertEquals(0, bidderWallet.getBalance().compareTo(new java.math.BigDecimal("1000.00")));
         verify(auctionRepository).save(any(Auction.class));
         verify(bidRepository).save(any(BidTransaction.class));
+        verify(walletTransactionRepository, never()).save(any(WalletTransaction.class));
     }
 
     @Test
@@ -247,8 +261,63 @@ class BidServiceImplTest {
         assertEquals(bidderId, auction.getLeaderId());
     }
 
-    private com.team.backend.entity.Wallet walletWithBalance(String balance) {
-        com.team.backend.entity.Wallet wallet = new com.team.backend.entity.Wallet();
+    @Test
+    void placeBid_outbidsPreviousLeader_doesNotTouchWalletBeforeAuctionEnds() {
+        UUID auctionId = UUID.randomUUID();
+        UUID previousLeaderId = UUID.randomUUID();
+        UUID newBidderId = UUID.randomUUID();
+        Wallet previousLeaderWallet = walletWithBalance("85.00");
+        Wallet newBidderWallet = walletWithBalance("100.00");
+
+        Auction auction = new Auction();
+        auction.setId(auctionId);
+        auction.setStartTime(Instant.now().minusSeconds(10));
+        auction.setEndTime(Instant.now().plusSeconds(60));
+        auction.setState(AuctionState.ACTIVE);
+        auction.setCurrentPrice(15.0);
+        auction.setLeaderId(previousLeaderId);
+
+        when(auctionRepository.findByIdForUpdate(auctionId)).thenReturn(Optional.of(auction));
+        when(auctionRepository.save(any(Auction.class))).thenAnswer(i -> i.getArgument(0));
+        when(bidRepository.save(any(BidTransaction.class))).thenAnswer(i -> i.getArgument(0));
+        when(autoBidRepository.findByAuctionIdAndActiveTrueOrderByMaxAmountDescCreatedAtAsc(auctionId))
+                .thenReturn(List.of());
+        when(walletRepository.findByUserId(newBidderId)).thenReturn(Optional.of(newBidderWallet));
+        bidService.placeBid(auctionId, newBidderId, 20.0);
+
+        assertEquals(0, previousLeaderWallet.getBalance().compareTo(new java.math.BigDecimal("85.00")));
+        assertEquals(0, newBidderWallet.getBalance().compareTo(new java.math.BigDecimal("100.00")));
+        verify(walletTransactionRepository, never()).save(any(WalletTransaction.class));
+    }
+
+    @Test
+    void placeBid_sameLeaderRaisesBid_doesNotDeductWalletImmediately() {
+        UUID auctionId = UUID.randomUUID();
+        UUID bidderId = UUID.randomUUID();
+        Wallet bidderWallet = walletWithBalance("100.00");
+
+        Auction auction = new Auction();
+        auction.setId(auctionId);
+        auction.setStartTime(Instant.now().minusSeconds(10));
+        auction.setEndTime(Instant.now().plusSeconds(60));
+        auction.setState(AuctionState.ACTIVE);
+        auction.setCurrentPrice(50.0);
+        auction.setLeaderId(bidderId);
+
+        when(auctionRepository.findByIdForUpdate(auctionId)).thenReturn(Optional.of(auction));
+        when(auctionRepository.save(any(Auction.class))).thenAnswer(i -> i.getArgument(0));
+        when(bidRepository.save(any(BidTransaction.class))).thenAnswer(i -> i.getArgument(0));
+        when(autoBidRepository.findByAuctionIdAndActiveTrueOrderByMaxAmountDescCreatedAtAsc(auctionId))
+                .thenReturn(List.of());
+        when(walletRepository.findByUserId(bidderId)).thenReturn(Optional.of(bidderWallet));
+        bidService.placeBid(auctionId, bidderId, 70.0);
+
+        assertEquals(0, bidderWallet.getBalance().compareTo(new java.math.BigDecimal("100.00")));
+        verify(walletTransactionRepository, never()).save(any(WalletTransaction.class));
+    }
+
+    private Wallet walletWithBalance(String balance) {
+        Wallet wallet = new Wallet();
         wallet.setBalance(new java.math.BigDecimal(balance));
         return wallet;
     }

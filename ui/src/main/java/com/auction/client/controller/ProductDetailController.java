@@ -154,8 +154,12 @@ public class ProductDetailController {
         CompletableFuture.supplyAsync(() -> auctionApiService.getAuctionById(selectedItem.getId()))
                 .thenAccept(response -> Platform.runLater(() -> {
                     try {
+                        boolean wasClosed = isAuctionClosed(currentAuction);
                         currentAuction = response;
                         bindDetailFromApi(response);
+                        if (!wasClosed && isAuctionClosed(response) && SessionManager.isAuthenticated()) {
+                            loadWalletBalance();
+                        }
                     } finally {
                         detailLoading = false;
                     }
@@ -179,6 +183,10 @@ public class ProductDetailController {
         currentBidLabel.setText(formatMoney(response.getCurrentPrice()));
         updateAuctionTiming(response);
         updateWinnerNotice(response);
+
+        if (SessionManager.isAuthenticated() && isAuctionClosed(response)) {
+            loadWalletBalance();
+        }
 
         String sellerName = firstNonBlank(response.getSellerName(), SessionManager.getUsername(), "Seller");
         detailUsernameLabel.setText(sellerName);
@@ -598,6 +606,8 @@ public class ProductDetailController {
             currentAuction.setMinNextBid(response.getMinNextBid());
             currentAuction.setState(response.getState());
             currentAuction.setEndTime(response.getEndTime());
+            currentAuction.setLeaderId(parseUuid(response.getLeaderId()));
+            currentAuction.setLeaderName(response.getLeaderName());
         }
 
         currentBidLabel.setText(formatMoney(response.getCurrentPrice()));
@@ -611,6 +621,7 @@ public class ProductDetailController {
         double low = response.getCurrentPrice();
         double high = resolveDisplayedHighEstimate(response.getMinNextBid(), low);
         estimatedValueLabel.setText(formatMoney(low) + " - " + formatMoney(high));
+        loadWalletBalance();
 
         showBidSuccess("Bid placed successfully.");
     }
@@ -777,6 +788,31 @@ public class ProductDetailController {
     private void handlePlaceBid() {
         hideBidMessage();
 
+        if (selectedItem == null || selectedItem.getId() == null || selectedItem.getId().isBlank()) {
+            showBidMessage("No selected auction.");
+            return;
+        }
+
+        if (!SessionManager.isAuthenticated()) {
+            showBidMessage("Please login before bidding.");
+            return;
+        }
+
+        if (currentAuction == null) {
+            showBidMessage("Auction data is unavailable.");
+            return;
+        }
+
+        if (isAuctionScheduled(currentAuction)) {
+            showBidMessage("Auction has not started yet.");
+            return;
+        }
+
+        if (isAuctionClosed(currentAuction)) {
+            showBidMessage("Auction is closed.");
+            return;
+        }
+
         String bidText = bidAmountField.getText().trim();
 
         if (bidText.isEmpty()) {
@@ -793,20 +829,36 @@ public class ProductDetailController {
 
         int enteredBid = Integer.parseInt(numericText);
 
-        String currentBidText = currentBidLabel.getText().replaceAll("[^0-9]", "");
-        if (currentBidText.isEmpty()) {
-            showBidMessage("Current bid is unavailable.");
+        double minNextBid = currentAuction.getMinNextBid() > 0
+                ? currentAuction.getMinNextBid()
+                : currentAuction.getCurrentPrice() + 1.0d;
+        if (enteredBid < minNextBid) {
+            showBidMessage("Your bid must be at least " + formatMoney(minNextBid) + ".");
             return;
         }
 
-        int currentBid = Integer.parseInt(currentBidText);
+        setBidControlsDisabled(true, "Placing...", "Auto-Bid");
 
-        if (enteredBid <= currentBid) {
-            showBidMessage("Your bid must be higher than the current highest bid.");
-            return;
-        }
-
-        showBidSuccess("Quick bid validation passed (detail screen only). Real bid will be in Block 5.");
+        CompletableFuture.supplyAsync(() -> auctionApiService.placeBid(
+                        selectedItem.getId(),
+                        new com.auction.client.dto.request.BidRequest(enteredBid)
+                ))
+                .thenAccept(response -> Platform.runLater(() -> {
+                    applyBidPlacementToDetail(response);
+                    bidAmountField.clear();
+                    refreshAuctionDetailSilently();
+                    refreshCurrentUserAutoBidState();
+                    updateAutoBidActionButton();
+                }))
+                .exceptionally(error -> {
+                    Platform.runLater(() -> {
+                        showBidMessage(extractFriendlyMessage(error.getMessage()));
+                        refreshAuctionDetailSilently();
+                        updateAutoBidActionButton();
+                    });
+                    return null;
+                })
+                .whenComplete((ignored, error) -> Platform.runLater(() -> updateAutoBidActionButton()));
     }
 
     private void loadWalletBalance() {
@@ -878,6 +930,18 @@ public class ProductDetailController {
         }
 
         return id.length() > 8 ? id.substring(0, 8) : id;
+    }
+
+    private java.util.UUID parseUuid(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        try {
+            return java.util.UUID.fromString(value);
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     private void addDialogStyles(Scene scene) {

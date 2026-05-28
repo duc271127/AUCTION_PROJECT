@@ -12,10 +12,10 @@ import com.team.backend.exception.ResourceNotFoundException;
 import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.AutoBidRepository;
 import com.team.backend.repository.BidRepository;
-import com.team.backend.repository.WalletRepository;
 import com.team.backend.service.AuctionHelper;
 import com.team.backend.service.BidService;
 import com.team.backend.service.EventPublisher;
+import com.team.backend.service.bid.BidWalletService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +24,6 @@ import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -40,8 +39,8 @@ public class BidServiceImpl implements BidService {
     private final AuctionRepository auctionRepository;
     private final BidRepository bidRepository;
     private final AutoBidRepository autoBidRepository;
-    private final WalletRepository walletRepository;
     private final BidTransactionalService bidTransactionalService;
+    private final BidWalletService bidWalletService;
     private final AuctionHelper auctionHelper;
     private final ConcurrentHashMap<UUID, ReentrantLock> lockMap = new ConcurrentHashMap<>();
 
@@ -54,8 +53,8 @@ public class BidServiceImpl implements BidService {
     public BidServiceImpl(AuctionRepository auctionRepository,
                           BidRepository bidRepository,
                           AutoBidRepository autoBidRepository,
-                          WalletRepository walletRepository,
                           BidTransactionalService bidTransactionalService,
+                          BidWalletService bidWalletService,
                           double minIncrement,
                           long antiSnipingThresholdSeconds,
                           long antiSnipingExtendSeconds,
@@ -64,8 +63,8 @@ public class BidServiceImpl implements BidService {
         this(auctionRepository,
                 bidRepository,
                 autoBidRepository,
-                walletRepository,
                 bidTransactionalService,
+                bidWalletService,
                 null,
                 minIncrement,
                 antiSnipingThresholdSeconds,
@@ -78,8 +77,8 @@ public class BidServiceImpl implements BidService {
     public BidServiceImpl(AuctionRepository auctionRepository,
                           BidRepository bidRepository,
                           AutoBidRepository autoBidRepository,
-                          WalletRepository walletRepository,
                           BidTransactionalService bidTransactionalService,
+                          BidWalletService bidWalletService,
                           AuctionHelper auctionHelper,
                           @Value("${auction.bid.min-increment:1.0}") double minIncrement,
                           @Value("${auction.anti-sniping.threshold-seconds:30}") long antiSnipingThresholdSeconds,
@@ -89,8 +88,8 @@ public class BidServiceImpl implements BidService {
         this.auctionRepository = auctionRepository;
         this.bidRepository = bidRepository;
         this.autoBidRepository = autoBidRepository;
-        this.walletRepository = walletRepository;
         this.bidTransactionalService = bidTransactionalService;
+        this.bidWalletService = bidWalletService;
         this.auctionHelper = auctionHelper;
         this.minIncrement = minIncrement;
         this.antiSnipingThresholdSeconds = antiSnipingThresholdSeconds;
@@ -241,7 +240,7 @@ public class BidServiceImpl implements BidService {
         if (sellerId != null && sellerId.equals(bidderId)) {
             throw new InvalidBidException("Seller cannot bid on their own auction");
         }
-        ensureSufficientBalance(bidderId, amount);
+        bidWalletService.ensureSufficientBalanceForBid(bidderId, amount);
         if (auction.getStartTime() != null && now.isBefore(auction.getStartTime())) {
             throw new InvalidBidException("Auction has not started");
         }
@@ -255,6 +254,7 @@ public class BidServiceImpl implements BidService {
         if (auction.getEndTime() != null && now.isAfter(auction.getEndTime())) {
             auction.setState(AuctionState.FINISHED);
             auction.setWinnerId(auction.getLeaderId());
+            bidWalletService.captureWinnerPayment(auction);
             auctionRepository.save(auction);
             if (eventPublisher != null) {
                 try {
@@ -264,17 +264,6 @@ public class BidServiceImpl implements BidService {
                 }
             }
             throw new AuctionClosedException("Auction has ended");
-        }
-    }
-
-    private void ensureSufficientBalance(UUID bidderId, double amount) {
-        BigDecimal required = BigDecimal.valueOf(amount);
-        BigDecimal balance = walletRepository.findByUserId(bidderId)
-                .map(wallet -> wallet.getBalance() == null ? BigDecimal.ZERO : wallet.getBalance())
-                .orElse(BigDecimal.ZERO);
-
-        if (balance.compareTo(required) < 0) {
-            throw new InvalidBidException("Insufficient wallet balance for this bid");
         }
     }
 

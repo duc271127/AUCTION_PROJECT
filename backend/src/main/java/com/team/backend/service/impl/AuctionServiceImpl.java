@@ -18,6 +18,7 @@ import com.team.backend.repository.ItemRepository;
 import com.team.backend.service.AuctionHelper;
 import com.team.backend.service.AuctionService;
 import com.team.backend.service.EventPublisher;
+import com.team.backend.service.bid.BidWalletService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageImpl;
@@ -55,6 +56,7 @@ public class AuctionServiceImpl implements AuctionService {
     private final FavoriteRepository favoriteRepository;
     private final AuctionHelper auctionHelper;
     private final EventPublisher eventPublisher;
+    private final BidWalletService bidWalletService;
 
     public AuctionServiceImpl(AuctionRepository auctionRepository,
                               ItemRepository itemRepository,
@@ -62,6 +64,7 @@ public class AuctionServiceImpl implements AuctionService {
                               BidRepository bidRepository,
                               FavoriteRepository favoriteRepository,
                               AuctionHelper auctionHelper,
+                              BidWalletService bidWalletService,
                               Optional<EventPublisher> eventPublisherOptional) {
         this.auctionRepository = auctionRepository;
         this.itemRepository = itemRepository;
@@ -69,6 +72,7 @@ public class AuctionServiceImpl implements AuctionService {
         this.bidRepository = bidRepository;
         this.favoriteRepository = favoriteRepository;
         this.auctionHelper = auctionHelper;
+        this.bidWalletService = bidWalletService;
         this.eventPublisher = eventPublisherOptional.orElse(null);
     }
 
@@ -257,6 +261,7 @@ public class AuctionServiceImpl implements AuctionService {
         existing.setCurrentPrice(auction.getCurrentPrice());
         existing.setLeaderId(auction.getLeaderId());
         existing.setWinnerId(auction.getWinnerId());
+        existing.setWinnerPaymentCaptured(auction.isWinnerPaymentCaptured());
         existing.setSellerId(auction.getSellerId());
         existing.setState(auction.getState());
         existing.setUpdatedAt(Instant.now());
@@ -568,6 +573,13 @@ public class AuctionServiceImpl implements AuctionService {
             changed = true;
         }
 
+        if (auction.getState() == AuctionState.FINISHED
+                && auction.getWinnerId() != null
+                && !auction.isWinnerPaymentCaptured()) {
+            bidWalletService.captureWinnerPayment(auction);
+            changed = true;
+        }
+
         if (!changed) {
             return auction;
         }
@@ -589,6 +601,7 @@ public class AuctionServiceImpl implements AuctionService {
     private void closeAuctionInternal(Auction auction, String reason) {
         auction.setState(AuctionState.FINISHED);
         auction.setWinnerId(auction.getLeaderId());
+        bidWalletService.captureWinnerPayment(auction);
         auction.setUpdatedAt(Instant.now());
         auctionRepository.save(auction);
         registerAuctionClosedEvent(auction, reason);

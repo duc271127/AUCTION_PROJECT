@@ -10,7 +10,7 @@ import com.team.backend.exception.ResourceNotFoundException;
 import com.team.backend.repository.AuctionRepository;
 import com.team.backend.repository.AutoBidRepository;
 import com.team.backend.repository.BidRepository;
-import com.team.backend.repository.WalletRepository;
+import com.team.backend.service.bid.BidWalletService;
 import com.team.backend.service.EventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -34,16 +33,16 @@ public class BidTransactionalService {
     private final AuctionRepository auctionRepository;
     private final BidRepository bidRepository;
     private final AutoBidRepository autoBidRepository;
-    private final WalletRepository walletRepository;
+    private final BidWalletService bidWalletService;
 
     public BidTransactionalService(AuctionRepository auctionRepository,
                                    BidRepository bidRepository,
                                    AutoBidRepository autoBidRepository,
-                                   WalletRepository walletRepository) {
+                                   BidWalletService bidWalletService) {
         this.auctionRepository = auctionRepository;
         this.bidRepository = bidRepository;
         this.autoBidRepository = autoBidRepository;
-        this.walletRepository = walletRepository;
+        this.bidWalletService = bidWalletService;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED, noRollbackFor = AuctionClosedException.class)
@@ -141,7 +140,7 @@ public class BidTransactionalService {
             throw new InvalidBidException("Seller cannot bid on their own auction");
         }
 
-        ensureSufficientBalance(bidderId, amount);
+        bidWalletService.ensureSufficientBalanceForBid(bidderId, amount);
 
         Instant now = Instant.now();
         if (auction.getStartTime() != null && now.isBefore(auction.getStartTime())) {
@@ -150,6 +149,7 @@ public class BidTransactionalService {
         if (auction.getEndTime() != null && !now.isBefore(auction.getEndTime())) {
             auction.setState(AuctionState.FINISHED);
             auction.setWinnerId(auction.getLeaderId());
+            bidWalletService.captureWinnerPayment(auction);
             auctionRepository.save(auction);
             registerAuctionClosedAfterCommit(auction, eventPublisher);
             throw new AuctionClosedException("Auction has ended");
@@ -236,17 +236,6 @@ public class BidTransactionalService {
         }
 
         return Math.max(minIncrement, autoBid.resolveBidStep(minIncrement));
-    }
-
-    private void ensureSufficientBalance(UUID bidderId, double amount) {
-        BigDecimal required = BigDecimal.valueOf(amount);
-        BigDecimal balance = walletRepository.findByUserId(bidderId)
-                .map(wallet -> wallet.getBalance() == null ? BigDecimal.ZERO : wallet.getBalance())
-                .orElse(BigDecimal.ZERO);
-
-        if (balance.compareTo(required) < 0) {
-            throw new InvalidBidException("Insufficient wallet balance for this bid");
-        }
     }
 
     private void registerAuctionClosedAfterCommit(Auction auction, EventPublisher eventPublisher) {
