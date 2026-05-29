@@ -78,11 +78,7 @@
                                         <VBox spacing="12.0" styleClass="detail-media-column" HBox.hgrow="ALWAYS">
                                             <ImageView fx:id="mainImageView" fitHeight="520" fitWidth="760" preserveRatio="true" styleClass="detail-main-image" />
 
-                                            <HBox spacing="10.0">
-                                                <ImageView fx:id="thumb1ImageView" fitHeight="78" fitWidth="100" preserveRatio="true" styleClass="detail-thumbnail" />
-
-                                                <ImageView fx:id="thumb2ImageView" fitHeight="78" fitWidth="100" preserveRatio="true" styleClass="detail-thumbnail" />
-                                            </HBox>
+                                            <HBox fx:id="thumbnailStrip" spacing="10.0" />
 
                                         </VBox>
 

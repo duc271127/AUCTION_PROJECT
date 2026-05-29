@@ -51,8 +51,7 @@ import java.util.concurrent.CompletableFuture;
 public class ProductDetailController {
 
     @FXML private ImageView mainImageView;
-    @FXML private ImageView thumb1ImageView;
-    @FXML private ImageView thumb2ImageView;
+    @FXML private javafx.scene.layout.HBox thumbnailStrip;
 
     @FXML private Label productNameLabel;
     @FXML private Label currentBidLabel;
@@ -91,6 +90,7 @@ public class ProductDetailController {
     private AuctionItem selectedItem;
     private AuctionListResponse currentAuction;
     private PublicItemDetailResponse currentItemDetail;
+    private String loadedItemDetailId;
     private boolean favoriteSelected = false;
     private boolean favoriteDirty = false;
     private int favoriteCount = 0;
@@ -101,8 +101,7 @@ public class ProductDetailController {
     private Double activeAutoBidStep;
     private AutoBidResponse currentUserAutoBid;
     private String mainImageKey;
-    private String thumb1ImageKey;
-    private String thumb2ImageKey;
+    private final List<String> galleryPaths = new ArrayList<>();
     private boolean walletBalanceLoaded;
     private boolean auctionCloseRefreshTriggered;
     private BigDecimal lastKnownWalletBalance = BigDecimal.ZERO;
@@ -128,27 +127,36 @@ public class ProductDetailController {
         hideBidMessage();
         startAuctionRefreshTimer();
     }
+
+    // Initial load runs off the JavaFX thread so opening a product never freezes
+    // the UI while the auction + item detail are fetched.
     private void loadAuctionDetail() {
         if (selectedItem == null || selectedItem.getId() == null || selectedItem.getId().isBlank()) {
             return;
         }
 
-        try {
-            AuctionListResponse response = auctionApiService.getAuctionById(selectedItem.getId());
-            currentAuction = response;
+        final String auctionId = selectedItem.getId();
 
+        CompletableFuture.runAsync(() -> {
             try {
-                auctionApiService.trackView(selectedItem.getId());
+                auctionApiService.trackView(auctionId);
             } catch (Exception ignored) {
             }
+        });
 
-            bindDetailFromApi(response);
-            refreshCurrentUserAutoBidState();
-
-        } catch (Exception e) {
-            bindFallbackFromSelectedItem();
-            showBidMessage("Cannot load full detail from server. Showing fallback data.");
-        }
+        CompletableFuture.supplyAsync(() -> auctionApiService.getAuctionById(auctionId))
+                .thenAccept(response -> Platform.runLater(() -> {
+                    currentAuction = response;
+                    bindDetailFromApi(response);
+                    refreshCurrentUserAutoBidState();
+                }))
+                .exceptionally(error -> {
+                    Platform.runLater(() -> {
+                        bindFallbackFromSelectedItem();
+                        showBidMessage("Cannot load full detail from server. Showing fallback data.");
+                    });
+                    return null;
+                });
     }
 
     private void refreshAuctionDetailSilently() {
@@ -251,9 +259,21 @@ public class ProductDetailController {
             return;
         }
 
+        String itemIdStr = auction.getItemId().toString();
+
+        // The item detail (name, description, images, category) is immutable during
+        // an auction, so fetch it once and reuse it on every 2s refresh instead of
+        // hitting the network on the JavaFX thread each tick.
+        PublicItemDetailResponse cached = currentItemDetail != null && itemIdStr.equals(loadedItemDetailId)
+                ? currentItemDetail
+                : null;
+
         try {
-            PublicItemDetailResponse item = itemApiService.getPublicItemDetail(auction.getItemId().toString());
+            PublicItemDetailResponse item = cached != null
+                    ? cached
+                    : itemApiService.getPublicItemDetail(itemIdStr);
             currentItemDetail = item;
+            loadedItemDetailId = itemIdStr;
 
             if (item.getProductName() != null && !item.getProductName().isBlank()) {
                 productNameLabel.setText(item.getProductName());
@@ -311,7 +331,11 @@ public class ProductDetailController {
     private void setUploadedImages(PublicItemDetailResponse item) {
         List<String> images = new ArrayList<>();
         if (item.getImageUrls() != null) {
-            images.addAll(item.getImageUrls());
+            for (String url : item.getImageUrls()) {
+                if (url != null && !url.isBlank()) {
+                    images.add(url);
+                }
+            }
         }
         if (images.isEmpty() && item.getImagePath() != null && !item.getImagePath().isBlank()) {
             images.add(item.getImagePath());
@@ -321,85 +345,95 @@ public class ProductDetailController {
             return;
         }
 
-        setRemoteImage(mainImageView, images.get(0), "main");
-        setRemoteImage(thumb1ImageView, images.get(0), "thumb1");
-        setRemoteImage(thumb2ImageView, images.size() > 1 ? images.get(1) : images.get(0), "thumb2");
-    }
-
-    private void setRemoteImage(ImageView imageView, String imagePath, String slot) {
-        if (!shouldUpdateImage(slot, imagePath)) {
-            return;
-        }
-
-        imageView.setImage(itemApiService.loadImage(imagePath));
-        rememberImageKey(slot, imagePath);
+        applyImageGallery(images);
     }
 
     private void setDefaultImages(String imagePath) {
-        try {
-            if (itemApiService.isRemoteImagePath(imagePath)) {
-                setRemoteImage(mainImageView, imagePath, "main");
-                setRemoteImage(thumb1ImageView, imagePath, "thumb1");
-                setRemoteImage(thumb2ImageView, imagePath, "thumb2");
-                return;
-            }
+        if (imagePath == null || imagePath.isBlank()) {
+            clearGallery();
+            return;
+        }
+        applyImageGallery(List.of(imagePath));
+    }
 
-            if (!shouldUpdateImage("main", imagePath)
-                    && !shouldUpdateImage("thumb1", imagePath)
-                    && !shouldUpdateImage("thumb2", imagePath)) {
-                return;
+    private void applyImageGallery(List<String> images) {
+        List<String> distinct = new ArrayList<>();
+        for (String path : images) {
+            if (path != null && !path.isBlank() && !distinct.contains(path)) {
+                distinct.add(path);
             }
+        }
 
-            Image image = itemApiService.loadImage(imagePath);
-            if (shouldUpdateImage("main", imagePath)) {
-                mainImageView.setImage(image);
-                rememberImageKey("main", imagePath);
-            }
-            if (shouldUpdateImage("thumb1", imagePath)) {
-                thumb1ImageView.setImage(image);
-                rememberImageKey("thumb1", imagePath);
-            }
-            if (shouldUpdateImage("thumb2", imagePath)) {
-                thumb2ImageView.setImage(image);
-                rememberImageKey("thumb2", imagePath);
-            }
+        if (distinct.isEmpty()) {
+            clearGallery();
+            return;
+        }
 
-        } catch (Exception e) {
-            clearImage(mainImageView, "main");
-            clearImage(thumb1ImageView, "thumb1");
-            clearImage(thumb2ImageView, "thumb2");
-            System.out.println("Image not found: " + imagePath);
+        // Skip rebuilding when the gallery is unchanged so the 2s auto-refresh
+        // does not reload images or reset the user's selected thumbnail.
+        if (distinct.equals(galleryPaths)) {
+            return;
+        }
+
+        galleryPaths.clear();
+        galleryPaths.addAll(distinct);
+
+        setMainImage(distinct.get(0));
+        rebuildThumbnailStrip();
+    }
+
+    private void setMainImage(String imagePath) {
+        if (imagePath == null || imagePath.isBlank()) {
+            return;
+        }
+        if (!imagePath.equals(mainImageKey)) {
+            mainImageView.setImage(itemApiService.loadImage(imagePath));
+            mainImageKey = imagePath;
+        }
+        highlightActiveThumbnail();
+    }
+
+    private void rebuildThumbnailStrip() {
+        if (thumbnailStrip == null) {
+            return;
+        }
+
+        thumbnailStrip.getChildren().clear();
+        for (String path : galleryPaths) {
+            ImageView thumb = new ImageView(itemApiService.loadImage(path));
+            thumb.setFitWidth(100);
+            thumb.setFitHeight(78);
+            thumb.setPreserveRatio(true);
+            thumb.getStyleClass().add("detail-thumbnail");
+            thumb.setOnMouseClicked(event -> setMainImage(path));
+            thumbnailStrip.getChildren().add(thumb);
+        }
+        highlightActiveThumbnail();
+    }
+
+    private void highlightActiveThumbnail() {
+        if (thumbnailStrip == null) {
+            return;
+        }
+        for (int i = 0; i < thumbnailStrip.getChildren().size(); i++) {
+            var node = thumbnailStrip.getChildren().get(i);
+            boolean active = i < galleryPaths.size() && galleryPaths.get(i).equals(mainImageKey);
+            node.getStyleClass().remove("detail-thumbnail-active");
+            if (active) {
+                node.getStyleClass().add("detail-thumbnail-active");
+            }
         }
     }
 
-    private boolean shouldUpdateImage(String slot, String nextKey) {
-        String currentKey = switch (slot) {
-            case "main" -> mainImageKey;
-            case "thumb1" -> thumb1ImageKey;
-            case "thumb2" -> thumb2ImageKey;
-            default -> null;
-        };
-
-        if (currentKey == null) {
-            return true;
+    private void clearGallery() {
+        galleryPaths.clear();
+        mainImageKey = null;
+        if (mainImageView != null) {
+            mainImageView.setImage(null);
         }
-
-        return !currentKey.equals(nextKey);
-    }
-
-    private void rememberImageKey(String slot, String key) {
-        switch (slot) {
-            case "main" -> mainImageKey = key;
-            case "thumb1" -> thumb1ImageKey = key;
-            case "thumb2" -> thumb2ImageKey = key;
-            default -> {
-            }
+        if (thumbnailStrip != null) {
+            thumbnailStrip.getChildren().clear();
         }
-    }
-
-    private void clearImage(ImageView imageView, String slot) {
-        imageView.setImage(null);
-        rememberImageKey(slot, null);
     }
 
     private String formatDateTime(String value) {
@@ -490,9 +524,7 @@ public class ProductDetailController {
         setBidControlsDisabled(true, "Place Bid", "Auto-Bid");
         hideWinnerNotice();
         specsLabel.setText("Please go back to the showroom and choose an auction item.");
-        clearImage(mainImageView, "main");
-        clearImage(thumb1ImageView, "thumb1");
-        clearImage(thumb2ImageView, "thumb2");
+        clearGallery();
     }
 
     @FXML

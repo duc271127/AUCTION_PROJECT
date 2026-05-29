@@ -15,16 +15,27 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 
 public class ApiClient {
 
+    // Shared client so every service reuses one connection pool / thread pool
+    // instead of spawning a new HttpClient (and its executor) per service.
+    private static final HttpClient SHARED_HTTP_CLIENT = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
+
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(20);
+    private static final Duration UPLOAD_TIMEOUT = Duration.ofSeconds(60);
+
     private final HttpClient httpClient;
     private final Gson gson;
 
     public ApiClient() {
-        this.httpClient = HttpClient.newHttpClient();
+        this.httpClient = SHARED_HTTP_CLIENT;
         this.gson = new Gson();
     }
 
@@ -35,6 +46,7 @@ public class ApiClient {
             HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl + endpoint))
                     .header("Content-Type", "application/json")
+                    .timeout(REQUEST_TIMEOUT)
                     .GET();
 
             addAuthorizationHeader(builder);
@@ -68,6 +80,7 @@ public class ApiClient {
             HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl + endpoint))
                     .header("Content-Type", "application/json")
+                    .timeout(REQUEST_TIMEOUT)
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody));
 
             addAuthorizationHeader(builder);
@@ -135,6 +148,7 @@ public class ApiClient {
             HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl + endpoint))
                     .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                    .timeout(UPLOAD_TIMEOUT)
                     .POST(body);
 
             addAuthorizationHeader(builder);
@@ -182,6 +196,7 @@ public class ApiClient {
             HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl + endpoint))
                     .header("Content-Type", "application/json")
+                    .timeout(REQUEST_TIMEOUT)
                     .PUT(HttpRequest.BodyPublishers.ofString(jsonBody));
 
             addAuthorizationHeader(builder);
@@ -215,6 +230,7 @@ public class ApiClient {
             HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl + endpoint))
                     .header("Content-Type", "application/json")
+                    .timeout(REQUEST_TIMEOUT)
                     .DELETE();
 
             addAuthorizationHeader(builder);
