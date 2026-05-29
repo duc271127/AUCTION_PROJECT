@@ -37,6 +37,12 @@
     -fx-border-radius: 8;
     -fx-border-color: #e6e6e6;
     -fx-border-width: 1;
+    -fx-cursor: hand;
+}
+
+.detail-thumbnail-active {
+    -fx-border-color: #2563eb;
+    -fx-border-width: 2;
 }
 
 .detail-bid-column {

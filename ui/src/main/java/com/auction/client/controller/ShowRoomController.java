@@ -13,6 +13,7 @@ import com.auction.client.ui.AuctionCardViewFactory;
 import com.auction.client.util.AuctionStateViewHelper;
 import com.auction.client.util.MockData;
 import com.auction.client.util.SearchNavigationContext;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -31,6 +32,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 public class ShowRoomController {
 
@@ -65,51 +67,57 @@ public class ShowRoomController {
         if (searchField != null && currentQuery != null) {
             searchField.setText(currentQuery);
         }
-        loadFavorites();
-        loadAuctionList();
         updateWishlistUi();
+        reloadCatalogAsync();
     }
 
-    private void loadFavorites() {
-        try {
-            favoriteAuctionIds.clear();
-            for (AuctionDetailResponse favorite : favoriteApiService.getFavorites()) {
-                if (favorite.getId() != null) {
-                    favoriteAuctionIds.add(favorite.getId().toString());
+    // Fetch favorites + auctions off the JavaFX thread so opening the showroom
+    // (and searching) never blocks/freezes the UI on slow network.
+    private void reloadCatalogAsync() {
+        final String query = currentQuery;
+
+        CompletableFuture.supplyAsync(() -> {
+            Set<String> favoriteIds = new LinkedHashSet<>();
+            try {
+                for (AuctionDetailResponse favorite : favoriteApiService.getFavorites()) {
+                    if (favorite.getId() != null) {
+                        favoriteIds.add(favorite.getId().toString());
+                    }
                 }
+            } catch (Exception ignored) {
             }
-        } catch (Exception ignored) {
+
+            List<AuctionItem> loadedItems = new ArrayList<>();
+            try {
+                List<AuctionListResponse> responses =
+                        auctionApiService.searchAuctions(null, query, null, 0, 24, "startTime,asc").getItems();
+                if (responses != null) {
+                    List<AuctionListResponse> sortedResponses = responses.stream()
+                            .filter(this::isVisibleToBidder)
+                            .sorted(Comparator
+                                    .comparingInt(this::auctionDisplayPriority)
+                                    .thenComparing(AuctionListResponse::getStartTime, Comparator.nullsLast(String::compareTo))
+                                    .thenComparing(AuctionListResponse::getEndTime, Comparator.nullsLast(String::compareTo)))
+                            .toList();
+                    for (int i = 0; i < sortedResponses.size(); i++) {
+                        loadedItems.add(mapToAuctionItem(sortedResponses.get(i), i));
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+
+            return new CatalogSnapshot(favoriteIds, loadedItems);
+        }).thenAccept(snapshot -> Platform.runLater(() -> {
             favoriteAuctionIds.clear();
-        }
+            favoriteAuctionIds.addAll(snapshot.favoriteIds());
+            items.clear();
+            items.addAll(snapshot.items());
+            renderAuctionGrid();
+            updateWishlistUi();
+        }));
     }
 
-    private void loadAuctionList() {
-        try {
-            List<AuctionListResponse> responses =
-                    auctionApiService.searchAuctions(null, currentQuery, null, 0, 24, "startTime,asc").getItems();
-
-            items.clear();
-
-            if (responses != null) {
-                List<AuctionListResponse> sortedResponses = responses.stream()
-                        .filter(this::isVisibleToBidder)
-                        .sorted(Comparator
-                                .comparingInt(this::auctionDisplayPriority)
-                                .thenComparing(AuctionListResponse::getStartTime, Comparator.nullsLast(String::compareTo))
-                                .thenComparing(AuctionListResponse::getEndTime, Comparator.nullsLast(String::compareTo)))
-                        .toList();
-
-                for (int i = 0; i < sortedResponses.size(); i++) {
-                    items.add(mapToAuctionItem(sortedResponses.get(i), i));
-                }
-            }
-
-            renderAuctionGrid();
-
-        } catch (Exception e) {
-            items.clear();
-            renderAuctionGrid();
-        }
+    private record CatalogSnapshot(Set<String> favoriteIds, List<AuctionItem> items) {
     }
 
     private AuctionItem mapToAuctionItem(AuctionListResponse response, int index) {
@@ -187,15 +195,13 @@ public class ShowRoomController {
         if (searchField != null) {
             searchField.clear();
         }
-        loadFavorites();
-        loadAuctionList();
-        updateWishlistUi();
+        reloadCatalogAsync();
     }
 
     @FXML
     private void handleSearch() {
         currentQuery = searchField == null ? null : normalizeQuery(searchField.getText());
-        loadAuctionList();
+        reloadCatalogAsync();
     }
 
     @FXML
@@ -445,7 +451,7 @@ public class ShowRoomController {
         }
 
         long secondsRemaining = Duration.between(Instant.now(), endInstant).getSeconds();
-        return secondsRemaining > 0 && secondsRemaining <= 600;
+        return secondsRemaining > 0 && secondsRemaining <= 60;
     }
 
     private boolean hasNewListingStatus(AuctionItem item) {

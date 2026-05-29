@@ -5,6 +5,7 @@ import com.auction.client.dto.request.UpdateItemRequest;
 import com.auction.client.model.SellerListing;
 import com.auction.client.service.SellerItemApiService;
 import com.auction.client.session.SessionManager;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -28,6 +29,9 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 public class SellerItemDialogController {
 
@@ -176,53 +180,55 @@ public class SellerItemDialogController {
             return;
         }
 
-        try {
+        // Snapshot every value read from JavaFX controls on the UI thread,
+        // then do all network work in the background so the dialog never freezes.
+        final UUID sellerId = SessionManager.getUserId();
+        final String productName = productNameField.getText().trim();
+        final String description = descriptionArea.getText().trim();
+        final String category = getCategoryValue();
+        final double startingPrice = Double.parseDouble(startingPriceField.getText().trim());
+        final double reservePrice = getReservePriceValue();
+        final String startIso = buildIsoDateTime(startDatePicker.getValue(), true);
+        final String endIso = buildIsoDateTime(endDatePicker.getValue(), false);
+        final int primaryIndex = primaryImageChoice.getSelectionModel().getSelectedIndex();
+        final List<SelectedImage> imagesSnapshot = new ArrayList<>(selectedImages);
+        final SellerListing editing = listing;
+
+        setBusy(true);
+
+        CompletableFuture.runAsync(() -> {
             imageUploadSkipped = false;
-            List<String> imageUrls = resolveImageUrlsForSave();
+            List<String> imageUrls = resolveImageUrlsForSave(imagesSnapshot, primaryIndex);
             String imagePath = imageUrls.isEmpty() ? "" : imageUrls.get(0);
 
-            if (listing == null) {
+            if (editing == null) {
                 CreateItemRequest request = new CreateItemRequest(
-                        SessionManager.getUserId(),
-                        productNameField.getText().trim(),
-                        descriptionArea.getText().trim(),
-                        getCategoryValue(),
-                        Double.parseDouble(startingPriceField.getText().trim()),
-                        getReservePriceValue(),
-                        buildIsoDateTime(startDatePicker.getValue(), true),
-                        buildIsoDateTime(endDatePicker.getValue(), false),
-                        imagePath,
-                        imageUrls,
-                        "",
-                        1
+                        sellerId, productName, description, category,
+                        startingPrice, reservePrice, startIso, endIso,
+                        imagePath, imageUrls, "", 1
                 );
                 sellerItemApiService.createItem(request);
             } else {
                 UpdateItemRequest request = new UpdateItemRequest(
-                        SessionManager.getUserId(),
-                        productNameField.getText().trim(),
-                        descriptionArea.getText().trim(),
-                        getCategoryValue(),
-                        Double.parseDouble(startingPriceField.getText().trim()),
-                        getReservePriceValue(),
-                        buildIsoDateTime(startDatePicker.getValue(), true),
-                        buildIsoDateTime(endDatePicker.getValue(), false),
-                        imagePath,
-                        imageUrls,
-                        safeText(listing.getSku(), ""),
-                        listing.getQuantity() == null ? 1 : listing.getQuantity()
+                        sellerId, productName, description, category,
+                        startingPrice, reservePrice, startIso, endIso,
+                        imagePath, imageUrls,
+                        safeText(editing.getSku(), ""),
+                        editing.getQuantity() == null ? 1 : editing.getQuantity()
                 );
-                sellerItemApiService.updateItem(listing.getId(), request);
+                sellerItemApiService.updateItem(editing.getId(), request);
             }
-
+        }).whenComplete((ignored, error) -> Platform.runLater(() -> {
+            setBusy(false);
+            if (error != null) {
+                showError("Save failed: " + rootMessage(error));
+                return;
+            }
             if (onSaved != null) {
                 onSaved.run();
             }
-
             handleClose();
-        } catch (Exception e) {
-            showError("Save failed: " + e.getMessage());
-        }
+        }));
     }
 
     @FXML
@@ -245,15 +251,43 @@ public class SellerItemDialogController {
             return;
         }
 
-        try {
-            sellerItemApiService.deleteItem(listing.getId());
-            if (onSaved != null) {
-                onSaved.run();
-            }
-            handleClose();
-        } catch (Exception e) {
-            showError("Delete failed: " + e.getMessage());
+        final UUID itemId = listing.getId();
+        setBusy(true);
+
+        CompletableFuture.runAsync(() -> sellerItemApiService.deleteItem(itemId))
+                .whenComplete((ignored, error) -> Platform.runLater(() -> {
+                    setBusy(false);
+                    if (error != null) {
+                        showError("Delete failed: " + rootMessage(error));
+                        return;
+                    }
+                    if (onSaved != null) {
+                        onSaved.run();
+                    }
+                    handleClose();
+                }));
+    }
+
+    private void setBusy(boolean busy) {
+        if (submitButton != null) {
+            submitButton.setDisable(busy);
         }
+        if (deleteButton != null && (listing == null || listing.isDeletable())) {
+            deleteButton.setDisable(busy);
+        }
+        if (busy) {
+            messageLabel.setText("Saving, please wait...");
+            messageLabel.setStyle("-fx-text-fill: #2563eb;");
+            messageLabel.setManaged(true);
+            messageLabel.setVisible(true);
+        }
+    }
+
+    private String rootMessage(Throwable error) {
+        Throwable cause = error instanceof CompletionException && error.getCause() != null
+                ? error.getCause()
+                : error;
+        return cause.getMessage() == null ? cause.toString() : cause.getMessage();
     }
 
     @FXML
@@ -334,11 +368,10 @@ public class SellerItemDialogController {
         return Double.parseDouble(reservePriceText.trim());
     }
 
-    private List<String> resolveImageUrlsForSave() {
-        int primaryIndex = primaryImageChoice.getSelectionModel().getSelectedIndex();
+    private List<String> resolveImageUrlsForSave(List<SelectedImage> images, int primaryIndex) {
         List<String> imageUrls = new ArrayList<>();
 
-        for (SelectedImage selectedImage : selectedImages) {
+        for (SelectedImage selectedImage : images) {
             if (selectedImage.isRemote()) {
                 imageUrls.add(selectedImage.remoteUrl());
                 continue;
