@@ -57,6 +57,8 @@ public class LiveBiddingController {
     @FXML private Label connectionStatusLabel;
     @FXML private Label currentBidLabel;
     @FXML private Label leaderLabel;
+    @FXML private Label reservePriceLabel;
+    @FXML private Label reserveStatusLabel;
     @FXML private Label countdownLabel;
     @FXML private Label outbidAlertLabel;
     @FXML private Button placeBidButton;
@@ -343,14 +345,71 @@ public class LiveBiddingController {
         currentBidLabel.setText(formatMoney(auction.getCurrentPrice()));
         countdownLabel.setText(formatCountdown(auction.getEndTime()));
         leaderLabel.setText("Leader: " + safeLeaderName(auction.getLeaderName()));
+        updateReserveDisplay(auction);
 
-        if (!"FINISHED".equalsIgnoreCase(auction.getState()) && !"CANCELLED".equalsIgnoreCase(auction.getState())) {
+        boolean finished = "FINISHED".equalsIgnoreCase(auction.getState()) || "CANCELLED".equalsIgnoreCase(auction.getState());
+
+        if (!finished) {
             auctionCloseRefreshTriggered = false;
         }
 
-        if ("FINISHED".equalsIgnoreCase(auction.getState()) || "CANCELLED".equalsIgnoreCase(auction.getState())) {
+        if (finished) {
             lockBiddingControls();
+            showInfo(resolveFinishMessage(auction));
         }
+    }
+
+    private void updateReserveDisplay(AuctionDetailResponse auction) {
+        boolean hasReserve = auction.getReservePrice() > 0;
+
+        if (reservePriceLabel != null) {
+            reservePriceLabel.setText(hasReserve
+                    ? "Reserve price: " + formatMoney(auction.getReservePrice())
+                    : "Reserve price: None");
+        }
+
+        if (reserveStatusLabel == null) {
+            return;
+        }
+
+        if (!hasReserve) {
+            reserveStatusLabel.setText("");
+            return;
+        }
+
+        boolean finished = "FINISHED".equalsIgnoreCase(auction.getState()) || "CANCELLED".equalsIgnoreCase(auction.getState());
+        if (finished) {
+            if (auction.isReserveMet()) {
+                reserveStatusLabel.setText("Reserve price met");
+                reserveStatusLabel.setStyle("-fx-text-fill: #16a34a;");
+            } else {
+                reserveStatusLabel.setText("Reserve price not met - no winner");
+                reserveStatusLabel.setStyle("-fx-text-fill: #dc2626;");
+            }
+            return;
+        }
+
+        if (auction.isReserveMet()) {
+            reserveStatusLabel.setText("Reserve price met");
+            reserveStatusLabel.setStyle("-fx-text-fill: #16a34a;");
+        } else {
+            reserveStatusLabel.setText("Reserve price not met yet");
+            reserveStatusLabel.setStyle("-fx-text-fill: #d97706;");
+        }
+    }
+
+    private String resolveFinishMessage(AuctionDetailResponse auction) {
+        if (auction.getReservePrice() > 0 && !auction.isReserveMet()) {
+            return "Auction finished. Reserve price (" + formatMoney(auction.getReservePrice())
+                    + ") was not met - no winner.";
+        }
+
+        String winnerName = auction.getLeaderName();
+        if (winnerName == null || winnerName.isBlank()) {
+            return "Auction finished. There were no bids - no winner.";
+        }
+
+        return "Auction finished. Winner: " + winnerName + ".";
     }
 
     private void detectOutbid(AuctionDetailResponse previous, AuctionDetailResponse latest) {

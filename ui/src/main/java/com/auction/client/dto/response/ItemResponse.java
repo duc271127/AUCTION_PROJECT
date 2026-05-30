@@ -20,6 +20,8 @@ public class ItemResponse {
     private Integer quantity;
     private boolean deletable;
     private String deleteBlockedReason;
+    private boolean editable = true;
+    private String editBlockedReason;
 
     public ItemResponse() {
     }
@@ -126,4 +128,10 @@ public class ItemResponse {
 
     public String getDeleteBlockedReason() { return deleteBlockedReason; }
     public void setDeleteBlockedReason(String deleteBlockedReason) { this.deleteBlockedReason = deleteBlockedReason; }
+
+    public boolean isEditable() { return editable; }
+    public void setEditable(boolean editable) { this.editable = editable; }
+
+    public String getEditBlockedReason() { return editBlockedReason; }
+    public void setEditBlockedReason(String editBlockedReason) { this.editBlockedReason = editBlockedReason; }
 }

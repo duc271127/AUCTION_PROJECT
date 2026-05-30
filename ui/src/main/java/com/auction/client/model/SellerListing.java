@@ -20,6 +20,8 @@ public class SellerListing {
     private Integer quantity;
     private boolean deletable = true;
     private String deleteBlockedReason;
+    private boolean editable = true;
+    private String editBlockedReason;
 
     public SellerListing() {
     }
@@ -147,6 +149,12 @@ public class SellerListing {
 
     public String getDeleteBlockedReason() { return deleteBlockedReason; }
     public void setDeleteBlockedReason(String deleteBlockedReason) { this.deleteBlockedReason = deleteBlockedReason; }
+
+    public boolean isEditable() { return editable; }
+    public void setEditable(boolean editable) { this.editable = editable; }
+
+    public String getEditBlockedReason() { return editBlockedReason; }
+    public void setEditBlockedReason(String editBlockedReason) { this.editBlockedReason = editBlockedReason; }
 
     public String getQuantityText() {
         return quantity == null ? "0" : String.valueOf(quantity);

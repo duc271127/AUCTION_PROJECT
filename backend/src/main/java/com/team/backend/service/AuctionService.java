@@ -24,6 +24,7 @@ public interface AuctionService {
     void closeAuction(UUID auctionId, String reason);
     void rejectAuction(UUID auctionId, String reason);
     void deleteAuction(UUID auctionId);
+    void purgeAuction(UUID auctionId);
     void startAuction(UUID auctionId);
     void refreshStates();
     void validateAuctionOpenForBidding(UUID auctionId);

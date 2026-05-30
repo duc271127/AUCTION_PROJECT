@@ -18,6 +18,7 @@ public interface AdminService {
     void acceptAuction(UUID auctionId, UUID adminId);
     void rejectAuction(UUID auctionId, UUID adminId);
     void deleteAuction(UUID auctionId, UUID adminId);
+    void purgeAuction(UUID auctionId, UUID adminId);
     List<PendingItemDto> listReportedItems();
     AdminStatsDto getStats();
     List<AdminWalletActivityDto> getRecentWalletActivity(int limit);

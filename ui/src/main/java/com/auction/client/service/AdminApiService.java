@@ -138,6 +138,14 @@ public class AdminApiService {
         }
     }
 
+    public void purgeAuction(String auctionId) {
+        try {
+            apiClient.delete("/admin/auctions/" + auctionId + "/purge");
+        } catch (Exception e) {
+            throw new ApiException("Remove auction failed: " + e.getMessage(), e);
+        }
+    }
+
     private boolean shouldFallbackApproveAndCreate(Exception exception) {
         String message = exception == null ? "" : String.valueOf(exception.getMessage());
         String normalized = message.toLowerCase();

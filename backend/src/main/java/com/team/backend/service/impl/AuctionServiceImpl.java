@@ -360,6 +360,26 @@ public class AuctionServiceImpl implements AuctionService {
 
     @Override
     @Transactional
+    public void purgeAuction(UUID auctionId) {
+        Auction auction = auctionRepository.findById(auctionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));
+
+        UUID itemId = auction.getItemId();
+
+        // Remove all data referencing this auction so it can be hard-deleted regardless
+        // of its state (used by admins to clear out old/unneeded auctions).
+        bidRepository.deleteByAuctionId(auctionId);
+        autoBidRepository.deleteByAuctionId(auctionId);
+        favoriteRepository.deleteByAuctionId(auctionId);
+        auctionRepository.delete(auction);
+
+        if (itemId != null) {
+            itemRepository.findById(itemId).ifPresent(itemRepository::delete);
+        }
+    }
+
+    @Override
+    @Transactional
     public void startAuction(UUID auctionId) {
         Auction auction = auctionRepository.findById(auctionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found: " + auctionId));
@@ -575,7 +595,7 @@ public class AuctionServiceImpl implements AuctionService {
                     auction.setLeaderId(latestBid.getBidderId());
                     changed = true;
                 }
-                if (auction.getState() == AuctionState.FINISHED && auction.getWinnerId() == null) {
+                if (auction.getState() == AuctionState.FINISHED && auction.getWinnerId() == null && reserveMet(auction)) {
                     auction.setWinnerId(latestBid.getBidderId());
                     changed = true;
                 }
@@ -588,7 +608,7 @@ public class AuctionServiceImpl implements AuctionService {
             if (!transactionActive) {
                 auction.setState(AuctionState.FINISHED);
                 if (auction.getWinnerId() == null) {
-                    auction.setWinnerId(auction.getLeaderId());
+                    auction.setWinnerId(resolveWinnerId(auction));
                 }
                 auction.setUpdatedAt(now);
                 return auction;
@@ -599,7 +619,8 @@ public class AuctionServiceImpl implements AuctionService {
 
         if (auction.getState() == AuctionState.FINISHED
                 && auction.getWinnerId() == null
-                && auction.getLeaderId() != null) {
+                && auction.getLeaderId() != null
+                && reserveMet(auction)) {
             auction.setWinnerId(auction.getLeaderId());
             changed = true;
         }
@@ -634,7 +655,7 @@ public class AuctionServiceImpl implements AuctionService {
 
         boolean changed = false;
 
-        if (auction.getWinnerId() == null && auction.getLeaderId() != null) {
+        if (auction.getWinnerId() == null && auction.getLeaderId() != null && reserveMet(auction)) {
             auction.setWinnerId(auction.getLeaderId());
             changed = true;
         }
@@ -666,11 +687,35 @@ public class AuctionServiceImpl implements AuctionService {
 
     private void closeAuctionInternal(Auction auction, String reason) {
         auction.setState(AuctionState.FINISHED);
-        auction.setWinnerId(auction.getLeaderId());
+        // Only declare a winner when the final price reaches the reserve price.
+        auction.setWinnerId(resolveWinnerId(auction));
         bidWalletService.captureWinnerPayment(auction);
         auction.setUpdatedAt(Instant.now());
         auctionRepository.save(auction);
         registerAuctionClosedEvent(auction, reason);
+    }
+
+    /**
+     * Reserve price is met when there is no reserve (null or <= 0) or the current
+     * winning price is at least the reserve price.
+     */
+    private boolean reserveMet(Auction auction) {
+        if (auction == null) {
+            return false;
+        }
+        Double reserve = auction.getReservePrice();
+        if (reserve == null || reserve <= 0.0) {
+            return true;
+        }
+        return auction.getCurrentPrice() >= reserve;
+    }
+
+    /**
+     * The leader only becomes the winner when the reserve price is satisfied;
+     * otherwise the auction closes with no winner.
+     */
+    private UUID resolveWinnerId(Auction auction) {
+        return reserveMet(auction) ? auction.getLeaderId() : null;
     }
 
     private boolean isTerminalState(AuctionState state) {

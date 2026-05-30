@@ -26,6 +26,9 @@ public final class AuctionMapper {
         response.leaderId = auction.getLeaderId();
         response.bidCount = bidCount;
         response.currentPrice = auction.getCurrentPrice();
+        double reserve = auction.getReservePrice() == null ? 0.0 : auction.getReservePrice();
+        response.reservePrice = reserve;
+        response.reserveMet = reserve <= 0.0 || auction.getCurrentPrice() >= reserve;
         response.viewCount = Math.max(0L, auction.getViewCount());
         response.favoriteCount = auction.getFavoriteCount() == null ? 0L : auction.getFavoriteCount();
         response.trendingScore = auction.getTrendingScore() == null ? 0.0 : auction.getTrendingScore();

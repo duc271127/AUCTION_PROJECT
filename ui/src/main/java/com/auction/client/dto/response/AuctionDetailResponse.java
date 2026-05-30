@@ -14,6 +14,8 @@ public class AuctionDetailResponse {
     private UUID leaderId;
     private int bidCount;
     private double currentPrice;
+    private double reservePrice;
+    private boolean reserveMet;
     private long viewCount;
     private long favoriteCount;
     private double trendingScore;
@@ -45,6 +47,10 @@ public class AuctionDetailResponse {
     public void setBidCount(int bidCount) { this.bidCount = bidCount; }
     public double getCurrentPrice() { return currentPrice; }
     public void setCurrentPrice(double currentPrice) { this.currentPrice = currentPrice; }
+    public double getReservePrice() { return reservePrice; }
+    public void setReservePrice(double reservePrice) { this.reservePrice = reservePrice; }
+    public boolean isReserveMet() { return reserveMet; }
+    public void setReserveMet(boolean reserveMet) { this.reserveMet = reserveMet; }
     public long getViewCount() { return viewCount; }
     public void setViewCount(long viewCount) { this.viewCount = viewCount; }
     public long getFavoriteCount() { return favoriteCount; }

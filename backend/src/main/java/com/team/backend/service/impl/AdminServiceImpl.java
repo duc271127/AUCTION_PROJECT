@@ -273,7 +273,28 @@ public class AdminServiceImpl implements AdminService {
                 .orElseThrow(() -> new BusinessRuleException("Auction not found: " + auctionId));
 
         auctionService.rejectAuction(auctionId, "Auction rejected by admin.");
+
+        // Keep the seller-facing item status in sync with the auction decision so the
+        // seller's listing no longer shows "approved" after the auction was rejected.
+        syncItemStatus(auction.getItemId(), ItemStatus.REJECTED);
+
         saveNotification("AUCTION_REJECTED", "Auction rejected: " + auction.getTitle());
+    }
+
+    private void syncItemStatus(UUID itemId, ItemStatus status) {
+        if (itemId == null) {
+            return;
+        }
+        itemRepository.findById(itemId).ifPresent(item -> {
+            if (item.getStatus() != status) {
+                item.setStatus(status);
+                if (status != ItemStatus.APPROVED) {
+                    item.setApprovedBy(null);
+                    item.setApprovedAt(null);
+                }
+                itemRepository.save(item);
+            }
+        });
     }
 
     @Override
@@ -287,6 +308,20 @@ public class AdminServiceImpl implements AdminService {
 
         auctionService.deleteAuction(auctionId);
         saveNotification("AUCTION_DELETED", "Auction marked deleted: " + auction.getTitle());
+    }
+
+    @Override
+    @Transactional
+    public void purgeAuction(UUID auctionId, UUID adminId) {
+        if (auctionId == null) throw new BusinessRuleException("auctionId is required");
+        if (adminId == null) throw new BusinessRuleException("adminId is required");
+
+        Auction auction = auctionRepository.findById(auctionId)
+                .orElseThrow(() -> new BusinessRuleException("Auction not found: " + auctionId));
+
+        String title = auction.getTitle();
+        auctionService.purgeAuction(auctionId);
+        saveNotification("AUCTION_PURGED", "Auction permanently removed: " + title);
     }
 
     @Override

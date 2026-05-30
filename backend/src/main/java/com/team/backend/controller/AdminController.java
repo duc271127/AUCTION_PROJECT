@@ -121,6 +121,13 @@ public class AdminController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/auctions/{auctionId}/purge")
+    public ResponseEntity<Void> purgeAuction(@PathVariable UUID auctionId) {
+        UUID adminId = resolveCurrentUserId();
+        adminService.purgeAuction(auctionId, adminId);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/items/reported")
     public ResponseEntity<List<PendingItemDto>> listReportedItems() {
         return ResponseEntity.ok(adminService.listReportedItems());
