@@ -488,12 +488,20 @@
 }
 
 .market-logout-button {
-    -fx-background-color: transparent;
-    -fx-text-fill: #b42318;
+    -fx-background-color: #ffffff;
+    -fx-border-color: #fecaca;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-text-fill: #b91c1c;
     -fx-font-size: 14px;
     -fx-font-weight: 700;
-    -fx-padding: 8 12;
-    -fx-background-radius: 999;
+    -fx-padding: 10 14;
+    -fx-cursor: hand;
+}
+
+.market-logout-button:hover {
+    -fx-background-color: #fff1f2;
+    -fx-border-color: #fecaca;
 }
 
 .market-card {

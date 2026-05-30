@@ -55,6 +55,7 @@ public class ProductDetailController {
 
     @FXML private Label productNameLabel;
     @FXML private Label currentBidLabel;
+    @FXML private Label reservePriceLabel;
     @FXML private Label countdownLabel;
     @FXML private Label timeCardTitleLabel;
     @FXML private Label countdownDayLabel;
@@ -196,6 +197,7 @@ public class ProductDetailController {
 
         productNameLabel.setText(title);
         currentBidLabel.setText(formatMoney(response.getCurrentPrice()));
+        updateReserveDisplay(response);
         updateAuctionTiming(response);
         updateWinnerNotice(response);
 
@@ -1038,7 +1040,7 @@ public class ProductDetailController {
             return false;
         }
 
-        java.util.UUID resolvedWinnerId = auction.getWinnerId() != null ? auction.getWinnerId() : auction.getLeaderId();
+        java.util.UUID resolvedWinnerId = resolveEffectiveWinnerId(auction);
         return resolvedWinnerId != null && resolvedWinnerId.equals(SessionManager.getUserId());
     }
 
@@ -1543,6 +1545,42 @@ public class ProductDetailController {
         }
     }
 
+    private void updateReserveDisplay(AuctionListResponse auction) {
+        if (reservePriceLabel == null || auction == null) {
+            return;
+        }
+
+        boolean hasReserve = auction.getReservePrice() > 0;
+        if (!hasReserve) {
+            reservePriceLabel.setText("Reserve price: None");
+            return;
+        }
+
+        String reserveText = "Reserve price: " + formatMoney(auction.getReservePrice());
+        if (isReserveMet(auction)) {
+            reserveText += isAuctionClosed(auction) ? " (met)" : " (reached)";
+        } else {
+            reserveText += isAuctionClosed(auction) ? " (not met)" : " (not reached yet)";
+        }
+        reservePriceLabel.setText(reserveText);
+    }
+
+    private boolean isReserveMet(AuctionListResponse auction) {
+        if (auction == null) {
+            return false;
+        }
+        return auction.getReservePrice() <= 0 || auction.getCurrentPrice() >= auction.getReservePrice();
+    }
+
+    // The effective winner is empty when the auction closed below its reserve price,
+    // matching the backend's "no winner" decision.
+    private java.util.UUID resolveEffectiveWinnerId(AuctionListResponse auction) {
+        if (auction == null || !isReserveMet(auction)) {
+            return null;
+        }
+        return auction.getWinnerId() != null ? auction.getWinnerId() : auction.getLeaderId();
+    }
+
     private void updateWinnerNotice(AuctionListResponse auction) {
         if (auction == null) {
             hideWinnerNotice();
@@ -1558,11 +1596,32 @@ public class ProductDetailController {
             return;
         }
 
-        java.util.UUID resolvedWinnerId = auction.getWinnerId() != null ? auction.getWinnerId() : auction.getLeaderId();
+        boolean reserveMet = isReserveMet(auction);
+        java.util.UUID resolvedWinnerId = resolveEffectiveWinnerId(auction);
         String winnerName = firstNonBlank(auction.getWinnerName(), auction.getLeaderName(), "No winner");
         boolean currentUserWon = SessionManager.getUserId() != null
                 && resolvedWinnerId != null
                 && SessionManager.getUserId().equals(resolvedWinnerId);
+
+        if (!reserveMet) {
+            winnerNoticeCard.getStyleClass().removeAll(
+                    "winner-notice-card",
+                    "winner-notice-card-success",
+                    "winner-notice-card-muted"
+            );
+            winnerNoticeCard.getStyleClass().addAll("winner-notice-card", "winner-notice-card-muted");
+            winnerNoticeTitleLabel.setText("Auction finished with no winner");
+            winnerNoticeSubtitleLabel.setText("The final bid " + formatMoney(auction.getCurrentPrice())
+                    + " did not reach the reserve price of " + formatMoney(auction.getReservePrice())
+                    + ", so no winner was selected.");
+            if (winnerNoticeButton != null) {
+                winnerNoticeButton.setManaged(false);
+                winnerNoticeButton.setVisible(false);
+            }
+            winnerNoticeCard.setManaged(true);
+            winnerNoticeCard.setVisible(true);
+            return;
+        }
 
         winnerNoticeCard.getStyleClass().removeAll(
                 "winner-notice-card",
