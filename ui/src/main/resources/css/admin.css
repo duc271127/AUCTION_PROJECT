@@ -41,9 +41,18 @@
 .admin-logout-button {
     -fx-min-width: 112;
     -fx-pref-width: 112;
+    -fx-background-color: #ffffff;
+    -fx-border-color: #fecaca;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-text-fill: #b91c1c;
 }
 
-.admin-logout-button:hover,
+.admin-logout-button:hover {
+    -fx-background-color: #fff1f2;
+    -fx-border-color: #fecaca;
+}
+
 .admin-outline-button:hover {
     -fx-background-color: #f8fafc;
     -fx-border-color: #b8c4d8;

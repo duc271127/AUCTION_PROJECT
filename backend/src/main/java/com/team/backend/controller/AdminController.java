@@ -177,6 +177,9 @@ public class AdminController {
         d.category = a.getCategory();
         d.sellerId = a.getSellerId();
         d.currentPrice = a.getCurrentPrice();
+        double reserve = a.getReservePrice() == null ? 0.0 : a.getReservePrice();
+        d.reservePrice = reserve;
+        d.reserveMet = reserve <= 0.0 || a.getCurrentPrice() >= reserve;
         d.bidCount = a.getBidCount() == null ? 0 : a.getBidCount();
         d.minNextBid = a.getMinNextBid() == null ? a.getCurrentPrice() + 1.0 : a.getMinNextBid();
         d.leaderId = a.getLeaderId();

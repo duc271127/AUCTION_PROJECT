@@ -86,7 +86,7 @@
 
                     <Button text="Logout"
                             focusTraversable="false"
-                            styleClass="secondary-button"
+                            styleClass="market-logout-button"
                             onAction="#handleLogout"/>
                 </HBox>
             </top>

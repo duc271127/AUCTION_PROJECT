@@ -249,6 +249,9 @@ public class AuctionController {
         dto.sellerId = auction.getSellerId() != null ? auction.getSellerId() : auction.getCreatedBy();
         dto.sellerName = auction.getSellerName() != null ? auction.getSellerName() : resolveUserName(userNames, dto.sellerId);
         dto.currentPrice = auction.getCurrentPrice();
+        double reserve = auction.getReservePrice() == null ? 0.0 : auction.getReservePrice();
+        dto.reservePrice = reserve;
+        dto.reserveMet = reserve <= 0.0 || auction.getCurrentPrice() >= reserve;
         dto.viewCount = Math.max(0L, auction.getViewCount());
         dto.favoriteCount = auction.getFavoriteCount() == null ? 0L : auction.getFavoriteCount();
         dto.trendingScore = auction.getTrendingScore() == null ? 0.0 : auction.getTrendingScore();

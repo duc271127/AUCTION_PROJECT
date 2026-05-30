@@ -14,6 +14,8 @@ public class AuctionDto {
     public UUID sellerId;
     public String sellerName;
     public double currentPrice;
+    public double reservePrice;
+    public boolean reserveMet;
     public long viewCount;
     public long favoriteCount;
     public double trendingScore;

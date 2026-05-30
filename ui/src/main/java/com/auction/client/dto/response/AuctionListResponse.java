@@ -13,6 +13,8 @@ public class AuctionListResponse {
     private UUID sellerId;
     private String sellerName;
     private double currentPrice;
+    private double reservePrice;
+    private boolean reserveMet;
     private long viewCount;
     private long favoriteCount;
     private double trendingScore;
@@ -108,6 +110,22 @@ public class AuctionListResponse {
 
     public void setCurrentPrice(double currentPrice) {
         this.currentPrice = currentPrice;
+    }
+
+    public double getReservePrice() {
+        return reservePrice;
+    }
+
+    public void setReservePrice(double reservePrice) {
+        this.reservePrice = reservePrice;
+    }
+
+    public boolean isReserveMet() {
+        return reserveMet;
+    }
+
+    public void setReserveMet(boolean reserveMet) {
+        this.reserveMet = reserveMet;
     }
 
     public long getViewCount() {
