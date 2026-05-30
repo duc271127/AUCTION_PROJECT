@@ -337,6 +337,13 @@ public class ItemServiceImpl implements ItemService {
             throw new BusinessRuleException("Item not found for this seller");
         }
 
+        // A listing can only be edited before its auction goes live (still scheduled).
+        Auction linkedAuction = auctionRepository.findByItemId(itemId).orElse(null);
+        Instant editNow = Instant.now();
+        if (linkedAuction != null && !canSellerEditLinkedAuction(linkedAuction, editNow)) {
+            throw new BusinessRuleException(resolveEditBlockedReason(linkedAuction, editNow));
+        }
+
         if (request.getProductName() != null && !request.getProductName().trim().isEmpty()) {
             item.setName(request.getProductName().trim());
         }
@@ -378,11 +385,20 @@ public class ItemServiceImpl implements ItemService {
             item.setQuantity(request.getQuantity());
         }
 
+        // Editing forces the listing back into admin review.
         item.setStatus(ItemStatus.PENDING);
         item.setApprovedBy(null);
         item.setApprovedAt(null);
 
         Item saved = itemRepository.save(item);
+
+        // Discard the previously scheduled auction so the admin re-approves the edited
+        // listing and recreates the auction with the updated details.
+        if (linkedAuction != null) {
+            cleanupLinkedAuctionData(linkedAuction.getId());
+            auctionRepository.delete(linkedAuction);
+        }
+
         return toResponse(saved);
     }
 
@@ -445,6 +461,11 @@ public class ItemServiceImpl implements ItemService {
         r.setDeleteBlockedReason(deletable
                 ? null
                 : resolveDeleteBlockedReason(auction, now));
+        boolean editable = auction == null || canSellerEditLinkedAuction(auction, now);
+        r.setEditable(editable);
+        r.setEditBlockedReason(editable
+                ? null
+                : resolveEditBlockedReason(auction, now));
         return r;
     }
 
@@ -611,6 +632,35 @@ public class ItemServiceImpl implements ItemService {
         }
 
         return "This listing can only be deleted before the auction start time.";
+    }
+
+    private boolean canSellerEditLinkedAuction(Auction auction, Instant now) {
+        // Same rule as deletion: editing is only allowed while the auction is still
+        // scheduled (or draft) and has not started yet.
+        return canSellerDeleteLinkedAuction(auction, now);
+    }
+
+    private String resolveEditBlockedReason(Auction auction, Instant now) {
+        if (auction == null) {
+            return null;
+        }
+
+        if (canSellerEditLinkedAuction(auction, now)) {
+            return null;
+        }
+
+        if (auction.getState() == AuctionState.ACTIVE) {
+            return "This listing cannot be edited because the auction is already live.";
+        }
+
+        if (auction.getState() == AuctionState.FINISHED
+                || auction.getState() == AuctionState.CANCELLED
+                || auction.getState() == AuctionState.REJECTED
+                || auction.getState() == AuctionState.DELETED) {
+            return "This listing cannot be edited because the auction has already ended.";
+        }
+
+        return "This listing can only be edited before the auction start time.";
     }
 
     private void cleanupLinkedAuctionData(UUID auctionId) {

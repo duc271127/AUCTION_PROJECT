@@ -488,6 +488,15 @@ public class SellerDashboardController {
     }
 
     @FXML
+    private void handleRefresh() {
+        hideMessage();
+        loadSellerItems();
+        loadSellerStats();
+        loadRecentListings();
+        showSuccess("Listings refreshed.");
+    }
+
+    @FXML
     private void handleLogout() {
         SessionManager.clear();
         SceneManager.goToAuth();
@@ -606,7 +615,7 @@ public class SellerDashboardController {
     }
 
     private SellerListing mapToSellerListing(ItemResponse item) {
-        return new SellerListing(
+        SellerListing listing = new SellerListing(
                 item.getId(),
                 item.getSellerId(),
                 item.getProductName(),
@@ -624,6 +633,9 @@ public class SellerDashboardController {
                 item.isDeletable(),
                 item.getDeleteBlockedReason()
         );
+        listing.setEditable(item.isEditable());
+        listing.setEditBlockedReason(item.getEditBlockedReason());
+        return listing;
     }
 
     private void loadSellerStats() {
@@ -757,6 +769,10 @@ public class SellerDashboardController {
 
         Button edit = new Button("Edit");
         edit.getStyleClass().add("seller-mini-button");
+        edit.setDisable(!listing.isEditable());
+        if (!listing.isEditable()) {
+            edit.setTooltip(new Tooltip(resolveEditBlockedReason(listing)));
+        }
         edit.setOnAction(event -> {
             selectListing(listing);
             openItemDialog(listing);
@@ -855,6 +871,10 @@ public class SellerDashboardController {
 
         Button edit = new Button("Edit");
         edit.getStyleClass().add("seller-row-action");
+        edit.setDisable(!listing.isEditable());
+        if (!listing.isEditable()) {
+            edit.setTooltip(new Tooltip(resolveEditBlockedReason(listing)));
+        }
         edit.setOnAction(event -> {
             selectListing(listing);
             openItemDialog(listing);
@@ -905,6 +925,19 @@ public class SellerDashboardController {
         }
 
         return "This listing already has an auction, so the seller cannot delete it.";
+    }
+
+    private String resolveEditBlockedReason(SellerListing listing) {
+        if (listing == null) {
+            return "This listing cannot be edited.";
+        }
+
+        String reason = listing.getEditBlockedReason();
+        if (reason != null && !reason.isBlank()) {
+            return reason;
+        }
+
+        return "This listing can only be edited while the auction is still scheduled.";
     }
 
     private void openItemDialog(SellerListing listing) {

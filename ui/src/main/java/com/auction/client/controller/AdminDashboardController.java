@@ -17,7 +17,9 @@ import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.VBox;
@@ -651,12 +653,60 @@ public class AdminDashboardController {
         Button review = new Button("Review");
         review.getStyleClass().add("admin-inline-link");
         review.setOnAction(event -> reviewAuctionRow(auction));
-        review.setMinWidth(110);
+        review.setMinWidth(90);
 
-        HBox row = new HBox(18, titleBox, sellerBox, status, priceBox, review);
+        Button delete = new Button("Delete");
+        delete.getStyleClass().add("admin-inline-link");
+        delete.setOnAction(event -> handleAuctionRowDelete(auction));
+        delete.setMinWidth(80);
+
+        HBox actions = new HBox(8, review, delete);
+        actions.setAlignment(Pos.CENTER_LEFT);
+        actions.setMinWidth(180);
+
+        HBox row = new HBox(18, titleBox, sellerBox, status, priceBox, actions);
         row.setAlignment(Pos.CENTER_LEFT);
         row.getStyleClass().addAll("admin-management-row", adminRowClass(auction));
         return row;
+    }
+
+    private void handleAuctionRowDelete(AuctionListResponse auction) {
+        if (auction == null || auction.getId() == null) {
+            showMessage("Auction is unavailable.");
+            return;
+        }
+
+        if (!confirmDelete(firstNonBlank(auction.getTitle(), auction.getItemName(), "this auction"))) {
+            return;
+        }
+
+        try {
+            adminApiService.purgeAuction(auction.getId().toString());
+            showSuccess("Auction removed.");
+            reloadDashboardData();
+        } catch (Exception e) {
+            showMessage("Remove failed: " + extractFriendlyMessage(e.getMessage()));
+        }
+    }
+
+    private void handlePendingRowDelete(AdminApprovalItem item) {
+        if (!hasItemId(item, "delete")) {
+            return;
+        }
+
+        if (!confirmDelete(firstNonBlank(item.getProductName(), "this item"))) {
+            return;
+        }
+
+        deletePendingItem(item);
+    }
+
+    private boolean confirmDelete(String label) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Delete");
+        alert.setHeaderText(null);
+        alert.setContentText("Permanently remove \"" + label + "\"? This cannot be undone.");
+        return alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
     }
 
     private Node buildPendingRow(AdminApprovalItem item) {
@@ -703,9 +753,18 @@ public class AdminDashboardController {
         Button review = new Button("Review");
         review.getStyleClass().add("admin-inline-link");
         review.setOnAction(event -> reviewPendingItem(item));
-        review.setMinWidth(110);
+        review.setMinWidth(90);
 
-        HBox row = new HBox(18, titleBox, sellerBox, status, priceBox, review);
+        Button delete = new Button("Delete");
+        delete.getStyleClass().add("admin-inline-link");
+        delete.setOnAction(event -> handlePendingRowDelete(item));
+        delete.setMinWidth(80);
+
+        HBox actions = new HBox(8, review, delete);
+        actions.setAlignment(Pos.CENTER_LEFT);
+        actions.setMinWidth(180);
+
+        HBox row = new HBox(18, titleBox, sellerBox, status, priceBox, actions);
         row.setAlignment(Pos.CENTER_LEFT);
         row.getStyleClass().addAll("admin-management-row", adminRowClass(item));
         return row;

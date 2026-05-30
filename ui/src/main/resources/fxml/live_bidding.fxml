@@ -56,6 +56,10 @@
                                 <Label fx:id="currentBidLabel" styleClass="current-bid-label" />
 
                                 <Label fx:id="leaderLabel" styleClass="leader-label" text="Leader: -" />
+
+                                <Label fx:id="reservePriceLabel" styleClass="reserve-price-label" text="Reserve price: -" />
+
+                                <Label fx:id="reserveStatusLabel" styleClass="reserve-status-label" text="" />
                             </VBox>
 
                             <VBox spacing="6.0" styleClass="countdown-box" HBox.hgrow="ALWAYS">
