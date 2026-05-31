@@ -1,0 +1,293 @@
+.root {
+    -auction-primary: #0033ff;
+    -auction-primary-hover: #2a6df4;
+    -auction-primary-soft: #edf4ff;
+
+    -auction-bg: #ffffff;
+    -auction-bg-soft: #f5f6f8;
+    -auction-surface: #ffffff;
+    -auction-surface-soft: #f2f2f2;
+
+    -auction-text: #222222;
+    -auction-text-strong: #111111;
+    -auction-text-muted: #8a8a8a;
+    -auction-text-soft: #a3a3a3;
+
+    -auction-border: #e5e7eb;
+    -auction-border-strong: #d1d5db;
+
+    -auction-success: #16a34a;
+    -auction-success-soft: #dcfce7;
+
+    -auction-warning: #ca8a04;
+    -auction-warning-soft: #fef9c3;
+
+    -auction-danger: #dc2626;
+    -auction-danger-soft: #fee2e2;
+
+    -auction-info: #2a6df4;
+    -auction-info-soft: #dce8ff;
+
+    -auction-shadow: rgba(15, 23, 42, 0.08);
+
+    /* Alias cũ để các màn hiện tại không bị vỡ */
+    -bw-primary: -auction-primary;
+    -bw-primary-hover: -auction-primary-hover;
+    -bw-primary-soft: -auction-primary-soft;
+    -bw-secondary: -auction-text;
+    -bw-background: -auction-bg;
+    -bw-surface: -auction-surface;
+    -bw-surface-soft: -auction-surface-soft;
+    -bw-border: -auction-border;
+    -bw-border-strong: -auction-border-strong;
+    -bw-text: -auction-text;
+    -bw-text-muted: -auction-text-muted;
+    -bw-text-soft: -auction-text-soft;
+    -bw-danger: -auction-danger;
+    -bw-danger-soft: -auction-danger-soft;
+    -bw-success: -auction-success;
+    -bw-success-soft: -auction-success-soft;
+    -bw-warning: -auction-warning;
+    -bw-warning-soft: -auction-warning-soft;
+    -bw-info: -auction-info;
+    -bw-info-soft: -auction-info-soft;
+    -bw-shadow-color: -auction-shadow;
+
+    -fx-font-family: "Inter", "Segoe UI", "Arial", sans-serif;
+    -fx-text-fill: -auction-text;
+    -fx-background-color: -auction-bg;
+}
+
+/* =========================
+   Page base
+========================= */
+
+.root-pane,
+.app-background {
+    -fx-background-color: -auction-bg;
+}
+
+.surface {
+    -fx-background-color: -auction-surface;
+}
+
+.page-container {
+    -fx-background-color: -auction-surface;
+    -fx-padding: 32;
+}
+
+.page-title {
+    -fx-text-fill: -auction-text;
+    -fx-font-size: 32px;
+    -fx-font-weight: 800;
+}
+
+.page-subtitle {
+    -fx-text-fill: -auction-text-muted;
+    -fx-font-size: 14px;
+}
+
+.section-title {
+    -fx-text-fill: -auction-text;
+    -fx-font-size: 22px;
+    -fx-font-weight: 800;
+}
+
+.section-subtitle {
+    -fx-text-fill: -auction-text-muted;
+    -fx-font-size: 14px;
+}
+
+.muted-text {
+    -fx-text-fill: -auction-text-muted;
+    -fx-font-size: 13px;
+}
+
+/* =========================
+   Form controls
+========================= */
+
+.text-field,
+.password-field,
+.text-area,
+.combo-box,
+.date-picker {
+    -fx-background-color: -auction-surface-soft;
+    -fx-background-radius: 7;
+    -fx-border-radius: 7;
+    -fx-border-color: transparent;
+    -fx-border-width: 1;
+    -fx-padding: 9 12;
+    -fx-font-size: 13px;
+    -fx-text-fill: -auction-text;
+    -fx-prompt-text-fill: -auction-text-soft;
+}
+
+.text-field:hover,
+.password-field:hover,
+.text-area:hover,
+.combo-box:hover,
+.date-picker:hover {
+    -fx-border-color: -auction-border;
+}
+
+.text-field:focused,
+.password-field:focused,
+.text-area:focused,
+.combo-box:focused,
+.date-picker:focused {
+    -fx-background-color: -auction-surface;
+    -fx-border-color: -auction-primary;
+}
+
+.text-area .content {
+    -fx-background-color: transparent;
+    -fx-background-radius: 7;
+}
+
+.combo-box > .list-cell {
+    -fx-padding: 0 12;
+    -fx-alignment: CENTER_LEFT;
+    -fx-text-fill: -auction-text;
+}
+
+.field-label {
+    -fx-text-fill: -auction-text;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+}
+
+.form-title {
+    -fx-text-fill: -auction-text;
+    -fx-font-size: 28px;
+    -fx-font-weight: 800;
+}
+
+.form-subtitle {
+    -fx-text-fill: -auction-text-muted;
+    -fx-font-size: 14px;
+}
+
+/* =========================
+   Buttons
+========================= */
+
+.button {
+    -fx-cursor: hand;
+}
+
+.primary-button {
+    -fx-background-color: -auction-primary;
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-font-weight: 800;
+    -fx-background-radius: 7;
+    -fx-border-radius: 7;
+    -fx-border-color: transparent;
+    -fx-padding: 10 18;
+}
+
+.primary-button:hover {
+    -fx-background-color: -auction-primary-hover;
+}
+
+.primary-button:disabled {
+    -fx-opacity: 1;
+    -fx-background-color: #f1f1f1;
+    -fx-text-fill: #9ca3af;
+}
+
+.secondary-button,
+.outline-button {
+    -fx-background-color: -auction-surface;
+    -fx-text-fill: -auction-text;
+    -fx-font-size: 13px;
+    -fx-font-weight: 800;
+    -fx-background-radius: 7;
+    -fx-border-radius: 7;
+    -fx-border-color: -auction-border;
+    -fx-border-width: 1;
+    -fx-padding: 9 16;
+}
+
+.secondary-button:hover,
+.outline-button:hover {
+    -fx-background-color: -auction-bg-soft;
+    -fx-border-color: -auction-primary;
+    -fx-text-fill: -auction-primary;
+}
+
+.ghost-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: -auction-primary;
+    -fx-font-size: 13px;
+    -fx-font-weight: 800;
+    -fx-background-radius: 7;
+    -fx-padding: 8 12;
+}
+
+.ghost-button:hover {
+    -fx-background-color: -auction-primary-soft;
+}
+
+.danger-button {
+    -fx-background-color: -auction-danger;
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-font-weight: 800;
+    -fx-background-radius: 7;
+    -fx-border-radius: 7;
+    -fx-border-color: transparent;
+    -fx-padding: 9 16;
+}
+
+.danger-button:hover {
+    -fx-background-color: #b91c1c;
+}
+
+.icon-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: -auction-primary;
+    -fx-font-size: 18px;
+    -fx-font-weight: 800;
+    -fx-padding: 5 8;
+}
+
+.icon-button:hover {
+    -fx-background-color: -auction-primary-soft;
+    -fx-background-radius: 999;
+}
+
+/* =========================
+   Labels
+========================= */
+
+.error-label {
+    -fx-text-fill: -auction-danger;
+    -fx-font-size: 13px;
+    -fx-wrap-text: true;
+}
+
+.success-label {
+    -fx-text-fill: -auction-success;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-wrap-text: true;
+}
+
+.info-label {
+    -fx-text-fill: -auction-primary;
+    -fx-font-size: 13px;
+    -fx-wrap-text: true;
+}
+
+.title-label {
+    -fx-text-fill: -auction-text;
+    -fx-font-size: 32px;
+    -fx-font-weight: 800;
+}
+
+.subtitle-label {
+    -fx-text-fill: -auction-text-muted;
+    -fx-font-size: 16px;
+}

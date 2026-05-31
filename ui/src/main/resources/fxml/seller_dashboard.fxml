@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.String?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.TilePane?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane prefHeight="820" prefWidth="1200" styleClass="seller-root" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.client.controller.SellerDashboardController">
+
+    <center>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="seller-scroll-pane">
+            <content>
+                <VBox spacing="22.0" styleClass="seller-studio">
+                    <padding>
+                        <Insets bottom="42" left="42" right="42" top="34" />
+                    </padding>
+
+                    <HBox alignment="TOP_LEFT" spacing="18.0">
+                        <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                            <Label styleClass="seller-title" text="Seller Studio" />
+                            <Label styleClass="seller-subtitle" text="Manage your listings, inventory, and sales" />
+                        </VBox>
+
+                        <HBox alignment="CENTER_RIGHT" spacing="10.0">
+                            <Button fx:id="createListingButton" onAction="#handleCreateListing" styleClass="seller-create-button" text="+  Create Item" />
+                            <Button minWidth="86.0" onAction="#handleRefresh" prefHeight="46.0" styleClass="seller-logout-button" text="Refresh" />
+                            <Button minWidth="73.0" onAction="#handleLogout" prefHeight="46.0" prefWidth="73.0" styleClass="seller-logout-button" text="Logout" />
+                        </HBox>
+                    </HBox>
+
+                    <HBox spacing="14.0" styleClass="seller-stats-row">
+                        <VBox spacing="7.0" styleClass="seller-kpi-card" HBox.hgrow="ALWAYS">
+                            <Label styleClass="seller-kpi-label" text="TOTAL LISTINGS" />
+                            <Label fx:id="totalListingsLabel" styleClass="seller-kpi-number" text="0" />
+                        </VBox>
+
+                        <VBox spacing="7.0" styleClass="seller-kpi-card" HBox.hgrow="ALWAYS">
+                            <Label styleClass="seller-kpi-label" text="ACTIVE LISTINGS" />
+                            <Label fx:id="activeCountLabel" styleClass="seller-kpi-number" text="0" />
+                        </VBox>
+
+                        <VBox spacing="7.0" styleClass="seller-kpi-card" HBox.hgrow="ALWAYS">
+                            <Label styleClass="seller-kpi-label" text="COMPLETED" />
+                            <Label fx:id="approvedCountLabel" styleClass="seller-kpi-number" text="0" />
+                        </VBox>
+
+                        <VBox spacing="7.0" styleClass="seller-kpi-card" HBox.hgrow="ALWAYS">
+                            <Label styleClass="seller-kpi-label" text="SUCCESS RATE" />
+                            <Label fx:id="successRateLabel" styleClass="seller-kpi-number" text="0%" />
+                        </VBox>
+
+                        <VBox spacing="7.0" HBox.hgrow="ALWAYS">
+                            <styleClass>
+                                <String fx:value="seller-kpi-card" />
+                                <String fx:value="seller-kpi-highlight" />
+                            </styleClass>
+                            <Label styleClass="seller-kpi-label-highlight" text="TOTAL REVENUE" />
+                            <Label fx:id="totalRevenueLabel" styleClass="seller-kpi-number-highlight" text="USD 0" />
+                        </VBox>
+
+                        <VBox spacing="7.0" HBox.hgrow="ALWAYS">
+                            <styleClass>
+                                <String fx:value="seller-kpi-card" />
+                                <String fx:value="seller-kpi-highlight" />
+                            </styleClass>
+                            <Label styleClass="seller-kpi-label-highlight" text="AVG PRICE" />
+                            <Label fx:id="avgPriceLabel" styleClass="seller-kpi-number-highlight" text="USD 0" />
+                        </VBox>
+
+                        <VBox managed="false" spacing="7.0" visible="false">
+                            <styleClass>
+                                <String fx:value="seller-kpi-card" />
+                                <String fx:value="seller-hidden-kpi" />
+                            </styleClass>
+                            <Label fx:id="walletBalanceLabel" text="USD 0" />
+                            <Label fx:id="pendingCountLabel" text="0" />
+                            <Label fx:id="rejectedCountLabel" text="0" />
+                        </VBox>
+                    </HBox>
+
+                    <HBox spacing="20.0" styleClass="seller-tabs">
+                        <Button fx:id="overviewTabButton" onAction="#handleShowOverview" styleClass="seller-tab-button" text="Overview" />
+                        <Button fx:id="myListingsTabButton" onAction="#handleShowMyListings" styleClass="seller-tab-button" text="My Listings" />
+                        <Button fx:id="inventoryTabButton" onAction="#handleShowInventory" styleClass="seller-tab-button" text="Inventory" />
+                    </HBox>
+
+                    <VBox fx:id="overviewPanel" spacing="18.0">
+                        <VBox spacing="14.0" styleClass="seller-panel-card">
+                            <padding>
+                                <Insets bottom="22" left="22" right="22" top="22" />
+                            </padding>
+
+                            <Label styleClass="seller-section-title" text="Recent Listings" />
+                            <VBox fx:id="recentListingsGrid" spacing="0.0" />
+                        </VBox>
+                    </VBox>
+
+                    <VBox fx:id="myListingsPanel" spacing="18.0">
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                            <TextField fx:id="listingSearchField" onKeyReleased="#handleSearchListings" promptText="Search listings..." styleClass="seller-search-field" HBox.hgrow="ALWAYS" />
+                            <Button styleClass="seller-filter-button" text="Filter" />
+                        </HBox>
+
+                        <TilePane fx:id="myListingsGrid" hgap="18" prefColumns="3" tileAlignment="TOP_LEFT" vgap="18" />
+                    </VBox>
+
+                    <VBox fx:id="inventoryPanel" spacing="16.0" styleClass="seller-panel-card">
+                        <padding>
+                            <Insets bottom="22" left="22" right="22" top="22" />
+                        </padding>
+
+                        <Label styleClass="seller-section-title" text="Inventory" />
+                        <TableView fx:id="listingTable" prefHeight="310" VBox.vgrow="ALWAYS">
+                            <columns>
+                                <TableColumn fx:id="productNameColumn" prefWidth="210.0" text="Product Name" />
+                                <TableColumn fx:id="categoryColumn" prefWidth="120.0" text="Category" />
+                                <TableColumn fx:id="startingPriceColumn" prefWidth="120.0" text="Start Price" />
+                                <TableColumn fx:id="reservePriceColumn" prefWidth="120.0" text="Reserve" />
+                                <TableColumn fx:id="statusColumn" prefWidth="110.0" text="Status" />
+                                <TableColumn fx:id="quantityColumn" prefWidth="80.0" text="Qty" />
+                                <TableColumn fx:id="skuColumn" prefWidth="120.0" text="SKU" />
+                                <TableColumn fx:id="startDateColumn" prefWidth="150.0" text="Start Date" />
+                                <TableColumn fx:id="endDateColumn" prefWidth="150.0" text="End Date" />
+                                <TableColumn fx:id="deletableColumn" prefWidth="90.0" text="Delete" />
+                            </columns>
+                        </TableView>
+                    </VBox>
+
+                    <VBox fx:id="listingFormPanel" managed="false" maxWidth="760.0" spacing="14.0" visible="false">
+                        <styleClass>
+                            <String fx:value="seller-panel-card" />
+                            <String fx:value="seller-form-panel" />
+                        </styleClass>
+                        <padding>
+                            <Insets bottom="24" left="24" right="24" top="24" />
+                        </padding>
+
+                        <Label styleClass="seller-section-title" text="Create / Edit Product" />
+
+                        <Label styleClass="field-label" text="Product Name" />
+                        <TextField fx:id="productNameField" promptText="Enter product name" styleClass="seller-input" />
+
+                        <Label styleClass="field-label" text="Description" />
+                        <TextArea fx:id="descriptionArea" prefRowCount="4" promptText="Enter short description" styleClass="seller-textarea" wrapText="true" />
+
+                        <Label styleClass="field-label" text="Category" />
+                        <ComboBox fx:id="categoryField" maxWidth="Infinity" promptText="Select category" styleClass="seller-input" />
+
+                        <HBox spacing="12.0">
+                            <VBox spacing="8.0" HBox.hgrow="ALWAYS">
+                                <Label styleClass="field-label" text="Starting Price" />
+                                <TextField fx:id="startingPriceField" promptText="Enter starting price" styleClass="seller-input" />
+                            </VBox>
+                            <VBox spacing="8.0" HBox.hgrow="ALWAYS">
+                                <Label styleClass="field-label" text="Reserve Price" />
+                                <TextField fx:id="reservePriceField" promptText="Enter reserve price" styleClass="seller-input" />
+                            </VBox>
+                        </HBox>
+
+                        <HBox spacing="12.0">
+                            <VBox spacing="8.0" HBox.hgrow="ALWAYS">
+                                <Label styleClass="field-label" text="Start Date" />
+                                <DatePicker fx:id="startDatePicker" maxWidth="Infinity" />
+                            </VBox>
+                            <VBox spacing="8.0" HBox.hgrow="ALWAYS">
+                                <Label styleClass="field-label" text="End Date" />
+                                <DatePicker fx:id="endDatePicker" maxWidth="Infinity" />
+                            </VBox>
+                        </HBox>
+
+                        <HBox spacing="16.0">
+                            <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+                                <Label styleClass="field-label" text="Product Images" />
+                                <Button maxWidth="Infinity" onAction="#handleChooseImage" styleClass="seller-outline-button" text="Choose Images" />
+                                <ComboBox fx:id="primaryImageChoice" maxWidth="Infinity" promptText="Select primary image" />
+                                <Label fx:id="selectedImageLabel" styleClass="seller-muted-label" text="No image selected" wrapText="true" />
+                                <HBox fx:id="imagePreviewStrip" spacing="8.0" />
+                            </VBox>
+
+                            <ImageView fx:id="productImagePreview" fitHeight="150" fitWidth="220" preserveRatio="false" styleClass="seller-preview-image" />
+                        </HBox>
+
+                        <Label fx:id="sellerMessageLabel" styleClass="seller-message" text="" />
+
+                        <HBox spacing="10.0">
+                            <Button maxWidth="Infinity" onAction="#handleSubmitListing" styleClass="seller-create-button" text="Submit Listing" HBox.hgrow="ALWAYS" />
+
+                            <Button maxWidth="Infinity" onAction="#handleUpdateListing" styleClass="seller-outline-button" text="Update" HBox.hgrow="ALWAYS" />
+
+                            <Button maxWidth="Infinity" onAction="#handleDeleteListing" styleClass="seller-danger-button" text="Delete" HBox.hgrow="ALWAYS" />
+
+                            <Button maxWidth="Infinity" onAction="#handleResetForm" styleClass="seller-outline-button" text="Cancel" HBox.hgrow="ALWAYS" />
+                        </HBox>
+                    </VBox>
+                </VBox>
+            </content>
+        </ScrollPane>
+    </center>
+</BorderPane>

@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns:fx="http://javafx.com/fxml/1"
+      xmlns="http://javafx.com/javafx/26"
+      fx:controller="com.auction.client.controller.BidHistoryDialogController"
+      prefHeight="640"
+      maxHeight="640"
+      prefWidth="620"
+      maxWidth="620"
+      spacing="0"
+      styleClass="modal-card bid-history-dialog">
+
+    <HBox alignment="CENTER_LEFT" spacing="12" styleClass="modal-header">
+        <VBox spacing="4">
+            <Label styleClass="modal-title" text="Bid History" />
+            <Label fx:id="auctionTitleLabel" styleClass="modal-subtitle" text="Auction title" />
+        </VBox>
+
+        <Region HBox.hgrow="ALWAYS" />
+
+        <Button focusTraversable="false"
+                onAction="#handleClose"
+                styleClass="modal-close-button"
+                text="X" />
+    </HBox>
+
+    <ScrollPane fitToWidth="true"
+                hbarPolicy="NEVER"
+                vbarPolicy="AS_NEEDED"
+                VBox.vgrow="ALWAYS"
+                styleClass="modal-scroll-pane">
+        <content>
+            <VBox spacing="18" styleClass="bid-history-dialog-content">
+                <padding>
+                    <Insets top="16" right="16" bottom="16" left="16" />
+                </padding>
+
+                <VBox spacing="12" styleClass="bid-history-chart-card">
+                    <VBox spacing="4">
+                        <Label styleClass="bid-history-section-title" text="Bid History" />
+                    </VBox>
+
+                    <VBox spacing="10" styleClass="bid-history-plot-panel">
+                        <ScrollPane fx:id="chartScrollPane"
+                                    fitToHeight="true"
+                                    fitToWidth="false"
+                                    hbarPolicy="AS_NEEDED"
+                                    vbarPolicy="NEVER"
+                                    pannable="false"
+                                    styleClass="bid-history-chart-scroll">
+                            <content>
+                                <LineChart fx:id="bidLineChart"
+                                           animated="false"
+                                           createSymbols="true"
+                                           legendVisible="false"
+                                           prefHeight="210"
+                                           styleClass="bid-history-chart">
+                                    <xAxis>
+                                        <CategoryAxis fx:id="timeAxis" />
+                                    </xAxis>
+                                    <yAxis>
+                                        <NumberAxis fx:id="amountAxis" />
+                                    </yAxis>
+                                </LineChart>
+                            </content>
+                        </ScrollPane>
+
+                        <HBox alignment="CENTER_LEFT" spacing="8" styleClass="bid-history-legend-row">
+                            <Region styleClass="bid-history-legend-dot" />
+                            <Label styleClass="bid-history-legend-label" text="Bid Amount" />
+                        </HBox>
+                    </VBox>
+                </VBox>
+
+                <VBox spacing="10" styleClass="bid-history-table-section">
+                    <Label styleClass="bid-history-table-title" text="Detailed Bid List" />
+
+                    <TableView fx:id="bidTableView"
+                               prefHeight="200"
+                               styleClass="bid-history-table">
+                        <columns>
+                            <TableColumn fx:id="timeColumn" prefWidth="120" text="Time" />
+                            <TableColumn fx:id="bidderColumn" prefWidth="240" text="Bidder" />
+                            <TableColumn fx:id="amountColumn" prefWidth="180" text="Bid Amount" />
+                        </columns>
+                    </TableView>
+                </VBox>
+
+                <Label fx:id="messageLabel"
+                       managed="false"
+                       styleClass="error-label"
+                       text=""
+                       visible="false" />
+
+                <HBox alignment="CENTER_RIGHT">
+                    <padding>
+                        <Insets top="4" right="10" bottom="0" left="0" />
+                    </padding>
+                    <Button onAction="#handleClose" prefWidth="78" styleClass="primary-button" text="Close" />
+                </HBox>
+            </VBox>
+        </content>
+    </ScrollPane>
+</VBox>

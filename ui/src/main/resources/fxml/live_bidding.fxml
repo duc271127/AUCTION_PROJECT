@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.Region?>
+
+<AnchorPane prefHeight="900" prefWidth="1400" styleClass="root-pane" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/26" fx:controller="com.auction.client.controller.LiveBiddingController">
+
+    <children>
+        <ScrollPane fitToWidth="true"
+                    hbarPolicy="NEVER"
+                    AnchorPane.topAnchor="0.0"
+                    AnchorPane.bottomAnchor="0.0"
+                    AnchorPane.leftAnchor="0.0"
+                    AnchorPane.rightAnchor="0.0"
+                    styleClass="live-scroll">
+            <content>
+                <HBox spacing="20.0"
+                      styleClass="live-layout">
+
+                    <VBox spacing="18.0" styleClass="page-card" HBox.hgrow="ALWAYS">
+                        <padding>
+                            <Insets bottom="24" left="24" right="24" top="24" />
+                        </padding>
+
+                        <HBox alignment="CENTER_LEFT" spacing="14.0" styleClass="live-header">
+
+                            <Button onAction="#handleBack" styleClass="live-back-button" text="Back" />
+
+                            <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                                <Label styleClass="live-eyebrow" text="Live Auction" />
+
+                                <Label fx:id="lotTitleLabel" styleClass="live-title" />
+                            </VBox>
+
+                            <Label fx:id="connectionStatusLabel" styleClass="connection-badge" />
+
+                            <Button onAction="#handleLogout" styleClass="live-logout-button" text="Logout" />
+                        </HBox>
+
+                        <HBox spacing="12.0" styleClass="live-summary-row">
+
+                            <VBox spacing="6.0" styleClass="price-box" HBox.hgrow="ALWAYS">
+
+                                <Label styleClass="section-label" text="Current Highest Bid" />
+
+                                <Label fx:id="currentBidLabel" styleClass="current-bid-label" />
+
+                                <Label fx:id="leaderLabel" styleClass="leader-label" text="Leader: -" />
+
+                                <Label fx:id="reservePriceLabel" styleClass="reserve-price-label" text="Reserve price: -" />
+
+                                <Label fx:id="reserveStatusLabel" styleClass="reserve-status-label" text="" />
+                            </VBox>
+
+                            <VBox spacing="6.0" styleClass="countdown-box" HBox.hgrow="ALWAYS">
+
+                                <Label styleClass="section-label" text="Time Remaining" />
+
+                                <Label fx:id="countdownLabel" styleClass="countdown-label" />
+                            </VBox>
+
+                        </HBox>
+
+                        <Label fx:id="outbidAlertLabel" minHeight="32.0" prefHeight="32.0" styleClass="live-alert" text="" wrapText="true" />
+
+                        <VBox fx:id="autoBidBanner"
+                              visible="false"
+                              managed="false"
+                              spacing="4.0"
+                              styleClass="live-auto-bid-banner">
+
+                            <Label fx:id="autoBidBannerTitleLabel"
+                                   text="Auto-Bid Active"
+                                   styleClass="live-auto-bid-banner-title"/>
+
+                            <Label fx:id="autoBidBannerSubtitleLabel"
+                                   text="Max: USD 0"
+                                   styleClass="live-auto-bid-banner-subtitle"/>
+                        </VBox>
+
+                        <VBox spacing="12.0" styleClass="bid-entry-card">
+
+                            <Label styleClass="panel-title" text="Place Your Bid" />
+
+                            <TextField fx:id="bidInputField" promptText="Enter bid amount" styleClass="live-bid-input" />
+
+                            <HBox spacing="10.0">
+                                <Button onAction="#handleAdd500" styleClass="bid-step-button" text="+500" />
+
+                                <Button onAction="#handleAdd1000" styleClass="bid-step-button" text="+1k" />
+
+                                <Button onAction="#handleAdd5000" styleClass="bid-step-button" text="+5k" />
+                            </HBox>
+
+                            <Button fx:id="placeBidButton" maxWidth="Infinity" onAction="#handlePlaceBid" prefHeight="35.0" prefWidth="872.0" styleClass="live-place-bid-button" text="Place Bid" />
+                        </VBox>
+
+                        <VBox spacing="10.0" styleClass="auto-bid-box">
+
+                            <Label styleClass="panel-title" text="Auto-Bid" />
+
+                            <Label styleClass="live-helper-text" text="Set your maximum amount and let auto-bid raise your bid when needed." wrapText="true" />
+
+                            <TextField fx:id="autoBidMaxInput"
+                                       visible="false"
+                                       managed="false"
+                                       promptText="Enter max auto-bid amount"
+                                       styleClass="live-bid-input" />
+
+                            <Button fx:id="autoBidButton"
+                                    maxWidth="Infinity"
+                                    onAction="#handleOpenAutoBidDialog"
+                                    prefHeight="37.0"
+                                    prefWidth="872.0"
+                                    styleClass="live-auto-bid-button"
+                                    text="Open Auto-Bid" />
+
+                            <Label fx:id="autoBidStatusLabel"
+                                   styleClass="auto-bid-status"
+                                   text="Auto-bid is off"
+                                   wrapText="true" />
+                        </VBox>
+                    </VBox>
+
+                    <VBox prefWidth="420.0" spacing="16.0" styleClass="page-card live-panel">
+                        <padding>
+                            <Insets bottom="24" left="24" right="24" top="24" />
+                        </padding>
+
+                        <HBox alignment="CENTER_LEFT" spacing="8.0">
+                            <Label styleClass="panel-title" text="Price Chart" />
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button text="Open Full Chart"
+                                    onAction="#handleOpenBidHistoryDialog"
+                                    styleClass="live-chart-modal-button"/>
+                        </HBox>
+
+                        <LineChart fx:id="bidChart" animated="false" createSymbols="true" legendVisible="false" prefHeight="235.0" prefWidth="372.0">
+                            <xAxis>
+                                <NumberAxis label="Bid" />
+                            </xAxis>
+                            <yAxis>
+                                <NumberAxis label="Price" />
+                            </yAxis>
+                        </LineChart>
+
+                        <Label styleClass="panel-title" text="Bid History" />
+                        <ListView fx:id="bidHistoryListView" VBox.vgrow="ALWAYS" />
+                    </VBox>
+                </HBox>
+            </content>
+        </ScrollPane>
+
+        <VBox fx:id="newBidToast"
+              visible="false"
+              managed="false"
+              spacing="6.0"
+              styleClass="live-toast"
+              AnchorPane.rightAnchor="32.0"
+              AnchorPane.bottomAnchor="32.0">
+
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                <Label text="+" styleClass="live-toast-icon"/>
+                <VBox spacing="2.0">
+                    <Label fx:id="toastTitleLabel"
+                           text="New bid placed!"
+                           styleClass="live-toast-title"/>
+                    <Label fx:id="toastMessageLabel"
+                           text="by bidder"
+                           styleClass="live-toast-subtitle"/>
+                </VBox>
+            </HBox>
+
+            <Label fx:id="toastPriceLabel"
+                   text="USD 0"
+                   styleClass="live-toast-price"/>
+        </VBox>
+    </children>
+</AnchorPane>

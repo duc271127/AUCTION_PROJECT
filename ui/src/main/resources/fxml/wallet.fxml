@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<StackPane xmlns:fx="http://javafx.com/fxml"
+           fx:controller="com.auction.client.controller.WalletController"
+           prefWidth="1200"
+           prefHeight="820"
+           styleClass="wallet-root">
+
+    <VBox fx:id="walletCard"
+          prefWidth="448"
+          maxWidth="448"
+          spacing="0"
+          styleClass="wallet-modal-card">
+
+        <HBox alignment="CENTER_LEFT" spacing="12" styleClass="wallet-modal-header">
+            <Label text="Wallet" styleClass="wallet-modal-title"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="X"
+                    focusTraversable="false"
+                    onAction="#handleBack"
+                    styleClass="modal-close-button"/>
+        </HBox>
+
+        <VBox fx:id="formContentBox" spacing="18">
+            <padding>
+                <Insets top="22" right="24" bottom="24" left="24"/>
+            </padding>
+
+            <VBox spacing="6" styleClass="wallet-balance-card">
+                <Label text="CURRENT BALANCE" styleClass="wallet-small-label"/>
+                <Label fx:id="walletBalanceLabel"
+                       text="USD 0"
+                       styleClass="wallet-balance-value"/>
+            </VBox>
+
+            <HBox spacing="10">
+                <Button fx:id="depositModeButton"
+                        text="Deposit"
+                        onAction="#handleSelectDeposit"
+                        maxWidth="Infinity"
+                        HBox.hgrow="ALWAYS"
+                        styleClass="segment-button-active"/>
+
+                <Button fx:id="withdrawModeButton"
+                        text="Withdraw"
+                        onAction="#handleSelectWithdraw"
+                        maxWidth="Infinity"
+                        HBox.hgrow="ALWAYS"
+                        styleClass="segment-button"/>
+            </HBox>
+
+            <VBox spacing="8">
+                <Label fx:id="amountTitleLabel"
+                       text="Deposit Amount"
+                       styleClass="field-label"/>
+
+                <TextField fx:id="amountField"
+                           promptText="USD 0.00"
+                           prefHeight="46"/>
+            </VBox>
+
+            <Label fx:id="walletMessageLabel"
+                   text=""
+                   visible="false"
+                   managed="false"
+                   wrapText="true"
+                   styleClass="error-label"/>
+
+            <Separator/>
+
+            <HBox spacing="12">
+                <Button text="Cancel"
+                        onAction="#handleBack"
+                        maxWidth="Infinity"
+                        HBox.hgrow="ALWAYS"
+                        styleClass="secondary-button"/>
+
+                <Button fx:id="primaryActionButton"
+                        text="Deposit Now"
+                        onAction="#handleSubmit"
+                        maxWidth="Infinity"
+                        HBox.hgrow="ALWAYS"
+                        styleClass="primary-button"/>
+            </HBox>
+        </VBox>
+
+        <VBox fx:id="successBox"
+              alignment="CENTER"
+              spacing="14"
+              visible="false"
+              managed="false"
+              minHeight="300">
+            <padding>
+                <Insets top="54" right="24" bottom="54" left="24"/>
+            </padding>
+
+            <StackPane styleClass="wallet-success-circle">
+                <Label text="OK"
+                       style="-fx-text-fill:#16a34a;-fx-font-size:18px;-fx-font-weight:800;"/>
+            </StackPane>
+
+            <Label fx:id="successTitleLabel"
+                   text="Deposit Successful!"
+                   styleClass="wallet-success-title"/>
+
+            <Label fx:id="successDescriptionLabel"
+                   text="USD 0 has been added to your wallet."
+                   wrapText="true"
+                   styleClass="muted-text"/>
+
+            <Label text="Closing..."
+                   styleClass="muted-text"/>
+
+            <Button text="Make another transaction"
+                    onAction="#handleResetForm"
+                    styleClass="secondary-button"/>
+
+            <Button text="Back"
+                    onAction="#handleBack"
+                    styleClass="primary-button"/>
+        </VBox>
+    </VBox>
+</StackPane>

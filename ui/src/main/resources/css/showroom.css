@@ -1,0 +1,89 @@
+.showroom-root,
+.for-you-scroll,
+.for-you-scroll > .viewport,
+.for-you-page {
+    -fx-background-color: #ffffff;
+}
+
+.for-you-title {
+    -fx-text-fill: #262626;
+    -fx-font-size: 34px;
+    -fx-font-weight: 500;
+}
+
+.section-eyebrow {
+    -fx-text-fill: #8c8c8c;
+    -fx-font-size: 11px;
+    -fx-font-weight: 800;
+}
+
+.interest-tag {
+    -fx-background-color: #eef4ff;
+    -fx-text-fill: #2a6df4;
+    -fx-font-size: 11px;
+    -fx-font-weight: 800;
+    -fx-padding: 6 10;
+    -fx-background-radius: 999;
+}
+
+.for-you-stat-card {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 8;
+    -fx-border-color: #e6e6e6;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-padding: 18;
+}
+
+.for-you-stat-label {
+    -fx-text-fill: #8c8c8c;
+    -fx-font-size: 11px;
+    -fx-font-weight: 800;
+}
+
+.for-you-stat-number {
+    -fx-text-fill: #262626;
+    -fx-font-size: 24px;
+    -fx-font-weight: 800;
+}
+
+.for-you-filter-row {
+    -fx-padding: 4 0 0 0;
+}
+
+.filter-chip,
+.filter-chip-active {
+    -fx-padding: 9 16;
+    -fx-background-radius: 999;
+    -fx-border-radius: 999;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+}
+
+.filter-chip {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #262626;
+    -fx-border-color: #e6e6e6;
+}
+
+.filter-chip-active {
+    -fx-background-color: #0033ff;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #0033ff;
+}
+
+.for-you-auction-grid {
+    -fx-padding: 0;
+}
+
+.for-you-page {
+    -fx-background-color: #ffffff;
+}
+
+.for-you-empty-state {
+    -fx-background-color: #f8fbff;
+    -fx-border-color: #dbe7ff;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 24;
+}

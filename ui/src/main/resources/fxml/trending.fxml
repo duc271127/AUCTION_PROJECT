@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.TilePane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+
+<?import javafx.scene.control.ScrollPane?>
+<AnchorPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.auction.client.controller.TrendingController"
+            prefWidth="1400"
+            prefHeight="900"
+            styleClass="trending-root">
+
+    <children>
+        <BorderPane AnchorPane.topAnchor="0.0"
+                    AnchorPane.bottomAnchor="0.0"
+                    AnchorPane.leftAnchor="0.0"
+                    AnchorPane.rightAnchor="0.0">
+
+            <!-- TOP NAV -->
+            <top>
+                <HBox alignment="CENTER_LEFT" spacing="16.0" styleClass="market-top-nav">
+                    <padding>
+                        <Insets top="12" right="32" bottom="12" left="32"/>
+                    </padding>
+
+                    <Label text="Auctions" styleClass="market-brand"/>
+
+                    <MenuButton text="Categories"
+                                focusTraversable="false"
+                                styleClass="market-category-menu">
+
+                        <items>
+                            <MenuItem text="Art"
+                                      onAction="#handleGoToArt"/>
+
+                            <MenuItem text="Jewellery"
+                                      onAction="#handleGoToJewellery"/>
+
+                            <MenuItem text="Watches"
+                                      onAction="#handleGoToWatches"/>
+
+                            <MenuItem text="Fashion"
+                                      onAction="#handleGoToFashion"/>
+                        </items>
+                    </MenuButton>
+
+                    <Button text="For you"
+                            focusTraversable="false"
+                            styleClass="market-nav-link"
+                            onAction="#handleGoToForYou"/>
+
+                    <Button text="Trending"
+                            focusTraversable="false"
+                            styleClass="market-nav-link"
+                            onAction="#handleGoToTrending"/>
+
+                    <TextField fx:id="searchField"
+                               onAction="#handleSearch"
+                               promptText="Search jewelry, watches, art ..."
+                               focusTraversable="false"
+                               styleClass="market-search"
+                               HBox.hgrow="ALWAYS"/>
+
+                    <Button text="Wallet"
+                            focusTraversable="false"
+                            styleClass="market-wallet-button"
+                            onAction="#handleOpenWallet"/>
+
+                    <Button text="Wins"
+                            focusTraversable="false"
+                            styleClass="market-wallet-button"
+                            onAction="#handleOpenWonAuctions"/>
+
+                    <Button text="&#9825;"
+                            focusTraversable="false"
+                            styleClass="market-icon-button"
+                            onAction="#handleGoToForYou"/>
+
+                    <Label text="User" styleClass="market-user-icon"/>
+
+                    <Label fx:id="usernameLabel"
+                           text="Username"
+                           styleClass="market-username"/>
+
+                    <Button text="Logout"
+                            focusTraversable="false"
+                            styleClass="market-logout-button"
+                            onAction="#handleLogout"/>
+                </HBox>
+            </top>
+
+            <!-- CONTENT -->
+            <center>
+                <ScrollPane fitToWidth="true"
+                            hbarPolicy="NEVER"
+                            styleClass="trending-scroll">
+                    <content>
+                        <StackPane styleClass="page-shell">
+                            <children>
+                        <VBox spacing="22.0" styleClass="trending-page page-content">
+                            <padding>
+                                <Insets top="0" right="24" bottom="36" left="24"/>
+                            </padding>
+
+                            <!-- Header xanh -->
+                            <VBox spacing="18.0" styleClass="trending-hero">
+                                <VBox spacing="8.0">
+                                    <Label text="Trending" styleClass="trending-title"/>
+                                    <Label text="Discover the hottest auctions right now. See what's gaining momentum and what collectors are watching."
+                                           wrapText="true"
+                                           styleClass="trending-subtitle"/>
+                                </VBox>
+
+                                <HBox spacing="14.0">
+                                    <VBox spacing="5.0" styleClass="trending-stat-card" HBox.hgrow="ALWAYS">
+                                        <Label text="ACTIVE BIDS" styleClass="trending-stat-label"/>
+                                        <Label fx:id= "activeBidsLabel" text="1,247" styleClass="trending-stat-number"/>
+                                        <Label text="+23% from last hour" styleClass="trending-stat-positive"/>
+                                    </VBox>
+
+                                    <VBox spacing="5.0" styleClass="trending-stat-card" HBox.hgrow="ALWAYS">
+                                        <Label text="NEW AUCTIONS" styleClass="trending-stat-label"/>
+                                        <Label fx:id="newAuctionsLabel" text="89" styleClass="trending-stat-number"/>
+                                        <Label text="+12% from yesterday" styleClass="trending-stat-positive"/>
+                                    </VBox>
+
+                                    <VBox spacing="5.0" styleClass="trending-stat-card" HBox.hgrow="ALWAYS">
+                                        <Label text="TOTAL BIDS PLACED" styleClass="trending-stat-label"/>
+                                        <Label fx:id="totalBidsPlacedLabel" text="5.3K" styleClass="trending-stat-number"/>
+                                        <Label text="+34% from last day" styleClass="trending-stat-positive"/>
+                                    </VBox>
+                                </HBox>
+                            </VBox>
+
+                            <!-- Filter pills -->
+                            <HBox spacing="10.0">
+                                <Button fx:id="hotFilterButton"
+                                        text="Hot Right Now"
+                                        focusTraversable="false"
+                                        styleClass="trending-filter-active"
+                                        onAction="#handleFilterHot"/>
+
+                                <Button fx:id="viewedFilterButton"
+                                        text="Most Viewed"
+                                        focusTraversable="false"
+                                        styleClass="trending-filter-button"
+                                        onAction="#handleFilterMostViewed"/>
+
+                                <Button fx:id="savedFilterButton"
+                                        text="Most Saved"
+                                        focusTraversable="false"
+                                        styleClass="trending-filter-button"
+                                        onAction="#handleFilterMostSaved"/>
+                            </HBox>
+
+                            <!-- Notice -->
+                            <HBox styleClass="trending-notice">
+                                <Label text="These auctions are on fire: most active bidding, highest engagement, and fastest price increases."
+                                       wrapText="true"
+                                       styleClass="trending-notice-text"/>
+                            </HBox>
+
+                            <TilePane fx:id="trendingGrid"
+                                      hgap="18.0"
+                                      vgap="18.0"
+                                      prefColumns="3"
+                                      prefTileWidth="320.0"
+                                      styleClass="trending-grid"/>
+                            <HBox alignment="CENTER">
+                                <Button fx:id="loadMoreButton"
+                                        text="Load More Trending Auctions"
+                                        focusTraversable="false"
+                                        styleClass="trending-load-button"
+                                        onAction="#handleLoadMore"/>
+                            </HBox>
+                        </VBox>
+                            </children>
+                        </StackPane>
+                    </content>
+                </ScrollPane>
+            </center>
+        </BorderPane>
+    </children>
+</AnchorPane>

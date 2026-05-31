@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<AnchorPane prefHeight="900" prefWidth="1400" styleClass="detail-root" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.auction.client.controller.ProductDetailController">
+
+    <children>
+        <BorderPane AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+
+            <top>
+                <HBox alignment="CENTER_LEFT" spacing="16.0" styleClass="market-top-nav">
+                    <padding>
+                        <Insets bottom="12" left="32" right="32" top="12" />
+                    </padding>
+
+                    <Label styleClass="market-brand" text="Auctions" />
+
+                    <MenuButton focusTraversable="false" styleClass="market-category-menu" text="Categories">
+                        <items>
+                            <MenuItem text="Art" onAction="#handleGoToArt" />
+                            <MenuItem text="Jewellery" onAction="#handleGoToJewellery" />
+                            <MenuItem text="Watches" onAction="#handleGoToWatches" />
+                            <MenuItem text="Fashion" onAction="#handleGoToFashion" />
+                        </items>
+                    </MenuButton>
+
+                    <Button focusTraversable="false" onAction="#handleGoToForYou" styleClass="market-nav-link" text="For you" />
+
+                    <Button focusTraversable="false" onAction="#handleGoToTrending" styleClass="market-nav-link" text="Trending" />
+
+                    <TextField fx:id="searchField" focusTraversable="false" onAction="#handleSearch" promptText="Search jewelry, watches, art ..." styleClass="market-search" HBox.hgrow="ALWAYS" />
+
+                    <Button focusTraversable="false" onAction="#handleOpenWallet" styleClass="market-wallet-button" text="Wallet" />
+
+                    <Button focusTraversable="false" onAction="#handleOpenWonAuctions" styleClass="market-wallet-button" text="Wins" />
+
+                    <Button focusTraversable="false" styleClass="market-icon-button" text="&#9825;" />
+
+                    <Label styleClass="market-user-icon" text="User" />
+
+                    <Label fx:id="topUsernameLabel" styleClass="market-username" text="Username" />
+
+                    <Button focusTraversable="false"
+                            onAction="#handleLogout"
+                            styleClass="market-logout-button"
+                            text="Logout" />
+                </HBox>
+            </top>
+
+            <center>
+                <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="detail-scroll">
+
+                    <content>
+                        <StackPane styleClass="page-shell">
+                            <children>
+                                <VBox spacing="22.0" styleClass="detail-page page-content">
+                                    <padding>
+                                        <Insets bottom="36" left="24" right="24" top="24" />
+                                    </padding>
+
+                                    <Label styleClass="detail-breadcrumb" text="Home / Auctions / Product Detail" />
+
+                                    <HBox spacing="34.0" styleClass="detail-main-section">
+
+                                        <VBox spacing="12.0" styleClass="detail-media-column" HBox.hgrow="ALWAYS">
+                                            <ImageView fx:id="mainImageView" fitHeight="520" fitWidth="760" preserveRatio="true" styleClass="detail-main-image" />
+
+                                            <HBox fx:id="thumbnailStrip" spacing="10.0" />
+
+                                        </VBox>
+
+                                        <VBox prefHeight="667.0" prefWidth="392.0" spacing="14.0" styleClass="detail-bid-column">
+                                            <Label fx:id="productNameLabel" styleClass="detail-auction-title" text="Auction Title" wrapText="true" />
+
+                                            <HBox alignment="CENTER_LEFT" spacing="8.0" styleClass="detail-favorite-row">
+                                                <Button fx:id="detailFavoriteButton" focusTraversable="false" onAction="#handleToggleFavorite" styleClass="detail-favorite-pill" text="♡ 0" />
+                                            </HBox>
+
+                                            <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="detail-seller-row">
+                                                <VBox alignment="CENTER" spacing="2.0" styleClass="detail-user-mark">
+                                                    <Region styleClass="detail-user-head" />
+                                                    <Region styleClass="detail-user-shoulders" />
+                                                </VBox>
+                                                <Label fx:id="detailUsernameLabel" styleClass="detail-seller-name" text="Username" />
+                                            </HBox>
+
+                                            <VBox spacing="4.0" styleClass="detail-balance-card">
+                                                <Label styleClass="detail-mini-label" text="YOUR BALANCE" />
+
+                                                <HBox alignment="CENTER_LEFT">
+                                                    <Label fx:id="balanceValueLabel" styleClass="detail-balance-value" text="USD 0" HBox.hgrow="ALWAYS" />
+
+                                                    <Label styleClass="detail-wallet-icon" text="&#9633;" />
+                                                </HBox>
+                                            </VBox>
+
+                                            <VBox spacing="8.0" styleClass="detail-time-card">
+                                                <HBox alignment="CENTER_LEFT" spacing="6.0">
+                                                    <Label styleClass="detail-time-icon" text="&#9716;" />
+                                                    <Label fx:id="timeCardTitleLabel" styleClass="detail-time-title" text="Time remaining" />
+                                                </HBox>
+
+                                                <Label fx:id="countdownLabel" styleClass="detail-time-context" text="Ends at -" wrapText="true" />
+
+                                                <HBox alignment="CENTER" spacing="12.0" styleClass="detail-countdown-grid">
+                                                    <VBox alignment="CENTER" HBox.hgrow="ALWAYS">
+                                                        <Label fx:id="countdownDayLabel" styleClass="detail-countdown-number" text="00" />
+                                                        <Label styleClass="detail-countdown-unit" text="DAY" />
+                                                    </VBox>
+
+                                                    <VBox alignment="CENTER" HBox.hgrow="ALWAYS">
+                                                        <Label fx:id="countdownHourLabel" styleClass="detail-countdown-number" text="00" />
+                                                        <Label styleClass="detail-countdown-unit" text="HOUR" />
+                                                    </VBox>
+
+                                                    <VBox alignment="CENTER" HBox.hgrow="ALWAYS">
+                                                        <Label fx:id="countdownMinuteLabel" styleClass="detail-countdown-number" text="00" />
+                                                        <Label styleClass="detail-countdown-unit" text="MINUTE" />
+                                                    </VBox>
+
+                                                    <VBox alignment="CENTER" HBox.hgrow="ALWAYS">
+                                                        <Label fx:id="countdownSecondLabel" styleClass="detail-countdown-number" text="00" />
+                                                        <Label styleClass="detail-countdown-unit" text="SECOND" />
+                                                    </VBox>
+                                                </HBox>
+                                            </VBox>
+
+                                            <VBox fx:id="winnerNoticeCard"
+                                                  managed="false"
+                                                  spacing="8.0"
+                                                  styleClass="winner-notice-card"
+                                                  visible="false">
+                                                <Label fx:id="winnerNoticeTitleLabel"
+                                                       styleClass="winner-notice-title"
+                                                       text="Winner notice" />
+                                                <Label fx:id="winnerNoticeSubtitleLabel"
+                                                       styleClass="winner-notice-subtitle"
+                                                       text="Winner message"
+                                                       wrapText="true" />
+                                                <Button fx:id="winnerNoticeButton"
+                                                        managed="false"
+                                                        onAction="#handleOpenWinnerHub"
+                                                        styleClass="winner-notice-button"
+                                                        text="Open Wins"
+                                                        visible="false" />
+                                            </VBox>
+
+                                            <VBox spacing="6.0">
+                                                <Label styleClass="detail-mini-label" text="CURRENT PRICE" />
+
+                                                <Label fx:id="currentBidLabel" styleClass="detail-current-price" text="USD 0" />
+
+                                                <Label fx:id="reservePriceLabel" styleClass="detail-status" text="Reserve price: -" />
+
+                                                <Label fx:id="statusLabel" styleClass="detail-status" text="No reserve price" />
+
+                                                <Label styleClass="detail-mini-label" text="ESTIMATED" />
+
+                                                <Label fx:id="estimatedValueLabel" styleClass="detail-estimated-value" text="USD 0 - USD 0" />
+                                            </VBox>
+
+                                            <Label fx:id="specsLabel" managed="false" styleClass="detail-specs" text="Estimated price and auction metadata" visible="false" wrapText="true" />
+
+                                            <VBox managed="false" spacing="8.0" styleClass="detail-quick-bid-box" visible="false">
+                                                <TextField fx:id="bidAmountField" promptText="Enter bid amount" styleClass="detail-bid-input" />
+                                            </VBox>
+
+                                            <Region styleClass="detail-divider" />
+
+                                            <VBox spacing="8.0" styleClass="detail-actions">
+
+                                                <Button fx:id="placeBidButton" maxWidth="Infinity"
+                                                        onAction="#handleOpenBidDialog"
+                                                        prefHeight="35.0"
+                                                        prefWidth="360.0"
+                                                        styleClass="detail-place-button detail-action-button"
+                                                        text="Place Bid" />
+
+                                                <Button fx:id="autoBidButton" maxWidth="Infinity"
+                                                        onAction="#handleOpenAutoBid"
+                                                        prefHeight="35.0"
+                                                        prefWidth="360.0"
+                                                        styleClass="detail-auto-button detail-action-button"
+                                                        text="Auto-Bid" />
+
+                                                <Button maxWidth="Infinity"
+                                                        onAction="#handleViewChart"
+                                                        prefHeight="35.0"
+                                                        prefWidth="360.0"
+                                                        styleClass="detail-chart-button detail-action-button"
+                                                        text="View Chart" />
+                                            </VBox>
+
+                                            <Label fx:id="bidMessageLabel" styleClass="detail-bid-message" text="" wrapText="true" />
+
+                                        </VBox>
+
+                                    </HBox>
+
+                                    <VBox spacing="10.0" styleClass="detail-about-section">
+                                        <Label styleClass="detail-section-title" text="About this product" />
+
+                                        <Label fx:id="aboutProductLabel"
+                                               styleClass="detail-body-text"
+                                               text="A beautiful collection item presented for live auction."
+                                               wrapText="true" />
+
+                                    </VBox>
+
+                                    <VBox spacing="10.0" styleClass="detail-product-section">
+                                        <Label styleClass="detail-section-title" text="Product Details" />
+
+                                        <HBox spacing="30.0">
+                                            <VBox spacing="8.0">
+                                                <Label styleClass="detail-detail-label" text="Lot ID:" />
+                                                <Label styleClass="detail-detail-label" text="Category:" />
+                                                <Label styleClass="detail-detail-label" text="Condition:" />
+                                            </VBox>
+
+                                            <VBox spacing="8.0">
+                                                <VBox spacing="8.0">
+                                                    <Label fx:id="lotIdValueLabel" styleClass="detail-detail-value" text="N/A" />
+                                                    <Label fx:id="categoryValueLabel" styleClass="detail-detail-value" text="N/A" />
+                                                    <Label fx:id="conditionValueLabel" styleClass="detail-detail-value" text="Good" />
+                                                </VBox>
+                                            </VBox>
+                                        </HBox>
+
+                                    </VBox>
+
+                                </VBox>
+                            </children>
+                        </StackPane>
+                    </content>
+                </ScrollPane>
+            </center>
+        </BorderPane>
+    </children>
+</AnchorPane>

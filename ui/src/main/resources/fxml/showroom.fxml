@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.layout.TilePane?>
+
+<AnchorPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.auction.client.controller.ShowRoomController"
+            prefWidth="1400" prefHeight="900"
+            styleClass="showroom-root">
+
+    <children>
+        <BorderPane AnchorPane.topAnchor="0.0"
+                    AnchorPane.bottomAnchor="0.0"
+                    AnchorPane.leftAnchor="0.0"
+                    AnchorPane.rightAnchor="0.0">
+
+            <top>
+                <HBox alignment="CENTER_LEFT" spacing="16.0" styleClass="market-top-nav">
+                    <padding>
+                        <Insets top="12" right="32" bottom="12" left="32"/>
+                    </padding>
+
+                    <Label text="Auctions" styleClass="market-brand"/>
+
+                    <MenuButton text="Categories"
+                                focusTraversable="false"
+                                styleClass="market-category-menu">
+
+                        <items>
+                            <MenuItem text="Art"
+                                      onAction="#handleGoToArt"/>
+
+                            <MenuItem text="Jewellery"
+                                      onAction="#handleGoToJewellery"/>
+
+                            <MenuItem text="Watches"
+                                      onAction="#handleGoToWatches"/>
+
+                            <MenuItem text="Fashion"
+                                      onAction="#handleGoToFashion"/>
+                        </items>
+                    </MenuButton>
+
+                    <Button text="For you"
+                            focusTraversable="false"
+                            styleClass="market-nav-link"
+                            onAction="#handleGoToForYou"/>
+
+                    <Button text="Trending"
+                            focusTraversable="false"
+                            styleClass="market-nav-link"
+                            onAction="#handleGoToTrending"/>
+
+                    <TextField fx:id="searchField"
+                               onAction="#handleSearch"
+                               promptText="Search jewelry, watches, art ..."
+                               focusTraversable="false"
+                               styleClass="market-search"
+                               HBox.hgrow="ALWAYS"/>
+
+                    <Button text="Wallet"
+                            focusTraversable="false"
+                            styleClass="market-wallet-button"
+                            onAction="#handleOpenWallet"/>
+
+                    <Button text="Wins"
+                            focusTraversable="false"
+                            styleClass="market-wallet-button"
+                            onAction="#handleOpenWonAuctions"/>
+
+                    <Button fx:id="wishlistButton"
+                            text="&#9825; 0"
+                            focusTraversable="false"
+                            styleClass="market-icon-button"
+                            onAction="#handleGoToForYou"/>
+
+                    <Label text="User"
+                           styleClass="market-user-icon"/>
+
+                    <Label fx:id="usernameLabel"
+                           text="Username"
+                           styleClass="market-username"/>
+
+                    <Button text="Logout"
+                            focusTraversable="false"
+                            styleClass="market-logout-button"
+                            onAction="#handleLogout"/>
+                </HBox>
+            </top>
+
+            <center>
+                <ScrollPane fitToWidth="true"
+                            hbarPolicy="NEVER"
+                            styleClass="for-you-scroll">
+                    <content>
+                        <StackPane styleClass="page-shell">
+                            <children>
+                        <VBox spacing="24.0" styleClass="for-you-page page-content">
+                            <padding>
+                                <Insets top="28" right="24" bottom="36" left="24"/>
+                            </padding>
+
+                            <VBox spacing="8.0">
+                                <Label text="&#9825; For You" styleClass="for-you-title"/>
+                                <Label text="Personalized auctions based on your interests and bidding history"
+                                       styleClass="page-subtitle"
+                                       wrapText="true"/>
+                            </VBox>
+
+                            <VBox spacing="8.0">
+                                <Label text="YOUR INTERESTS" styleClass="section-eyebrow"/>
+
+                                <HBox spacing="8.0">
+                                    <Label text="Jewelry" styleClass="interest-tag"/>
+                                    <Label text="Watches" styleClass="interest-tag"/>
+                                    <Label text="Antiques" styleClass="interest-tag"/>
+                                    <Label text="Art" styleClass="interest-tag"/>
+                                    <Label text="Collectibles" styleClass="interest-tag"/>
+                                </HBox>
+                            </VBox>
+
+                            <HBox spacing="16.0">
+                                <VBox spacing="6.0" styleClass="for-you-stat-card" HBox.hgrow="ALWAYS">
+                                    <Label text="Saved Auctions" styleClass="for-you-stat-label"/>
+                                    <Label fx:id="savedAuctionsCountLabel" text="0" styleClass="for-you-stat-number"/>
+                                </VBox>
+
+                                <VBox spacing="6.0" styleClass="for-you-stat-card" HBox.hgrow="ALWAYS">
+                                    <Label text="Active Bids" styleClass="for-you-stat-label"/>
+                                    <Label text="5" styleClass="for-you-stat-number"/>
+                                </VBox>
+
+                                <VBox spacing="6.0" styleClass="for-you-stat-card" HBox.hgrow="ALWAYS">
+                                    <Label text="Auto-Bids" styleClass="for-you-stat-label"/>
+                                    <Label text="3" styleClass="for-you-stat-number"/>
+                                </VBox>
+                            </HBox>
+
+                            <HBox spacing="10.0" styleClass="for-you-filter-row">
+                                <Button fx:id="allFilterButton"
+                                        text="All"
+                                        focusTraversable="false"
+                                        styleClass="filter-chip-active"
+                                        onAction="#handleFilterAll"/>
+
+                                <Button fx:id="endingSoonFilterButton"
+                                        text="Ending soon"
+                                        focusTraversable="false"
+                                        styleClass="filter-chip"
+                                        onAction="#handleFilterEndingSoon"/>
+
+                                <Button fx:id="newListingsFilterButton"
+                                        text="New listings"
+                                        focusTraversable="false"
+                                        styleClass="filter-chip"
+                                        onAction="#handleFilterNewListings"/>
+
+                                <Button fx:id="highDemandFilterButton"
+                                        text="My Wishlist"
+                                        focusTraversable="false"
+                                        styleClass="filter-chip"
+                                        onAction="#handleFilterHighDemand"/>
+                            </HBox>
+
+                            <TilePane fx:id="auctionGrid"
+                                      hgap="16.0"
+                                      vgap="16.0"
+                                      prefColumns="3"
+                                      prefTileWidth="320.0"
+                                      styleClass="for-you-auction-grid"/>
+                        </VBox>
+                            </children>
+                        </StackPane>
+                    </content>
+                </ScrollPane>
+            </center>
+        </BorderPane>
+    </children>
+</AnchorPane>

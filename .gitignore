@@ -1,0 +1,8 @@
+.idea/
+ui/src/.idea/
+ui/src/*.iml
+backend/target/
+ui/target/
+backend/data/
+backend/uploads/
+backend/backend-restart*.log

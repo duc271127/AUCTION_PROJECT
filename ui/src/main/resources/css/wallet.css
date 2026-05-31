@@ -1,0 +1,61 @@
+.wallet-root {
+    -fx-background-color: #ffffff;
+    -fx-padding: 32;
+}
+
+.wallet-modal-card {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: #e6e6e6;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.14), 26, 0.14, 0, 8);
+}
+
+.wallet-modal-header {
+    -fx-padding: 18 22;
+    -fx-border-color: transparent transparent #e6e6e6 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.wallet-modal-title {
+    -fx-text-fill: #262626;
+    -fx-font-size: 20px;
+    -fx-font-weight: 800;
+}
+
+.wallet-balance-card {
+    -fx-background-color: #f2f2f2;
+    -fx-border-color: #e6e6e6;
+    -fx-border-width: 1;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-padding: 16;
+}
+
+.wallet-small-label {
+    -fx-text-fill: #8c8c8c;
+    -fx-font-size: 11px;
+    -fx-font-weight: 800;
+}
+
+.wallet-balance-value {
+    -fx-text-fill: #262626;
+    -fx-font-size: 28px;
+    -fx-font-weight: 800;
+}
+
+.wallet-success-circle {
+    -fx-background-color: #dcfce7;
+    -fx-background-radius: 999;
+    -fx-min-width: 72;
+    -fx-min-height: 72;
+    -fx-pref-width: 72;
+    -fx-pref-height: 72;
+}
+
+.wallet-success-title {
+    -fx-text-fill: #262626;
+    -fx-font-size: 22px;
+    -fx-font-weight: 800;
+}
