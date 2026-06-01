@@ -85,12 +85,13 @@ public class WonAuctionsController {
     }
 
     private void loadWonAuctions() {
+        UUID currentUserId = SessionManager.getUserId();
         boolean loaded = false;
 
         try {
             wonAuctions.clear();
-            wonAuctions.addAll(auctionApiService.listMyWonAuctions());
-            loaded = !wonAuctions.isEmpty();
+            wonAuctions.addAll(filterConfirmedWins(auctionApiService.listMyWonAuctions(), currentUserId));
+            loaded = true;
         } catch (Exception e) {
         }
 
@@ -123,18 +124,21 @@ public class WonAuctionsController {
                 .searchAuctions(null, null, null, 0, 100, "endTime,desc")
                 .getItems();
 
+        return filterConfirmedWins(auctions, currentUserId);
+    }
+
+    private List<AuctionListResponse> filterConfirmedWins(List<AuctionListResponse> auctions, UUID currentUserId) {
         List<AuctionListResponse> wins = new ArrayList<>();
-        if (auctions == null) {
+        if (auctions == null || currentUserId == null) {
             return wins;
         }
 
         for (AuctionListResponse auction : auctions) {
-            if (auction == null || !isClosedAuction(auction) || !isWonByCurrentUser(auction, currentUserId)) {
+            if (!isConfirmedWin(auction, currentUserId)) {
                 continue;
             }
 
-            if ((auction.getWinnerName() == null || auction.getWinnerName().isBlank())
-                    && currentUserId.equals(auction.getWinnerId() != null ? auction.getWinnerId() : auction.getLeaderId())) {
+            if (auction.getWinnerName() == null || auction.getWinnerName().isBlank()) {
                 auction.setWinnerName(firstNonBlank(SessionManager.getUsername(), "You"));
             }
 
@@ -144,16 +148,12 @@ public class WonAuctionsController {
         return wins;
     }
 
-    private boolean isWonByCurrentUser(AuctionListResponse auction, UUID currentUserId) {
+    private boolean isConfirmedWin(AuctionListResponse auction, UUID currentUserId) {
         if (auction == null || currentUserId == null) {
             return false;
         }
 
-        if (currentUserId.equals(auction.getWinnerId())) {
-            return true;
-        }
-
-        return auction.getWinnerId() == null && currentUserId.equals(auction.getLeaderId());
+        return isClosedAuction(auction) && currentUserId.equals(auction.getWinnerId());
     }
 
     private boolean isClosedAuction(AuctionListResponse auction) {
