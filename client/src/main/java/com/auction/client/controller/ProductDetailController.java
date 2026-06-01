@@ -848,6 +848,7 @@ public class ProductDetailController {
                 favoriteApiService.removeFavorite(auctionId);
             }
             refreshAuctionDetailSilently();
+            loadFavoritesAsync();
         } catch (Exception e) {
             applyFavoriteSelection(auctionId, !nextSelected, favoriteCountForRollback(nextSelected));
             showBidMessage(extractFriendlyMessage(e.getMessage()));

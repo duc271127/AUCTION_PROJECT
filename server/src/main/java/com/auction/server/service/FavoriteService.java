@@ -10,6 +10,7 @@ import com.auction.server.repository.FavoriteRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -48,6 +49,7 @@ public class FavoriteService {
         publishFavoriteChanged(auctionId, "Favorite count updated.");
     }
 
+    @Transactional
     public void remove(UUID userId, UUID auctionId) {
         if (userId == null || auctionId == null) {
             throw new BusinessRuleException("userId and auctionId are required");
