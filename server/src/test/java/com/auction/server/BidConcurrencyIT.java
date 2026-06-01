@@ -1,0 +1,129 @@
+package com.auction.server;
+
+import com.auction.server.entity.Auction;
+import com.auction.server.entity.AuctionState;
+import com.auction.server.entity.Wallet;
+import com.auction.server.repository.AuctionRepository;
+import com.auction.server.repository.BidRepository;
+import com.auction.server.repository.WalletRepository;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@Testcontainers
+@SpringBootTest
+public class BidConcurrencyIT {
+
+    @Container
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15")
+            .withDatabaseName("testdb")
+            .withUsername("test")
+            .withPassword("test");
+
+    @DynamicPropertySource
+    static void registerPgProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+    }
+
+    @Autowired
+    private AuctionRepository auctionRepository;
+
+    @Autowired
+    private BidRepository bidRepository;
+
+    @Autowired
+    private WalletRepository walletRepository;
+
+    @Autowired
+    private com.auction.server.service.BidService bidService;
+
+    private UUID auctionId;
+
+    @BeforeEach
+    void setup() {
+        Auction a = new Auction();
+        auctionId = a.getId();
+        a.setItemId(UUID.randomUUID());
+        a.setStartTime(Instant.now().minusSeconds(10));
+        a.setEndTime(Instant.now().plusSeconds(3600));
+        a.setState(AuctionState.ACTIVE);
+        a.setCurrentPrice(100.0); // double
+        auctionRepository.save(a);
+    }
+
+    @AfterEach
+    void cleanup() {
+        bidRepository.deleteAll();
+        auctionRepository.deleteAll();
+        walletRepository.deleteAll();
+    }
+
+    @Test
+    void concurrentBids_shouldResultInHighestValidBidPersisted() throws InterruptedException {
+        int clients = 3;
+        ExecutorService ex = Executors.newFixedThreadPool(clients);
+        CountDownLatch start = new CountDownLatch(1);
+
+        double[] bids = {110.0, 111.0, 112.0};
+
+        try {
+            List<Future<Boolean>> futures = new ArrayList<>(clients);
+            for (int i = 0; i < clients; i++) {
+                final int idx = i;
+                futures.add(ex.submit(() -> {
+                    start.await();
+                    try {
+                        UUID bidderId = UUID.randomUUID();
+                        Wallet wallet = new Wallet();
+                        wallet.setUserId(bidderId);
+                        wallet.setBalance(new java.math.BigDecimal("1000.00"));
+                        walletRepository.save(wallet);
+                        bidService.placeBid(auctionId, bidderId, bids[idx]);
+                        return true;
+                    } catch (Exception exx) {
+                        return false;
+                    }
+                }));
+            }
+
+            start.countDown();
+
+            int success = 0;
+            for (Future<Boolean> future : futures) {
+                try {
+                    if (future.get(10, TimeUnit.SECONDS)) {
+                        success++;
+                    }
+                } catch (Exception e) { /* ignore individual failures */ }
+            }
+
+            Auction finalA = auctionRepository.findById(auctionId).orElseThrow();
+            assertTrue(finalA.getCurrentPrice() >= 110.0);
+            assertTrue(success >= 1);
+        } finally {
+            ex.shutdownNow();
+        }
+    }
+}
+

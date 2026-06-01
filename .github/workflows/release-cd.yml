@@ -13,8 +13,8 @@ env:
   JAVA_VERSION: "21"
 
 jobs:
-  backend:
-    name: Build Backend Bundle
+  server:
+    name: Build Server Bundle
     runs-on: ubuntu-latest
 
     steps:
@@ -28,37 +28,37 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           cache: maven
 
-      - name: Build backend
-        run: mvn -B -f backend/pom.xml clean verify -Dspring.profiles.active=test
+      - name: Build server
+        run: mvn -B -f server/pom.xml clean verify -Dspring.profiles.active=test
 
-      - name: Prepare backend bundle
+      - name: Prepare server bundle
         shell: pwsh
         run: |
-          $dist = "dist/backend"
+          $dist = "dist/server"
           New-Item -ItemType Directory -Force -Path $dist | Out-Null
 
-          $jar = Get-ChildItem "backend/target" -Filter "*.jar" |
+          $jar = Get-ChildItem "server/target" -Filter "*.jar" |
             Where-Object { $_.Name -notlike "original-*" } |
             Sort-Object LastWriteTime -Descending |
             Select-Object -First 1
 
           if (-not $jar) {
-            throw "Backend jar not found in backend/target"
+            throw "Server jar not found in server/target"
           }
 
-          Copy-Item $jar.FullName "$dist/backend.jar"
-          Copy-Item "backend/src/main/resources/application.properties" "$dist/application.properties"
+          Copy-Item $jar.FullName "$dist/auction-server.jar"
+          Copy-Item "server/src/main/resources/application.properties" "$dist/application.properties"
 
           @'
-          Auction Backend Bundle
-          ======================
+          Auction Server Bundle
+          =====================
 
           Requirements
           - Java 21
 
           Run
-          - Windows: run-backend.cmd
-          - Linux/macOS: ./run-backend.sh
+          - Windows: run-server.cmd
+          - Linux/macOS: ./run-server.sh
 
           Configuration
           - Edit application.properties in this folder
@@ -74,33 +74,33 @@ jobs:
           #!/usr/bin/env bash
           set -euo pipefail
           SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-          java -jar "$SCRIPT_DIR/backend.jar" --spring.config.location="$SCRIPT_DIR/application.properties"
-          '@ | Set-Content "$dist/run-backend.sh"
+          java -jar "$SCRIPT_DIR/auction-server.jar" --spring.config.location="$SCRIPT_DIR/application.properties"
+          '@ | Set-Content "$dist/run-server.sh"
 
           @'
           @echo off
           set SCRIPT_DIR=%~dp0
-          java -jar "%SCRIPT_DIR%backend.jar" --spring.config.location="%SCRIPT_DIR%application.properties"
+          java -jar "%SCRIPT_DIR%auction-server.jar" --spring.config.location="%SCRIPT_DIR%application.properties"
           set EXIT_CODE=%ERRORLEVEL%
           if not "%EXIT_CODE%"=="0" (
             echo.
-            echo Backend exited with code %EXIT_CODE%.
+            echo Server exited with code %EXIT_CODE%.
             echo Check that Java 21 is installed and available in PATH.
             pause
           )
           exit /b %EXIT_CODE%
-          '@ | Set-Content "$dist/run-backend.cmd"
+          '@ | Set-Content "$dist/run-server.cmd"
 
-      - name: Upload backend bundle
+      - name: Upload server bundle
         uses: actions/upload-artifact@v4
         with:
-          name: backend-dist
-          path: dist/backend
+          name: server-dist
+          path: dist/server
           if-no-files-found: error
           retention-days: 14
 
-  ui:
-    name: Build UI Bundle (${{ matrix.label }})
+  client:
+    name: Build Client Bundle (${{ matrix.label }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -122,53 +122,53 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           cache: maven
 
-      - name: Build UI and copy dependencies
-        run: mvn -B -f ui/pom.xml clean package dependency:copy-dependencies
+      - name: Build client and copy dependencies
+        run: mvn -B -f client/pom.xml clean package dependency:copy-dependencies
 
-      - name: Prepare UI bundle
+      - name: Prepare client bundle
         shell: pwsh
         run: |
-          $dist = "dist/ui-${{ matrix.label }}"
+          $dist = "dist/client-${{ matrix.label }}"
           $appDir = Join-Path $dist "app"
           $libDir = Join-Path $dist "lib"
 
           New-Item -ItemType Directory -Force -Path $appDir | Out-Null
           New-Item -ItemType Directory -Force -Path $libDir | Out-Null
 
-          $jar = Get-ChildItem "ui/target" -Filter "*.jar" |
+          $jar = Get-ChildItem "client/target" -Filter "*.jar" |
             Sort-Object LastWriteTime -Descending |
             Select-Object -First 1
 
           if (-not $jar) {
-            throw "UI jar not found in ui/target"
+            throw "Client jar not found in client/target"
           }
 
-          if (-not (Test-Path "ui/target/dependency")) {
-            throw "UI dependency directory not found in ui/target/dependency"
+          if (-not (Test-Path "client/target/dependency")) {
+            throw "Client dependency directory not found in client/target/dependency"
           }
 
-          Copy-Item $jar.FullName "$appDir/auction-ui.jar"
-          Copy-Item "ui/target/dependency/*" $libDir -Recurse
-          Copy-Item "ui/src/main/resources/auction-client.properties" "$dist/auction-client.properties"
+          Copy-Item $jar.FullName "$appDir/auction-client.jar"
+          Copy-Item "client/target/dependency/*" $libDir -Recurse
+          Copy-Item "client/src/main/resources/auction-client.properties" "$dist/auction-client.properties"
 
           @'
-          Auction UI Bundle
-          =================
+          Auction Client Bundle
+          =====================
 
           Requirements
           - Java 21
           - Use the bundle built for your operating system
 
           Run
-          - Windows: run-ui.cmd
-          - Linux/macOS: ./run-ui.sh
+          - Windows: run-client.cmd
+          - Linux/macOS: ./run-client.sh
 
           Default server
-          - This bundle keeps the repository default backend endpoint from auction-client.properties
+          - This bundle keeps the repository default server endpoint from auction-client.properties
           - If your team is still using the current shared server, you can run it as-is
 
           Configuration override
-          - Edit auction-client.properties in this folder if the backend URL changes
+          - Edit auction-client.properties in this folder if the server URL changes
           - Or override with environment variables:
             AUCTION_API_BASE_URL
             AUCTION_WS_URL
@@ -178,17 +178,17 @@ jobs:
           #!/usr/bin/env bash
           set -euo pipefail
           SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-          java -cp "$SCRIPT_DIR:$SCRIPT_DIR/app/auction-ui.jar:$SCRIPT_DIR/lib/*" com.auction.client.MainApp
-          '@ | Set-Content "$dist/run-ui.sh"
+          java -cp "$SCRIPT_DIR:$SCRIPT_DIR/app/auction-client.jar:$SCRIPT_DIR/lib/*" com.auction.client.MainApp
+          '@ | Set-Content "$dist/run-client.sh"
 
           @'
           @echo off
           set SCRIPT_DIR=%~dp0
-          java -cp "%SCRIPT_DIR%;%SCRIPT_DIR%app\auction-ui.jar;%SCRIPT_DIR%lib\*" com.auction.client.MainApp
+          java -cp "%SCRIPT_DIR%;%SCRIPT_DIR%app\auction-client.jar;%SCRIPT_DIR%lib\*" com.auction.client.MainApp
           set EXIT_CODE=%ERRORLEVEL%
           if not "%EXIT_CODE%"=="0" (
             echo.
-            echo UI exited with code %EXIT_CODE%.
+            echo Client exited with code %EXIT_CODE%.
             echo Common causes:
             echo 1. Java 21 is not installed
             echo 2. Java is not in PATH
@@ -196,13 +196,13 @@ jobs:
             pause
           )
           exit /b %EXIT_CODE%
-          '@ | Set-Content "$dist/run-ui.cmd"
+          '@ | Set-Content "$dist/run-client.cmd"
 
-      - name: Upload UI bundle
+      - name: Upload client bundle
         uses: actions/upload-artifact@v4
         with:
-          name: ui-${{ matrix.label }}-dist
-          path: dist/ui-${{ matrix.label }}
+          name: client-${{ matrix.label }}-dist
+          path: dist/client-${{ matrix.label }}
           if-no-files-found: error
           retention-days: 14
 
@@ -210,8 +210,8 @@ jobs:
     name: Publish GitHub Release
     runs-on: ubuntu-latest
     needs:
-      - backend
-      - ui
+      - server
+      - client
     if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
@@ -233,6 +233,6 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            release-assets/backend-dist.zip
-            release-assets/ui-linux-dist.zip
-            release-assets/ui-windows-dist.zip
+            release-assets/server-dist.zip
+            release-assets/client-linux-dist.zip
+            release-assets/client-windows-dist.zip

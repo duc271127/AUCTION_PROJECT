@@ -1,0 +1,23 @@
+name: Client CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-client:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Verify client with Maven
+        run: mvn -B -f client/pom.xml clean verify

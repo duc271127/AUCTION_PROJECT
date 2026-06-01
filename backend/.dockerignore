@@ -1,7 +1,0 @@
-target/
-.mvn/
-mvnw
-mvnw.cmd
-data/
-uploads/
-backend-restart*.log

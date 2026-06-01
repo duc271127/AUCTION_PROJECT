@@ -18,5 +18,7 @@
     <module name="TreeWalker">
         <module name="AvoidStarImport"/>
         <module name="OuterTypeFilename"/>
+        <module name="RedundantImport"/>
+        <module name="UnusedImports"/>
     </module>
 </module>
