@@ -1,0 +1,57 @@
+services:
+  - type: web
+    name: auction-backend
+    runtime: docker
+    plan: starter
+    region: singapore
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeployTrigger: checksPass
+    healthCheckPath: /api/hello
+    buildFilter:
+      paths:
+        - backend/**
+        - render.yaml
+        - .github/workflows/backend-ci.yml
+    envVars:
+      - key: AUCTION_SERVER_ADDRESS
+        value: 0.0.0.0
+      - key: AUCTION_UPLOAD_DIR
+        value: /app/uploads
+      - key: AUCTION_SHOW_SQL
+        value: "false"
+      - key: AUCTION_JWT_SECRET
+        generateValue: true
+      - key: RENDER_DB_HOST
+        fromDatabase:
+          name: auction-db
+          property: host
+      - key: RENDER_DB_PORT
+        fromDatabase:
+          name: auction-db
+          property: port
+      - key: RENDER_DB_NAME
+        fromDatabase:
+          name: auction-db
+          property: database
+      - key: RENDER_DB_USER
+        fromDatabase:
+          name: auction-db
+          property: user
+      - key: RENDER_DB_PASSWORD
+        fromDatabase:
+          name: auction-db
+          property: password
+    disk:
+      name: auction-uploads
+      mountPath: /app/uploads
+      sizeGB: 1
+
+databases:
+  - name: auction-db
+    plan: basic-256mb
+    region: singapore
+    databaseName: auctiondb
+    user: auction_user
+    ipAllowList: []
