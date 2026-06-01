@@ -69,7 +69,7 @@ public class WalletController {
         try {
             amount = parseAmount();
         } catch (Exception e) {
-            showError("Amount must be greater than 0.");
+            showError(extractFriendlyMessage(e.getMessage()));
             return;
         }
 
@@ -158,13 +158,11 @@ public class WalletController {
             throw new IllegalArgumentException("Amount is required.");
         }
 
-        String normalized = raw.replaceAll("[^0-9.]", "");
-
-        if (normalized.isBlank()) {
-            throw new IllegalArgumentException("Amount is required.");
+        if (!raw.matches("\\d+(\\.\\d+)?")) {
+            throw new IllegalArgumentException("Only numbers are allowed.");
         }
 
-        BigDecimal amount = new BigDecimal(normalized);
+        BigDecimal amount = new BigDecimal(raw);
 
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Amount must be positive.");

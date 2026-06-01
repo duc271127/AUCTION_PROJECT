@@ -11,6 +11,7 @@ import com.auction.client.util.MockData;
 import com.auction.client.ui.AuctionCardData;
 import com.auction.client.ui.AuctionCardViewFactory;
 import com.auction.client.util.AuctionStateViewHelper;
+import com.auction.client.util.DateTimeDisplayHelper;
 import com.auction.client.util.SearchNavigationContext;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
@@ -23,6 +24,8 @@ import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
 
 import java.util.ArrayList;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -138,7 +141,7 @@ public class TrendingController {
 
         String ending = formatEndTime(response.getEndTime());
 
-        long views = response.getViewCount() > 0 ? response.getViewCount() : 1200;
+        long views = Math.max(response.getViewCount(), 0);
         long saves = Math.max(response.getFavoriteCount(), 0);
 
         double score = response.getTrendingScore() > 0
@@ -157,6 +160,7 @@ public class TrendingController {
                         response.getStartTime(),
                         response.getEndTime()
                 ),
+                response.getCreatedAt(),
                 views,
                 saves,
                 response.getBidCount(),
@@ -226,7 +230,10 @@ public class TrendingController {
                 item.imageUrl(),
                 item.currentBid(),
                 item.ending(),
-                item.state()
+                item.state(),
+                null,
+                null,
+                responseFavoriteCount(item)
         ));
 
         SceneManager.goToProductDetail();
@@ -371,36 +378,55 @@ public class TrendingController {
     }
 
     private void updateStats() {
-        int totalBids = trendingItems.stream().mapToInt(TrendingCardItem::bidCount).sum();
+        List<TrendingCardItem> visibleItems = getVisibleItems();
+        long activeBids = visibleItems.stream()
+                .filter(item -> {
+                    String normalized = firstNonBlank(item.state(), "").trim().toUpperCase(Locale.ROOT);
+                    return "ACTIVE".equals(normalized) || "OPEN".equals(normalized) || "LIVE".equals(normalized);
+                })
+                .count();
+        long newAuctions = visibleItems.stream()
+                .filter(this::isNewAuction)
+                .count();
+        int totalBidsPlaced = visibleItems.stream().mapToInt(TrendingCardItem::bidCount).sum();
 
-        if (hasSearchQuery() && trendingItems.isEmpty()) {
+        if (hasSearchQuery() && visibleItems.isEmpty()) {
             activeBidsLabel.setText("0");
             newAuctionsLabel.setText("0");
             totalBidsPlacedLabel.setText("0");
             return;
         }
 
-        activeBidsLabel.setText(totalBids > 0 ? formatCompact(totalBids) : "1.2K");
-        newAuctionsLabel.setText(String.valueOf(Math.max(trendingItems.size(), 0)));
-        totalBidsPlacedLabel.setText(totalBids > 0 ? formatCompact(totalBids) : "5.3K");
+        activeBidsLabel.setText(formatCompact(activeBids));
+        newAuctionsLabel.setText(formatCompact(newAuctions));
+        totalBidsPlacedLabel.setText(formatCompact(totalBidsPlaced));
     }
 
     private String formatEndTime(String endTime) {
-        if (endTime == null || endTime.isBlank()) {
-            return "Ending soon";
-        }
-
-        return endTime.length() >= 16
-                ? endTime.substring(0, 16).replace("T", " ")
-                : endTime;
+        return DateTimeDisplayHelper.formatDateTime(endTime, "Ending soon");
     }
 
     private String formatCompact(long value) {
         if (value >= 1000) {
-            return String.format("%.1fK", value / 1000.0);
+            return String.format(Locale.US, "%.1fK", value / 1000.0);
         }
 
         return String.valueOf(value);
+    }
+
+    private long responseFavoriteCount(TrendingCardItem item) {
+        return item == null ? 0 : Math.max(item.saveCount(), 0);
+    }
+
+    private boolean isNewAuction(TrendingCardItem item) {
+        if (item == null || item.createdAt() == null || item.createdAt().isBlank()) {
+            return false;
+        }
+        try {
+            return Duration.between(Instant.parse(item.createdAt()), Instant.now()).toHours() <= 24;
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     private String getDefaultImagePath(int index) {
@@ -525,6 +551,7 @@ public class TrendingController {
             String currentBid,
             String ending,
             String state,
+            String createdAt,
             long viewCount,
             long saveCount,
             int bidCount,

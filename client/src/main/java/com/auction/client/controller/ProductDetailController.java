@@ -302,8 +302,6 @@ public class ProductDetailController {
                     "Item Detail:\n" +
                             "- Category: " + safeText(item.getCategory(), "General") + "\n" +
                             "- Description: " + safeText(item.getDescription(), "No description") + "\n" +
-                            "- SKU: " + safeText(item.getSku(), "N/A") + "\n" +
-                            "- Quantity: " + (item.getQuantity() == null ? "N/A" : item.getQuantity()) + "\n" +
                             "- Seller ID: " + safeText(item.getSellerId() == null ? null : item.getSellerId().toString(), "N/A") + "\n\n" +
                             auctionSpecs(auction)
             );

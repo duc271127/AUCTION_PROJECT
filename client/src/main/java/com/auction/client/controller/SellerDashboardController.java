@@ -136,8 +136,6 @@ public class SellerDashboardController {
         startingPriceColumn.setCellValueFactory(new PropertyValueFactory<>("startingPriceText"));
         reservePriceColumn.setCellValueFactory(new PropertyValueFactory<>("reservePriceText"));
         statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
-        quantityColumn.setCellValueFactory(new PropertyValueFactory<>("quantityText"));
-        skuColumn.setCellValueFactory(new PropertyValueFactory<>("sku"));
         startDateColumn.setCellValueFactory(new PropertyValueFactory<>("startDateText"));
         endDateColumn.setCellValueFactory(new PropertyValueFactory<>("endDateText"));
         deletableColumn.setCellValueFactory(new PropertyValueFactory<>("deletePermissionText"));
@@ -768,9 +766,6 @@ public class SellerDashboardController {
         Label price = new Label(formatMoneyValue(listing.getStartingPrice()));
         price.getStyleClass().add("seller-card-price");
 
-        Label quantity = new Label("Qty " + (listing.getQuantity() == null ? "0" : listing.getQuantity()));
-        quantity.getStyleClass().add("seller-card-meta");
-
         Button view = new Button("View");
         view.getStyleClass().add("seller-mini-button");
         view.setOnAction(event -> {
@@ -808,7 +803,7 @@ public class SellerDashboardController {
         HBox.setHgrow(edit, Priority.ALWAYS);
         HBox.setHgrow(delete, Priority.ALWAYS);
 
-        VBox details = new VBox(6, title, category, price, quantity, actions);
+        VBox details = new VBox(6, title, category, price, actions);
         details.getStyleClass().add("seller-card-body");
 
         VBox card = new VBox(imageLayer, details);

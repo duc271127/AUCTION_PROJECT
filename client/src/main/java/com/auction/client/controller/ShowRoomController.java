@@ -11,6 +11,7 @@ import com.auction.client.session.SessionManager;
 import com.auction.client.ui.AuctionCardData;
 import com.auction.client.ui.AuctionCardViewFactory;
 import com.auction.client.util.AuctionStateViewHelper;
+import com.auction.client.util.DateTimeDisplayHelper;
 import com.auction.client.util.MockData;
 import com.auction.client.util.SearchNavigationContext;
 import javafx.application.Platform;
@@ -93,7 +94,6 @@ public class ShowRoomController {
                         auctionApiService.searchAuctions(null, query, null, 0, 24, "startTime,asc").getItems();
                 if (responses != null) {
                     List<AuctionListResponse> sortedResponses = responses.stream()
-                            .filter(this::isVisibleToBidder)
                             .sorted(Comparator
                                     .comparingInt(this::auctionDisplayPriority)
                                     .thenComparing(AuctionListResponse::getStartTime, Comparator.nullsLast(String::compareTo))
@@ -144,7 +144,8 @@ public class ShowRoomController {
                 timeInfo,
                 status,
                 response.getCreatedAt(),
-                response.getEndTime()
+                response.getEndTime(),
+                Math.max(response.getFavoriteCount(), 0)
         );
     }
 
@@ -157,10 +158,7 @@ public class ShowRoomController {
     }
 
     private String formatEndTime(String endTime) {
-        if (endTime == null || endTime.isBlank()) {
-            return "No end time";
-        }
-        return endTime.length() >= 16 ? endTime.substring(0, 16).replace("T", " ") : endTime;
+        return DateTimeDisplayHelper.formatDateTime(endTime, "No end time");
     }
 
     @FXML
@@ -274,7 +272,7 @@ public class ShowRoomController {
                 item.getImagePath(),
                 item.getStatus(),
                 "View Details",
-                "0"
+                String.valueOf(Math.max(item.getFavoriteCount(), 0))
         );
 
         return cardFactory.createCard(
@@ -371,7 +369,9 @@ public class ShowRoomController {
 
     private List<AuctionItem> getVisibleItems() {
         List<AuctionItem> visibleItems = new ArrayList<>(items);
-        visibleItems.removeIf(this::isDeletedAuction);
+        if (selectedFilter != ForYouFilter.MY_WISHLIST) {
+            visibleItems.removeIf(this::isDeletedAuction);
+        }
 
         switch (selectedFilter) {
             case ENDING_SOON -> {
@@ -382,7 +382,10 @@ public class ShowRoomController {
                 visibleItems.removeIf(item -> !hasNewListingStatus(item));
                 visibleItems.sort(Comparator.comparing(this::parseAuctionCreatedInstant, Comparator.nullsLast(Comparator.reverseOrder())));
             }
-            case MY_WISHLIST -> visibleItems.removeIf(item -> !favoriteAuctionIds.contains(item.getId()));
+            case MY_WISHLIST -> {
+                visibleItems.removeIf(item -> !favoriteAuctionIds.contains(item.getId()));
+                visibleItems.sort(Comparator.comparingLong(AuctionItem::getFavoriteCount).reversed());
+            }
             case ALL -> {
             }
         }

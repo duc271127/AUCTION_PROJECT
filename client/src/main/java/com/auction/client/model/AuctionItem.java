@@ -9,9 +9,10 @@ public class AuctionItem {
     private String status;
     private String createdAt;
     private String endTime;
+    private long favoriteCount;
 
     public AuctionItem(String id, String name, String imagePath, String currentBid, String timeLeft, String status) {
-        this(id, name, imagePath, currentBid, timeLeft, status, null, null);
+        this(id, name, imagePath, currentBid, timeLeft, status, null, null, 0);
     }
 
     public AuctionItem(String id,
@@ -22,6 +23,18 @@ public class AuctionItem {
                        String status,
                        String createdAt,
                        String endTime) {
+        this(id, name, imagePath, currentBid, timeLeft, status, createdAt, endTime, 0);
+    }
+
+    public AuctionItem(String id,
+                       String name,
+                       String imagePath,
+                       String currentBid,
+                       String timeLeft,
+                       String status,
+                       String createdAt,
+                       String endTime,
+                       long favoriteCount) {
         this.id = id;
         this.name = name;
         this.imagePath = imagePath;
@@ -30,6 +43,7 @@ public class AuctionItem {
         this.status = status;
         this.createdAt = createdAt;
         this.endTime = endTime;
+        this.favoriteCount = favoriteCount;
     }
 
     public String getId() {
@@ -62,5 +76,9 @@ public class AuctionItem {
 
     public String getEndTime() {
         return endTime;
+    }
+
+    public long getFavoriteCount() {
+        return favoriteCount;
     }
 }

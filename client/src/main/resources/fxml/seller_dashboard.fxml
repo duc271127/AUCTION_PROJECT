@@ -129,8 +129,6 @@
                                 <TableColumn fx:id="startingPriceColumn" prefWidth="120.0" text="Start Price" />
                                 <TableColumn fx:id="reservePriceColumn" prefWidth="120.0" text="Reserve" />
                                 <TableColumn fx:id="statusColumn" prefWidth="110.0" text="Status" />
-                                <TableColumn fx:id="quantityColumn" prefWidth="80.0" text="Qty" />
-                                <TableColumn fx:id="skuColumn" prefWidth="120.0" text="SKU" />
                                 <TableColumn fx:id="startDateColumn" prefWidth="150.0" text="Start Date" />
                                 <TableColumn fx:id="endDateColumn" prefWidth="150.0" text="End Date" />
                                 <TableColumn fx:id="deletableColumn" prefWidth="90.0" text="Delete" />

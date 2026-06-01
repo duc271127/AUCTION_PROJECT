@@ -125,20 +125,20 @@
                                 <HBox spacing="14.0">
                                     <VBox spacing="5.0" styleClass="trending-stat-card" HBox.hgrow="ALWAYS">
                                         <Label text="ACTIVE BIDS" styleClass="trending-stat-label"/>
-                                        <Label fx:id= "activeBidsLabel" text="1,247" styleClass="trending-stat-number"/>
-                                        <Label text="+23% from last hour" styleClass="trending-stat-positive"/>
+                                        <Label fx:id= "activeBidsLabel" text="0" styleClass="trending-stat-number"/>
+                                        <Label text="Live auctions with active bidding" styleClass="trending-stat-positive"/>
                                     </VBox>
 
                                     <VBox spacing="5.0" styleClass="trending-stat-card" HBox.hgrow="ALWAYS">
                                         <Label text="NEW AUCTIONS" styleClass="trending-stat-label"/>
-                                        <Label fx:id="newAuctionsLabel" text="89" styleClass="trending-stat-number"/>
-                                        <Label text="+12% from yesterday" styleClass="trending-stat-positive"/>
+                                        <Label fx:id="newAuctionsLabel" text="0" styleClass="trending-stat-number"/>
+                                        <Label text="Trending results currently loaded" styleClass="trending-stat-positive"/>
                                     </VBox>
 
                                     <VBox spacing="5.0" styleClass="trending-stat-card" HBox.hgrow="ALWAYS">
                                         <Label text="TOTAL BIDS PLACED" styleClass="trending-stat-label"/>
-                                        <Label fx:id="totalBidsPlacedLabel" text="5.3K" styleClass="trending-stat-number"/>
-                                        <Label text="+34% from last day" styleClass="trending-stat-positive"/>
+                                        <Label fx:id="totalBidsPlacedLabel" text="0" styleClass="trending-stat-number"/>
+                                        <Label text="Sum of bids across loaded results" styleClass="trending-stat-positive"/>
                                     </VBox>
                                 </HBox>
                             </VBox>

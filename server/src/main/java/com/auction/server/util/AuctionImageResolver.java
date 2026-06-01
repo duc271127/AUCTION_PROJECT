@@ -2,6 +2,7 @@ package com.auction.server.util;
 
 import com.auction.server.entity.Auction;
 import com.auction.server.entity.Item;
+import jakarta.persistence.Persistence;
 
 public final class AuctionImageResolver {
 
@@ -16,6 +17,10 @@ public final class AuctionImageResolver {
         String directImage = normalize(auction.getImageUrl());
         if (directImage != null) {
             return directImage;
+        }
+
+        if (!Persistence.getPersistenceUtil().isLoaded(auction, "item")) {
+            return null;
         }
 
         Item item = auction.getItem();

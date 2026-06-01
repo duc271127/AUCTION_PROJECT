@@ -11,6 +11,7 @@ import com.auction.client.session.SessionManager;
 import com.auction.client.ui.AuctionCardData;
 import com.auction.client.ui.AuctionCardViewFactory;
 import com.auction.client.util.AuctionStateViewHelper;
+import com.auction.client.util.DateTimeDisplayHelper;
 import com.auction.client.util.MockData;
 import com.auction.client.service.ItemApiService;
 import javafx.fxml.FXML;
@@ -38,7 +39,6 @@ public class CategoryController {
     @FXML private Label activeBiddersLabel;
     @FXML private Label averagePriceLabel;
     @FXML private TilePane categoryGrid;
-    @FXML private Button saveCategoryButton;
     @FXML private Button loadMoreButton;
     @FXML private TextField searchField;
 
@@ -51,7 +51,6 @@ public class CategoryController {
 
     private int currentPage = 0;
     private static final int PAGE_SIZE = 12;
-    private boolean categorySaved = false;
     private String currentQuery = null;
     private final Set<String> favoriteAuctionIds = new HashSet<>();
 
@@ -267,18 +266,16 @@ public class CategoryController {
                         auction.getState(),
                         auction.getStartTime(),
                         auction.getEndTime()
-                )
+                ),
+                null,
+                auction.getEndTime(),
+                Math.max(auction.getFavoriteCount(), 0)
         ));
         SceneManager.goToProductDetail();
     }
 
     private String formatEnding(AuctionListResponse auction) {
-        if (auction.getEndTime() == null || auction.getEndTime().isBlank()) {
-            return "Ending date unavailable";
-        }
-        return auction.getEndTime().length() >= 16
-                ? "Ends " + auction.getEndTime().substring(0, 16).replace("T", " ")
-                : "Ends " + auction.getEndTime();
+        return "Ends " + DateTimeDisplayHelper.formatDateTime(auction.getEndTime(), "Ending date unavailable");
     }
 
     private String descriptionForCategory(String category) {
@@ -312,22 +309,6 @@ public class CategoryController {
                 || "INCOMING".equals(normalized)
                 || "PENDING".equals(normalized)
                 || "DRAFT".equals(normalized);
-    }
-
-    @FXML
-    private void handleBrowseAuctions() {
-        if (categoryGrid != null) {
-            categoryGrid.requestFocus();
-        }
-    }
-
-    @FXML
-    private void handleSaveCategory() {
-        categorySaved = !categorySaved;
-
-        if (saveCategoryButton != null) {
-            saveCategoryButton.setText(categorySaved ? "Saved Category" : "Save Category");
-        }
     }
 
     @FXML

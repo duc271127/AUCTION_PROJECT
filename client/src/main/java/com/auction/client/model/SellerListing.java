@@ -1,4 +1,5 @@
 package com.auction.client.model;
+import com.auction.client.util.DateTimeDisplayHelper;
 import java.util.UUID;
 import java.util.List;
 import java.util.Locale;
@@ -202,12 +203,6 @@ public class SellerListing {
     }
 
     private String formatDate(String value) {
-        if (value == null || value.isBlank()) {
-            return "-";
-        }
-
-        return value.length() >= 16
-                ? value.substring(0, 16).replace("T", " ")
-                : value;
+        return DateTimeDisplayHelper.formatDateTime(value, "-");
     }
 }

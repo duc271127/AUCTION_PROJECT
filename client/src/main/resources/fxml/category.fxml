@@ -113,24 +113,7 @@
                                                text="Explore exceptional artworks and collectibles from active auctions."
                                                wrapText="true"
                                                styleClass="category-description"/>
-
-                                        <HBox spacing="10.0">
-                                            <Button text="Browse Auctions"
-                                                    focusTraversable="false"
-                                                    styleClass="primary-button"
-                                                    onAction="#handleBrowseAuctions"/>
-
-                                            <Button fx:id="saveCategoryButton"
-                                                    text="Save Category"
-                                                    focusTraversable="false"
-                                                    styleClass="secondary-button"
-                                                    onAction="#handleSaveCategory"/>
-                                        </HBox>
                                     </VBox>
-
-                                    <Region prefWidth="420.0"
-                                            prefHeight="18.0"
-                                            styleClass="category-banner-placeholder"/>
                                 </HBox>
 
                                 <HBox spacing="14.0">
