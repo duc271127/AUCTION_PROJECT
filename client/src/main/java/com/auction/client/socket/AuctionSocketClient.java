@@ -239,6 +239,9 @@ public class AuctionSocketClient {
             case "LEADER_CHANGED" ->
                     listener.onLeaderChanged(event);
 
+            case "FAVORITE_CHANGED" ->
+                    listener.onFavoriteChanged(event);
+
             case "AUCTION_EXTENDED" ->
                     listener.onAuctionExtended(event);
 

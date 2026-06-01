@@ -259,6 +259,7 @@ public class LiveBiddingController {
         switch (event.getType()) {
             case "BID_PLACED" -> handleBidPlacedEvent(event);
             case "LEADER_CHANGED" -> handleLeaderChangedEvent(event);
+            case "FAVORITE_CHANGED" -> handleFavoriteChangedEvent(event);
             case "AUCTION_EXTENDED" -> handleAuctionExtendedEvent(event);
             case "AUCTION_CLOSED", "AUCTION_FINISHED" -> handleAuctionFinishedEvent(event);
             case "ERROR" -> showError(event.getMessage() == null ? "Realtime error." : event.getMessage());
@@ -318,6 +319,17 @@ public class LiveBiddingController {
     private void handleAuctionExtendedEvent(AuctionEventDto event) {
         applyRealtimeCountdown(event);
         showInfo(event.getMessage() == null ? "Auction time extended." : event.getMessage());
+    }
+
+    private void handleFavoriteChangedEvent(AuctionEventDto event) {
+        long updatedFavoriteCount = event.getFavoriteCount() == null ? 0L : Math.max(0L, event.getFavoriteCount());
+        favoriteCount = (int) updatedFavoriteCount;
+
+        if (currentAuction != null) {
+            currentAuction.setFavoriteCount(updatedFavoriteCount);
+        }
+
+        renderFavoriteButton();
     }
 
     private void handleAuctionFinishedEvent(AuctionEventDto event) {
@@ -574,14 +586,14 @@ public class LiveBiddingController {
                 stage.initOwner(ownerWindow);
             }
 
-            Scene scene = createOverlayDialogScene(root, ownerWindow);
+            Scene scene = createPopupDialogScene(root);
 
             BidDialogController controller = loader.getController();
             controller.setDialogStage(stage);
             controller.setAuction(buildAuctionListSnapshot(), this::applyBidPlacementResponse);
 
             stage.setScene(scene);
-            positionOverlayDialogStage(stage, ownerWindow);
+            positionPopupDialogStage(stage, ownerWindow, root);
             stage.setResizable(false);
             stage.showAndWait();
         } catch (Exception e) {
@@ -921,17 +933,16 @@ public class LiveBiddingController {
 
     @FXML
     private void handleToggleFavorite() {
-        String auctionId = selectedItem == null ? null : selectedItem.getId();
+        String auctionId = resolveCurrentAuctionId();
         if (auctionId == null || auctionId.isBlank()) {
             showError("Auction is unavailable.");
             return;
         }
 
-        boolean previousSelected = favoriteSelected;
         boolean nextSelected = !favoriteSelected;
-        int stableCount = favoriteCount;
+        int nextCount = nextSelected ? favoriteCount + 1 : Math.max(0, favoriteCount - 1);
 
-        applyFavoriteSelection(auctionId, nextSelected, stableCount);
+        applyFavoriteSelection(auctionId, nextSelected, nextCount);
 
         try {
             if (nextSelected) {
@@ -940,9 +951,10 @@ public class LiveBiddingController {
                 favoriteApiService.removeFavorite(auctionId);
             }
             loadAuctionDetail(false);
+            loadFavoritesAsync();
         } catch (Exception e) {
-            applyFavoriteSelection(auctionId, !nextSelected, stableCount);
-            showError("Cannot update wishlist right now.");
+            applyFavoriteSelection(auctionId, !nextSelected, favoriteCountForRollback(nextSelected));
+            showError(extractFriendlyMessage(e.getMessage()));
         }
     }
 
@@ -1106,6 +1118,12 @@ public class LiveBiddingController {
         return scene;
     }
 
+    private Scene createPopupDialogScene(Parent dialogCard) {
+        Scene scene = new Scene(dialogCard, Color.TRANSPARENT);
+        addDialogStyles(scene);
+        return scene;
+    }
+
     private void positionOverlayDialogStage(Stage stage, Window ownerWindow) {
         if (ownerWindow == null) {
             return;
@@ -1113,6 +1131,30 @@ public class LiveBiddingController {
 
         stage.setX(ownerWindow.getX());
         stage.setY(ownerWindow.getY());
+    }
+
+    private void positionPopupDialogStage(Stage stage, Window ownerWindow, Parent dialogCard) {
+        if (ownerWindow == null) {
+            return;
+        }
+
+        double dialogWidth = 420;
+        double dialogHeight = 640;
+
+        if (dialogCard instanceof javafx.scene.layout.Region region) {
+            dialogWidth = region.prefWidth(-1);
+            dialogHeight = region.prefHeight(-1);
+        }
+
+        if (dialogWidth <= 0) {
+            dialogWidth = 420;
+        }
+        if (dialogHeight <= 0) {
+            dialogHeight = 640;
+        }
+
+        stage.setX(ownerWindow.getX() + (ownerWindow.getWidth() - dialogWidth) / 2);
+        stage.setY(ownerWindow.getY() + (ownerWindow.getHeight() - dialogHeight) / 2);
     }
 
     private void addStylesheet(Scene scene, String path) {
@@ -1174,6 +1216,10 @@ public class LiveBiddingController {
             return "No leader yet";
         }
         return leaderName;
+    }
+
+    private int favoriteCountForRollback(boolean selectedAfterToggle) {
+        return selectedAfterToggle ? Math.max(0, favoriteCount - 1) : favoriteCount + 1;
     }
 
     private void showEmptyState() {
@@ -1263,7 +1309,7 @@ public class LiveBiddingController {
                         }
                     }
                     WishlistStateStore.replaceAll(favoriteIds);
-                    String auctionId = selectedItem == null ? null : selectedItem.getId();
+                    String auctionId = resolveCurrentAuctionId();
                     if (auctionId != null) {
                         FavoriteUiStateStore.FavoriteState storedFavorite = FavoriteUiStateStore.get(auctionId);
                         favoriteSelected = storedFavorite != null
@@ -1306,6 +1352,13 @@ public class LiveBiddingController {
 
         updateWishlistButton();
         renderFavoriteButton();
+    }
+
+    private String resolveCurrentAuctionId() {
+        if (currentAuction != null && currentAuction.getId() != null) {
+            return currentAuction.getId().toString();
+        }
+        return selectedItem == null ? null : selectedItem.getId();
     }
 
     private void announceLeaderChange(String leaderName) {

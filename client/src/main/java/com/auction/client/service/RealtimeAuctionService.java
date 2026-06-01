@@ -27,6 +27,11 @@ public class RealtimeAuctionService {
             }
 
             @Override
+            public void onFavoriteChanged(AuctionEventDto event) {
+                notifyAuctionEvent(event);
+            }
+
+            @Override
             public void onAuctionExtended(AuctionEventDto event) {
                 notifyAuctionEvent(event);
             }

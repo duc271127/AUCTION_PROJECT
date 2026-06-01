@@ -14,6 +14,7 @@ public class AuctionEventDto {
     private UUID auctionId;
     private UUID bidderId;
     private Double currentPrice;
+    private Long favoriteCount;
 
     @JsonAlias({"currentLeader", "winner"})
     private String leaderName;
@@ -65,6 +66,14 @@ public class AuctionEventDto {
 
     public void setCurrentPrice(Double currentPrice) {
         this.currentPrice = currentPrice;
+    }
+
+    public Long getFavoriteCount() {
+        return favoriteCount;
+    }
+
+    public void setFavoriteCount(Long favoriteCount) {
+        this.favoriteCount = favoriteCount;
     }
 
     public String getLeaderName() {

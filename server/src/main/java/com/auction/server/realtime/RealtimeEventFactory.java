@@ -80,6 +80,33 @@ public final class RealtimeEventFactory {
         return event;
     }
 
+    public static RealtimeEvent favoriteChanged(UUID auctionId,
+                                                UUID leaderId,
+                                                String leaderName,
+                                                double currentPrice,
+                                                long favoriteCount,
+                                                String state,
+                                                long remainingSeconds,
+                                                Instant endTime,
+                                                String message) {
+        RealtimeEvent event = baseEvent(
+                RealtimeEventType.FAVORITE_CHANGED,
+                auctionId,
+                null,
+                null,
+                leaderId,
+                leaderName,
+                currentPrice,
+                state,
+                remainingSeconds,
+                endTime,
+                null
+        );
+        event.setFavoriteCount(favoriteCount);
+        event.setMessage(message);
+        return event;
+    }
+
     public static RealtimeEvent auctionClosed(UUID auctionId,
                                               UUID leaderId,
                                               String leaderName,

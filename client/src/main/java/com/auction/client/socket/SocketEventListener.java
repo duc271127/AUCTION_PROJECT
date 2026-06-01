@@ -7,6 +7,8 @@ public interface SocketEventListener {
 
     void onLeaderChanged(AuctionEventDto event);
 
+    void onFavoriteChanged(AuctionEventDto event);
+
     void onAuctionExtended(AuctionEventDto event);
 
     void onAuctionFinished(AuctionEventDto event);

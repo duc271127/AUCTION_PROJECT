@@ -16,6 +16,7 @@ public class RealtimeEvent {
     private UUID leaderId;
     private String leaderName;
     private Double currentPrice;
+    private Long favoriteCount;
     private String state;
     private Long remainingSeconds;
     private String message;
@@ -93,6 +94,14 @@ public class RealtimeEvent {
 
     public void setCurrentPrice(Double currentPrice) {
         this.currentPrice = currentPrice;
+    }
+
+    public Long getFavoriteCount() {
+        return favoriteCount;
+    }
+
+    public void setFavoriteCount(Long favoriteCount) {
+        this.favoriteCount = favoriteCount;
     }
 
     public String getState() {

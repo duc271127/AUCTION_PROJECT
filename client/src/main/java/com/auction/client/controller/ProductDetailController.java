@@ -589,14 +589,14 @@ public class ProductDetailController {
                 stage.initOwner(ownerWindow);
             }
 
-            Scene scene = createOverlayDialogScene(root, ownerWindow);
+            Scene scene = createPopupDialogScene(root);
 
             BidDialogController controller = loader.getController();
             controller.setDialogStage(stage);
             controller.setAuction(currentAuction, this::applyBidPlacementToDetail);
 
             stage.setScene(scene);
-            positionOverlayDialogStage(stage, ownerWindow);
+            positionPopupDialogStage(stage, ownerWindow, root);
             stage.setResizable(false);
             stage.showAndWait();
 
@@ -834,11 +834,12 @@ public class ProductDetailController {
             return;
         }
 
-        boolean previousSelected = favoriteSelected;
         boolean nextSelected = !favoriteSelected;
-        int stableCount = favoriteCount;
+        int nextCount = nextSelected
+                ? favoriteCount + 1
+                : Math.max(0, favoriteCount - 1);
 
-        applyFavoriteSelection(auctionId, nextSelected, stableCount);
+        applyFavoriteSelection(auctionId, nextSelected, nextCount);
 
         try {
             if (nextSelected) {
@@ -848,8 +849,8 @@ public class ProductDetailController {
             }
             refreshAuctionDetailSilently();
         } catch (Exception e) {
-            applyFavoriteSelection(auctionId, !nextSelected, stableCount);
-            showBidMessage("Cannot update wishlist right now.");
+            applyFavoriteSelection(auctionId, !nextSelected, favoriteCountForRollback(nextSelected));
+            showBidMessage(extractFriendlyMessage(e.getMessage()));
         }
     }
     @FXML
@@ -1079,6 +1080,10 @@ public class ProductDetailController {
         return "USD --";
     }
 
+    private int favoriteCountForRollback(boolean selectedAfterToggle) {
+        return selectedAfterToggle ? Math.max(0, favoriteCount - 1) : favoriteCount + 1;
+    }
+
     private String firstNonBlank(String... values) {
         if (values == null) {
             return "";
@@ -1226,6 +1231,12 @@ public class ProductDetailController {
         return scene;
     }
 
+    private Scene createPopupDialogScene(Parent dialogCard) {
+        Scene scene = new Scene(dialogCard, Color.TRANSPARENT);
+        addDialogStyles(scene);
+        return scene;
+    }
+
     private void positionOverlayDialogStage(Stage stage, Window ownerWindow) {
         if (ownerWindow == null) {
             return;
@@ -1233,6 +1244,30 @@ public class ProductDetailController {
 
         stage.setX(ownerWindow.getX());
         stage.setY(ownerWindow.getY());
+    }
+
+    private void positionPopupDialogStage(Stage stage, Window ownerWindow, Parent dialogCard) {
+        if (ownerWindow == null) {
+            return;
+        }
+
+        double dialogWidth = 420;
+        double dialogHeight = 640;
+
+        if (dialogCard instanceof javafx.scene.layout.Region region) {
+            dialogWidth = region.prefWidth(-1);
+            dialogHeight = region.prefHeight(-1);
+        }
+
+        if (dialogWidth <= 0) {
+            dialogWidth = 420;
+        }
+        if (dialogHeight <= 0) {
+            dialogHeight = 640;
+        }
+
+        stage.setX(ownerWindow.getX() + (ownerWindow.getWidth() - dialogWidth) / 2);
+        stage.setY(ownerWindow.getY() + (ownerWindow.getHeight() - dialogHeight) / 2);
     }
 
     private void addStylesheet(Scene scene, String path) {
