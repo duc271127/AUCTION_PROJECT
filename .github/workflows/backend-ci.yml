@@ -15,9 +15,8 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Run Maven tests
+      - name: Run Maven verify
         run: |
           cd backend
-          mvn -B clean test \
-            -DskipTests=false \
+          mvn -B clean verify \
             -Dspring.profiles.active=test

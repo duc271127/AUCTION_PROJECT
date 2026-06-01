@@ -81,6 +81,14 @@ jobs:
           @echo off
           set SCRIPT_DIR=%~dp0
           java -jar "%SCRIPT_DIR%backend.jar" --spring.config.location="%SCRIPT_DIR%application.properties"
+          set EXIT_CODE=%ERRORLEVEL%
+          if not "%EXIT_CODE%"=="0" (
+            echo.
+            echo Backend exited with code %EXIT_CODE%.
+            echo Check that Java 21 is installed and available in PATH.
+            pause
+          )
+          exit /b %EXIT_CODE%
           '@ | Set-Content "$dist/run-backend.cmd"
 
       - name: Upload backend bundle
@@ -177,6 +185,17 @@ jobs:
           @echo off
           set SCRIPT_DIR=%~dp0
           java -cp "%SCRIPT_DIR%;%SCRIPT_DIR%app\auction-ui.jar;%SCRIPT_DIR%lib\*" com.auction.client.MainApp
+          set EXIT_CODE=%ERRORLEVEL%
+          if not "%EXIT_CODE%"=="0" (
+            echo.
+            echo UI exited with code %EXIT_CODE%.
+            echo Common causes:
+            echo 1. Java 21 is not installed
+            echo 2. Java is not in PATH
+            echo 3. The zip was not fully extracted before running
+            pause
+          )
+          exit /b %EXIT_CODE%
           '@ | Set-Content "$dist/run-ui.cmd"
 
       - name: Upload UI bundle

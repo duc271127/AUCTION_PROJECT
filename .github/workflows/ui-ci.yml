@@ -25,7 +25,7 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Build UI
+      - name: Verify UI with Maven
         run: |
           if [ -f "ui/pom.xml" ]; then
             cd ui
@@ -37,4 +37,4 @@ jobs:
             exit 1
           fi
 
-          mvn -B clean package
+          mvn -B clean verify
