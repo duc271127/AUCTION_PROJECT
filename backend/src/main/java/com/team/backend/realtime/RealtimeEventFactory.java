@@ -22,7 +22,19 @@ public final class RealtimeEventFactory {
                                           Instant endTime,
                                           BidHistoryDto latestBid,
                                           String message) {
-        RealtimeEvent event = baseEvent(RealtimeEventType.BID_PLACED, auctionId, bidderId, bidderName, leaderId, leaderName, currentPrice, state, remainingSeconds, endTime, latestBid);
+        RealtimeEvent event = baseEvent(
+                RealtimeEventType.BID_PLACED,
+                auctionId,
+                bidderId,
+                bidderName,
+                leaderId,
+                leaderName,
+                currentPrice,
+                state,
+                remainingSeconds,
+                endTime,
+                latestBid
+        );
         event.setBidId(bidId);
         event.setMessage(message);
         return event;
@@ -38,7 +50,19 @@ public final class RealtimeEventFactory {
                                               long remainingSeconds,
                                               Instant endTime,
                                               String message) {
-        RealtimeEvent event = baseEvent(RealtimeEventType.LEADER_CHANGED, auctionId, bidderId, bidderName, leaderId, leaderName, currentPrice, state, remainingSeconds, endTime, null);
+        RealtimeEvent event = baseEvent(
+                RealtimeEventType.LEADER_CHANGED,
+                auctionId,
+                bidderId,
+                bidderName,
+                leaderId,
+                leaderName,
+                currentPrice,
+                state,
+                remainingSeconds,
+                endTime,
+                null
+        );
         event.setMessage(message);
         return event;
     }
