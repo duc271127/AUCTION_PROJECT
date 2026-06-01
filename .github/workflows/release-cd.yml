@@ -155,8 +155,12 @@ jobs:
           - Windows: run-ui.cmd
           - Linux/macOS: ./run-ui.sh
 
-          Configuration
-          - Edit auction-client.properties in this folder
+          Default server
+          - This bundle keeps the repository default backend endpoint from auction-client.properties
+          - If your team is still using the current shared server, you can run it as-is
+
+          Configuration override
+          - Edit auction-client.properties in this folder if the backend URL changes
           - Or override with environment variables:
             AUCTION_API_BASE_URL
             AUCTION_WS_URL
