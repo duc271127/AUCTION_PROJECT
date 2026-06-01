@@ -380,7 +380,16 @@ public class ShowRoomController {
             } else {
                 favoriteApiService.removeFavorite(item.getId());
             }
+            reloadCatalogAsync();
+            return;
         } catch (Exception ignored) {
+            if (selected) {
+                favoriteAuctionIds.remove(item.getId());
+                WishlistStateStore.remove(item.getId());
+            } else {
+                favoriteAuctionIds.add(item.getId());
+                WishlistStateStore.add(item.getId());
+            }
         }
 
         updateWishlistUi();

@@ -258,7 +258,18 @@ public class CategoryController {
             } else {
                 favoriteApiService.removeFavorite(auctionId);
             }
+            loadFavorites();
+            loadCategoryAuctions();
+            return;
         } catch (Exception ignored) {
+            if (selected) {
+                favoriteAuctionIds.remove(auctionId);
+                WishlistStateStore.remove(auctionId);
+            } else {
+                favoriteAuctionIds.add(auctionId);
+                WishlistStateStore.add(auctionId);
+            }
+            updateWishlistButton();
         }
     }
 

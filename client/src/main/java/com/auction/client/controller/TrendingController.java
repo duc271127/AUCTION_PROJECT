@@ -260,7 +260,18 @@ public class TrendingController {
             } else {
                 favoriteApiService.removeFavorite(item.id());
             }
+            loadFavorites();
+            loadTrendingAuctions(true);
+            return;
         } catch (Exception ignored) {
+            if (selected) {
+                favoriteAuctionIds.remove(item.id());
+                WishlistStateStore.remove(item.id());
+            } else {
+                favoriteAuctionIds.add(item.id());
+                WishlistStateStore.add(item.id());
+            }
+            updateWishlistButton();
         }
     }
 

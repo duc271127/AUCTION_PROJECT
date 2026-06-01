@@ -52,7 +52,7 @@ public class AuctionCardViewFactory {
 
         FavoriteUiStateStore.FavoriteState favoriteState = FavoriteUiStateStore.get(data.id());
         boolean initialSelected = favoriteState != null ? favoriteState.selected() : favoriteSelected;
-        int[] favoriteCount = {favoriteState != null ? favoriteState.count() : parseFavoriteCount(data.favoriteCountText())};
+        int[] favoriteCount = {parseFavoriteCount(data.favoriteCountText())};
         Button favoriteButton = new Button(buildFavoriteText(favoriteCount[0], initialSelected));
         favoriteButton.setFocusTraversable(false);
         favoriteButton.getStyleClass().add("market-card-favorite");
@@ -61,9 +61,6 @@ public class AuctionCardViewFactory {
         }
         favoriteButton.setOnAction(event -> {
             boolean next = !favoriteButton.getStyleClass().contains("market-card-favorite-active");
-            favoriteCount[0] = next
-                    ? favoriteCount[0] + 1
-                    : Math.max(0, favoriteCount[0] - 1);
             FavoriteUiStateStore.put(data.id(), next, favoriteCount[0]);
             favoriteButton.setText(buildFavoriteText(favoriteCount[0], next));
             favoriteButton.getStyleClass().remove("market-card-favorite-active");

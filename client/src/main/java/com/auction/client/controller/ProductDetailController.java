@@ -218,13 +218,13 @@ public class ProductDetailController {
 
         if (storedFavorite != null) {
             favoriteSelected = storedFavorite.selected();
-            favoriteCount = storedFavorite.count();
             favoriteDirty = true;
         } else if (WishlistStateStore.contains(auctionId)) {
             favoriteSelected = true;
-        } else if (!favoriteDirty) {
-            favoriteCount = (int) Math.max(response.getFavoriteCount(), 0);
+        } else {
+            favoriteSelected = false;
         }
+        favoriteCount = (int) Math.max(response.getFavoriteCount(), 0);
         renderFavoriteButton();
 
         double low = response.getCurrentPrice();
@@ -835,13 +835,10 @@ public class ProductDetailController {
         }
 
         boolean previousSelected = favoriteSelected;
-        int previousCount = favoriteCount;
         boolean nextSelected = !favoriteSelected;
-        int nextCount = nextSelected
-                ? favoriteCount + 1
-                : Math.max(0, favoriteCount - 1);
+        int stableCount = favoriteCount;
 
-        applyFavoriteSelection(auctionId, nextSelected, nextCount);
+        applyFavoriteSelection(auctionId, nextSelected, stableCount);
 
         try {
             if (nextSelected) {
@@ -849,8 +846,9 @@ public class ProductDetailController {
             } else {
                 favoriteApiService.removeFavorite(auctionId);
             }
+            refreshAuctionDetailSilently();
         } catch (Exception e) {
-            applyFavoriteSelection(auctionId, previousSelected, previousCount);
+            applyFavoriteSelection(auctionId, !nextSelected, stableCount);
             showBidMessage("Cannot update wishlist right now.");
         }
     }
@@ -1164,14 +1162,11 @@ public class ProductDetailController {
                     String currentAuctionId = resolveCurrentAuctionId();
                     if (!favoriteDirty && currentAuctionId != null) {
                         FavoriteUiStateStore.FavoriteState storedFavorite = FavoriteUiStateStore.get(currentAuctionId);
-                        if (storedFavorite != null) {
-                            favoriteSelected = storedFavorite.selected();
-                            favoriteCount = storedFavorite.count();
-                        } else {
-                            favoriteSelected = WishlistStateStore.contains(currentAuctionId);
-                            if (currentAuction != null) {
-                                favoriteCount = (int) Math.max(currentAuction.getFavoriteCount(), 0);
-                            }
+                        favoriteSelected = storedFavorite != null
+                                ? storedFavorite.selected()
+                                : WishlistStateStore.contains(currentAuctionId);
+                        if (currentAuction != null) {
+                            favoriteCount = (int) Math.max(currentAuction.getFavoriteCount(), 0);
                         }
                         renderFavoriteButton();
                     }

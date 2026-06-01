@@ -2,7 +2,6 @@ package com.auction.client.controller;
 
 import com.auction.client.dto.event.AuctionEventDto;
 import com.auction.client.dto.request.AutoBidRequest;
-import com.auction.client.dto.request.BidRequest;
 import com.auction.client.dto.response.AuctionDetailResponse;
 import com.auction.client.dto.response.BidPlacementResponse;
 import com.auction.client.dto.response.BidResponse;
@@ -545,6 +544,11 @@ public class LiveBiddingController {
 
     @FXML
     private void handlePlaceBid() {
+        handleOpenBidDialog();
+    }
+
+    @FXML
+    private void handleOpenBidDialog() {
         clearAlert();
 
         if (currentAuction == null) {
@@ -557,42 +561,32 @@ public class LiveBiddingController {
             return;
         }
 
-        String input = bidInputField.getText().trim();
-        if (input.isEmpty()) {
-            showError("Please enter a bid amount.");
-            return;
-        }
-
-        double newBid;
         try {
-            newBid = Double.parseDouble(input.replaceAll("[^0-9.]", ""));
-        } catch (NumberFormatException e) {
-            showError("Bid amount must be a valid number.");
-            return;
-        }
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/bid_dialog.fxml"));
+            Parent root = loader.load();
 
-        double minNextBid = currentAuction.getMinNextBid() > 0 ? currentAuction.getMinNextBid() : currentAuction.getCurrentPrice() + 1;
-        if (newBid < minNextBid) {
-            showError("Your bid must be at least " + formatMoney(minNextBid) + ".");
-            return;
-        }
+            Stage stage = new Stage();
+            stage.initModality(Modality.WINDOW_MODAL);
+            stage.initStyle(StageStyle.TRANSPARENT);
 
-        if (placeBidButton != null) {
-            placeBidButton.setDisable(true);
-        }
+            Window ownerWindow = resolveDialogOwnerWindow();
+            if (ownerWindow != null) {
+                stage.initOwner(ownerWindow);
+            }
 
-        CompletableFuture.supplyAsync(() -> auctionApiService.placeBid(selectedItem.getId(), new BidRequest(newBid)))
-                .thenAccept(response -> runOnUiThread(() -> applyBidPlacementResponse(response)))
-                .exceptionally(error -> {
-                    runOnUiThread(() -> {
-                        showError(extractFriendlyMessage(error.getMessage()));
-                        loadAuctionDetail(false);
-                        if (placeBidButton != null) {
-                            placeBidButton.setDisable(false);
-                        }
-                    });
-                    return null;
-                });
+            Scene scene = createOverlayDialogScene(root, ownerWindow);
+
+            BidDialogController controller = loader.getController();
+            controller.setDialogStage(stage);
+            controller.setAuction(buildAuctionListSnapshot(), this::applyBidPlacementResponse);
+
+            stage.setScene(scene);
+            positionOverlayDialogStage(stage, ownerWindow);
+            stage.setResizable(false);
+            stage.showAndWait();
+        } catch (Exception e) {
+            showError("Cannot open bid dialog: " + e.getMessage());
+        }
     }
 
     private void applyBidPlacementResponse(BidPlacementResponse response) {
@@ -934,11 +928,10 @@ public class LiveBiddingController {
         }
 
         boolean previousSelected = favoriteSelected;
-        int previousCount = favoriteCount;
         boolean nextSelected = !favoriteSelected;
-        int nextCount = nextSelected ? favoriteCount + 1 : Math.max(0, favoriteCount - 1);
+        int stableCount = favoriteCount;
 
-        applyFavoriteSelection(auctionId, nextSelected, nextCount);
+        applyFavoriteSelection(auctionId, nextSelected, stableCount);
 
         try {
             if (nextSelected) {
@@ -946,8 +939,9 @@ public class LiveBiddingController {
             } else {
                 favoriteApiService.removeFavorite(auctionId);
             }
+            loadAuctionDetail(false);
         } catch (Exception e) {
-            applyFavoriteSelection(auctionId, previousSelected, previousCount);
+            applyFavoriteSelection(auctionId, !nextSelected, stableCount);
             showError("Cannot update wishlist right now.");
         }
     }
@@ -1272,14 +1266,11 @@ public class LiveBiddingController {
                     String auctionId = selectedItem == null ? null : selectedItem.getId();
                     if (auctionId != null) {
                         FavoriteUiStateStore.FavoriteState storedFavorite = FavoriteUiStateStore.get(auctionId);
-                        if (storedFavorite != null) {
-                            favoriteSelected = storedFavorite.selected();
-                            favoriteCount = storedFavorite.count();
-                        } else {
-                            favoriteSelected = WishlistStateStore.contains(auctionId);
-                            if (currentAuction != null) {
-                                favoriteCount = (int) Math.max(currentAuction.getFavoriteCount(), 0);
-                            }
+                        favoriteSelected = storedFavorite != null
+                                ? storedFavorite.selected()
+                                : WishlistStateStore.contains(auctionId);
+                        if (currentAuction != null) {
+                            favoriteCount = (int) Math.max(currentAuction.getFavoriteCount(), 0);
                         }
                         renderFavoriteButton();
                     }
@@ -1291,13 +1282,10 @@ public class LiveBiddingController {
     private void applyFavoriteState(AuctionDetailResponse auction) {
         String auctionId = auction == null || auction.getId() == null ? null : auction.getId().toString();
         FavoriteUiStateStore.FavoriteState storedFavorite = FavoriteUiStateStore.get(auctionId);
-        if (storedFavorite != null) {
-            favoriteSelected = storedFavorite.selected();
-            favoriteCount = storedFavorite.count();
-        } else {
-            favoriteSelected = WishlistStateStore.contains(auctionId);
-            favoriteCount = auction == null ? 0 : (int) Math.max(auction.getFavoriteCount(), 0);
-        }
+        favoriteSelected = storedFavorite != null
+                ? storedFavorite.selected()
+                : WishlistStateStore.contains(auctionId);
+        favoriteCount = auction == null ? 0 : (int) Math.max(auction.getFavoriteCount(), 0);
         renderFavoriteButton();
     }
 
