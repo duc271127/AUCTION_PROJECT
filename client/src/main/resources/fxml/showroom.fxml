@@ -140,12 +140,12 @@
 
                                 <VBox spacing="6.0" styleClass="for-you-stat-card" HBox.hgrow="ALWAYS">
                                     <Label text="Active Bids" styleClass="for-you-stat-label"/>
-                                    <Label text="5" styleClass="for-you-stat-number"/>
+                                    <Label fx:id="activeBidsCountLabel" text="0" styleClass="for-you-stat-number"/>
                                 </VBox>
 
                                 <VBox spacing="6.0" styleClass="for-you-stat-card" HBox.hgrow="ALWAYS">
                                     <Label text="Auto-Bids" styleClass="for-you-stat-label"/>
-                                    <Label text="3" styleClass="for-you-stat-number"/>
+                                    <Label fx:id="autoBidsCountLabel" text="0" styleClass="for-you-stat-number"/>
                                 </VBox>
                             </HBox>
 

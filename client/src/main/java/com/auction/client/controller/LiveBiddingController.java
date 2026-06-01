@@ -274,13 +274,14 @@ public class LiveBiddingController {
             return;
         }
 
-        if (currentAuction != null) {
-            currentAuction.setCurrentPrice(event.getCurrentPrice());
-        }
-
         String bidderName = event.getLeaderName();
         if (bidderName == null || bidderName.isBlank()) {
             bidderName = "Other bidder";
+        }
+
+        if (currentAuction != null) {
+            currentAuction.setCurrentPrice(event.getCurrentPrice());
+            currentAuction.setLeaderName(bidderName);
         }
 
         currentBidLabel.setText(formatMoney(event.getCurrentPrice()));
@@ -301,11 +302,11 @@ public class LiveBiddingController {
             return;
         }
 
+        String leaderName = safeLeaderName(event.getLeaderName());
         if (currentAuction != null) {
             currentAuction.setCurrentPrice(event.getCurrentPrice());
+            currentAuction.setLeaderName(leaderName);
         }
-
-        String leaderName = safeLeaderName(event.getLeaderName());
         currentBidLabel.setText(formatMoney(event.getCurrentPrice()));
         leaderLabel.setText("Leader: " + leaderName);
         announceLeaderChange(leaderName);
@@ -932,34 +933,21 @@ public class LiveBiddingController {
             return;
         }
 
-        favoriteSelected = !favoriteSelected;
-        favoriteCount = favoriteSelected ? favoriteCount + 1 : Math.max(0, favoriteCount - 1);
-        FavoriteUiStateStore.put(auctionId, favoriteSelected, favoriteCount);
-        if (favoriteSelected) {
-            WishlistStateStore.add(auctionId);
-        } else {
-            WishlistStateStore.remove(auctionId);
-        }
-        updateWishlistButton();
-        renderFavoriteButton();
+        boolean previousSelected = favoriteSelected;
+        int previousCount = favoriteCount;
+        boolean nextSelected = !favoriteSelected;
+        int nextCount = nextSelected ? favoriteCount + 1 : Math.max(0, favoriteCount - 1);
+
+        applyFavoriteSelection(auctionId, nextSelected, nextCount);
 
         try {
-            if (favoriteSelected) {
+            if (nextSelected) {
                 favoriteApiService.addFavorite(auctionId);
             } else {
                 favoriteApiService.removeFavorite(auctionId);
             }
         } catch (Exception e) {
-            favoriteSelected = !favoriteSelected;
-            favoriteCount = favoriteSelected ? favoriteCount + 1 : Math.max(0, favoriteCount - 1);
-            FavoriteUiStateStore.put(auctionId, favoriteSelected, favoriteCount);
-            if (favoriteSelected) {
-                WishlistStateStore.add(auctionId);
-            } else {
-                WishlistStateStore.remove(auctionId);
-            }
-            updateWishlistButton();
-            renderFavoriteButton();
+            applyFavoriteSelection(auctionId, previousSelected, previousCount);
             showError("Cannot update wishlist right now.");
         }
     }
@@ -1283,7 +1271,16 @@ public class LiveBiddingController {
                     WishlistStateStore.replaceAll(favoriteIds);
                     String auctionId = selectedItem == null ? null : selectedItem.getId();
                     if (auctionId != null) {
-                        favoriteSelected = WishlistStateStore.contains(auctionId);
+                        FavoriteUiStateStore.FavoriteState storedFavorite = FavoriteUiStateStore.get(auctionId);
+                        if (storedFavorite != null) {
+                            favoriteSelected = storedFavorite.selected();
+                            favoriteCount = storedFavorite.count();
+                        } else {
+                            favoriteSelected = WishlistStateStore.contains(auctionId);
+                            if (currentAuction != null) {
+                                favoriteCount = (int) Math.max(currentAuction.getFavoriteCount(), 0);
+                            }
+                        }
                         renderFavoriteButton();
                     }
                     updateWishlistButton();
@@ -1301,6 +1298,25 @@ public class LiveBiddingController {
             favoriteSelected = WishlistStateStore.contains(auctionId);
             favoriteCount = auction == null ? 0 : (int) Math.max(auction.getFavoriteCount(), 0);
         }
+        renderFavoriteButton();
+    }
+
+    private void applyFavoriteSelection(String auctionId, boolean selected, int count) {
+        favoriteSelected = selected;
+        favoriteCount = Math.max(0, count);
+        FavoriteUiStateStore.put(auctionId, favoriteSelected, favoriteCount);
+
+        if (currentAuction != null) {
+            currentAuction.setFavoriteCount(favoriteCount);
+        }
+
+        if (favoriteSelected) {
+            WishlistStateStore.add(auctionId);
+        } else {
+            WishlistStateStore.remove(auctionId);
+        }
+
+        updateWishlistButton();
         renderFavoriteButton();
     }
 

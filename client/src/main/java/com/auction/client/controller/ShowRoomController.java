@@ -2,6 +2,7 @@ package com.auction.client.controller;
 
 import com.auction.client.dto.response.AuctionDetailResponse;
 import com.auction.client.dto.response.AuctionListResponse;
+import com.auction.client.dto.response.AutoBidResponse;
 import com.auction.client.model.AuctionItem;
 import com.auction.client.navigation.SceneManager;
 import com.auction.client.service.AuctionApiService;
@@ -34,6 +35,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 public class ShowRoomController {
@@ -41,6 +43,8 @@ public class ShowRoomController {
     @FXML private Label usernameLabel;
     @FXML private Button wishlistButton;
     @FXML private Label savedAuctionsCountLabel;
+    @FXML private Label activeBidsCountLabel;
+    @FXML private Label autoBidsCountLabel;
     @FXML private TilePane auctionGrid;
     @FXML private Button allFilterButton;
     @FXML private Button endingSoonFilterButton;
@@ -107,7 +111,21 @@ public class ShowRoomController {
             } catch (Exception ignored) {
             }
 
-            return new CatalogSnapshot(favoriteIds, loadedItems);
+            int activeBidCount = 0;
+            try {
+                List<AuctionListResponse> activeBidResponses =
+                        auctionApiService.searchAuctions(null, null, null, 0, 100, "endTime,asc").getItems();
+                activeBidCount = countLeadingActiveAuctions(activeBidResponses);
+            } catch (Exception ignored) {
+            }
+
+            int autoBidCount = 0;
+            try {
+                autoBidCount = countActiveAutoBids(auctionApiService.listMyAutoBids());
+            } catch (Exception ignored) {
+            }
+
+            return new CatalogSnapshot(favoriteIds, loadedItems, activeBidCount, autoBidCount);
         }).thenAccept(snapshot -> Platform.runLater(() -> {
             favoriteAuctionIds.clear();
             favoriteAuctionIds.addAll(snapshot.favoriteIds());
@@ -116,10 +134,14 @@ public class ShowRoomController {
             items.addAll(snapshot.items());
             renderAuctionGrid();
             updateWishlistUi();
+            updateStats(snapshot.activeBidCount(), snapshot.autoBidCount());
         }));
     }
 
-    private record CatalogSnapshot(Set<String> favoriteIds, List<AuctionItem> items) {
+    private record CatalogSnapshot(Set<String> favoriteIds,
+                                   List<AuctionItem> items,
+                                   int activeBidCount,
+                                   int autoBidCount) {
     }
 
     private AuctionItem mapToAuctionItem(AuctionListResponse response, int index) {
@@ -516,6 +538,56 @@ public class ShowRoomController {
         if (savedAuctionsCountLabel != null) {
             savedAuctionsCountLabel.setText(String.valueOf(count));
         }
+    }
+
+    private void updateStats(int activeBidCount, int autoBidCount) {
+        if (activeBidsCountLabel != null) {
+            activeBidsCountLabel.setText(String.valueOf(Math.max(0, activeBidCount)));
+        }
+
+        if (autoBidsCountLabel != null) {
+            autoBidsCountLabel.setText(String.valueOf(Math.max(0, autoBidCount)));
+        }
+    }
+
+    private int countLeadingActiveAuctions(List<AuctionListResponse> responses) {
+        UUID currentUserId = SessionManager.getUserId();
+        if (currentUserId == null || responses == null || responses.isEmpty()) {
+            return 0;
+        }
+
+        int count = 0;
+        for (AuctionListResponse response : responses) {
+            if (response == null || response.getLeaderId() == null || !currentUserId.equals(response.getLeaderId())) {
+                continue;
+            }
+
+            String state = AuctionStateViewHelper.resolveDisplayState(
+                    response.getState(),
+                    response.getStartTime(),
+                    response.getEndTime()
+            );
+            String normalizedState = firstNonBlank(state, "").trim().toUpperCase(Locale.ROOT);
+            if ("ACTIVE".equals(normalizedState) || "OPEN".equals(normalizedState) || "LIVE".equals(normalizedState)) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private int countActiveAutoBids(List<AutoBidResponse> autoBids) {
+        if (autoBids == null || autoBids.isEmpty()) {
+            return 0;
+        }
+
+        int count = 0;
+        for (AutoBidResponse autoBid : autoBids) {
+            if (autoBid != null && autoBid.isActive()) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private String firstNonBlank(String... values) {

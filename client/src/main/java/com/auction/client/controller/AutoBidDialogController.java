@@ -211,7 +211,14 @@ public class AutoBidDialogController {
         }
 
         double minimumBid = getMinimumBid();
-        double bidStep = getBidStep();
+        double bidStep;
+
+        try {
+            bidStep = parseBidStepForSubmit();
+        } catch (NumberFormatException e) {
+            showError("Bid step must be a valid number.");
+            return;
+        }
 
         if (maxAmount < minimumBid) {
             showError("Your maximum bid must be at least " + formatMoney(minimumBid) + ".");
@@ -340,15 +347,28 @@ public class AutoBidDialogController {
 
     private double getBidStep() {
         if (bidStepInputField == null) {
-            return Math.max(minIncrement, 1.0);
+            return Math.max(Math.max(recommendedStep, minIncrement), 1.0);
         }
 
         try {
             double parsed = parseMoney(bidStepInputField.getText());
             return Math.max(parsed, minIncrement);
         } catch (Exception e) {
-            return Math.max(minIncrement, 1.0);
+            return Math.max(Math.max(recommendedStep, minIncrement), 1.0);
         }
+    }
+
+    private double parseBidStepForSubmit() {
+        if (bidStepInputField == null) {
+            return Math.max(Math.max(recommendedStep, minIncrement), 1.0);
+        }
+
+        String text = bidStepInputField.getText();
+        if (text == null || text.isBlank()) {
+            throw new NumberFormatException("empty amount");
+        }
+
+        return parseMoney(text);
     }
 
     private void applyServerStep(Double serverStep) {

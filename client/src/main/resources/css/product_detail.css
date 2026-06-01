@@ -235,6 +235,12 @@
     -fx-font-weight: 800;
 }
 
+.detail-leader-label {
+    -fx-text-fill: #334155;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+}
+
 .detail-status {
     -fx-text-fill: #4b5563;
     -fx-font-size: 12px;

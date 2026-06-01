@@ -167,6 +167,8 @@
 
                                                 <Label fx:id="currentBidLabel" styleClass="detail-current-price" text="USD 0" />
 
+                                                <Label fx:id="leaderNameLabel" styleClass="detail-leader-label" text="Leader: No leader yet" />
+
                                                 <Label fx:id="reservePriceLabel" styleClass="detail-status" text="Reserve price: -" />
 
                                                 <Label fx:id="statusLabel" styleClass="detail-status" text="No reserve price" />

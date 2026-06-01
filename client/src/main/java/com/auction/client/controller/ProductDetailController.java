@@ -57,6 +57,7 @@ public class ProductDetailController {
 
     @FXML private Label productNameLabel;
     @FXML private Label currentBidLabel;
+    @FXML private Label leaderNameLabel;
     @FXML private Label reservePriceLabel;
     @FXML private Label countdownLabel;
     @FXML private Label timeCardTitleLabel;
@@ -203,6 +204,7 @@ public class ProductDetailController {
 
         productNameLabel.setText(title);
         currentBidLabel.setText(formatMoney(response.getCurrentPrice()));
+        updateLeaderLabel(response.getLeaderName());
         updateReserveDisplay(response);
         updateAuctionTiming(response);
         updateWinnerNotice(response);
@@ -244,6 +246,7 @@ public class ProductDetailController {
     private void bindFallbackFromSelectedItem() {
         productNameLabel.setText(selectedItem.getName());
         currentBidLabel.setText(selectedItem.getCurrentBid());
+        updateLeaderLabel(null);
         countdownLabel.setText("Ends at: " + selectedItem.getTimeLeft());
         if (timeCardTitleLabel != null) {
             timeCardTitleLabel.setText("Time remaining");
@@ -578,21 +581,22 @@ public class ProductDetailController {
             Parent root = loader.load();
 
             Stage stage = new Stage();
-            stage.setTitle("Place bid");
             stage.initModality(Modality.WINDOW_MODAL);
+            stage.initStyle(StageStyle.TRANSPARENT);
 
-            if (productNameLabel != null && productNameLabel.getScene() != null) {
-                stage.initOwner(productNameLabel.getScene().getWindow());
+            Window ownerWindow = resolveDialogOwnerWindow();
+            if (ownerWindow != null) {
+                stage.initOwner(ownerWindow);
             }
 
-            Scene scene = new Scene(root);
-            addDialogStyles(scene);
+            Scene scene = createOverlayDialogScene(root, ownerWindow);
 
             BidDialogController controller = loader.getController();
             controller.setDialogStage(stage);
             controller.setAuction(currentAuction, this::applyBidPlacementToDetail);
 
             stage.setScene(scene);
+            positionOverlayDialogStage(stage, ownerWindow);
             stage.setResizable(false);
             stage.showAndWait();
 
@@ -657,6 +661,7 @@ public class ProductDetailController {
         }
 
         currentBidLabel.setText(formatMoney(response.getCurrentPrice()));
+        updateLeaderLabel(response.getLeaderName());
 
         if (currentAuction != null) {
             updateAuctionTiming(currentAuction);
@@ -829,39 +834,23 @@ public class ProductDetailController {
             return;
         }
 
-        favoriteSelected = !favoriteSelected;
-        favoriteDirty = true;
-        favoriteCount = favoriteSelected
+        boolean previousSelected = favoriteSelected;
+        int previousCount = favoriteCount;
+        boolean nextSelected = !favoriteSelected;
+        int nextCount = nextSelected
                 ? favoriteCount + 1
                 : Math.max(0, favoriteCount - 1);
-        FavoriteUiStateStore.put(auctionId, favoriteSelected, favoriteCount);
-        if (favoriteSelected) {
-            WishlistStateStore.add(auctionId);
-        } else {
-            WishlistStateStore.remove(auctionId);
-        }
-        updateWishlistButton();
-        renderFavoriteButton();
+
+        applyFavoriteSelection(auctionId, nextSelected, nextCount);
 
         try {
-            if (favoriteSelected) {
+            if (nextSelected) {
                 favoriteApiService.addFavorite(auctionId);
             } else {
                 favoriteApiService.removeFavorite(auctionId);
             }
         } catch (Exception e) {
-            favoriteSelected = !favoriteSelected;
-            favoriteCount = favoriteSelected
-                    ? favoriteCount + 1
-                    : Math.max(0, favoriteCount - 1);
-            FavoriteUiStateStore.put(auctionId, favoriteSelected, favoriteCount);
-            if (favoriteSelected) {
-                WishlistStateStore.add(auctionId);
-            } else {
-                WishlistStateStore.remove(auctionId);
-            }
-            updateWishlistButton();
-            renderFavoriteButton();
+            applyFavoriteSelection(auctionId, previousSelected, previousCount);
             showBidMessage("Cannot update wishlist right now.");
         }
     }
@@ -1122,6 +1111,34 @@ public class ProductDetailController {
         }
     }
 
+    private void applyFavoriteSelection(String auctionId, boolean selected, int count) {
+        favoriteSelected = selected;
+        favoriteDirty = true;
+        favoriteCount = Math.max(0, count);
+        FavoriteUiStateStore.put(auctionId, favoriteSelected, favoriteCount);
+
+        if (currentAuction != null) {
+            currentAuction.setFavoriteCount(favoriteCount);
+        }
+
+        if (favoriteSelected) {
+            WishlistStateStore.add(auctionId);
+        } else {
+            WishlistStateStore.remove(auctionId);
+        }
+
+        updateWishlistButton();
+        renderFavoriteButton();
+    }
+
+    private void updateLeaderLabel(String leaderName) {
+        if (leaderNameLabel == null) {
+            return;
+        }
+
+        leaderNameLabel.setText("Leader: " + safeText(leaderName, "No leader yet"));
+    }
+
     private void updateWishlistButton() {
         if (wishlistButton != null) {
             wishlistButton.setText("\u2661 " + WishlistStateStore.count());
@@ -1146,7 +1163,16 @@ public class ProductDetailController {
                     WishlistStateStore.replaceAll(favoriteIds);
                     String currentAuctionId = resolveCurrentAuctionId();
                     if (!favoriteDirty && currentAuctionId != null) {
-                        favoriteSelected = WishlistStateStore.contains(currentAuctionId);
+                        FavoriteUiStateStore.FavoriteState storedFavorite = FavoriteUiStateStore.get(currentAuctionId);
+                        if (storedFavorite != null) {
+                            favoriteSelected = storedFavorite.selected();
+                            favoriteCount = storedFavorite.count();
+                        } else {
+                            favoriteSelected = WishlistStateStore.contains(currentAuctionId);
+                            if (currentAuction != null) {
+                                favoriteCount = (int) Math.max(currentAuction.getFavoriteCount(), 0);
+                            }
+                        }
                         renderFavoriteButton();
                     }
                     updateWishlistButton();
