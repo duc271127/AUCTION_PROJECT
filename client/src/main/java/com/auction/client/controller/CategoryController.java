@@ -13,6 +13,7 @@ import com.auction.client.ui.AuctionCardViewFactory;
 import com.auction.client.util.AuctionStateViewHelper;
 import com.auction.client.util.DateTimeDisplayHelper;
 import com.auction.client.util.MockData;
+import com.auction.client.util.WishlistStateStore;
 import com.auction.client.service.ItemApiService;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
@@ -39,6 +40,7 @@ public class CategoryController {
     @FXML private Label activeBiddersLabel;
     @FXML private Label averagePriceLabel;
     @FXML private TilePane categoryGrid;
+    @FXML private Button wishlistButton;
     @FXML private Button loadMoreButton;
     @FXML private TextField searchField;
 
@@ -66,6 +68,7 @@ public class CategoryController {
         }
         categoryTitleLabel.setText(selectedCategory);
         categoryDescriptionLabel.setText(descriptionForCategory(selectedCategory));
+        updateWishlistButton();
         loadFavorites();
         loadCategoryAuctions();
     }
@@ -78,9 +81,11 @@ public class CategoryController {
                     favoriteAuctionIds.add(favorite.getId().toString());
                 }
             }
+            WishlistStateStore.replaceAll(favoriteAuctionIds);
         } catch (Exception ignored) {
             favoriteAuctionIds.clear();
         }
+        updateWishlistButton();
     }
 
     private void loadCategoryAuctions() {
@@ -236,9 +241,12 @@ public class CategoryController {
         String auctionId = getAuctionId(auction);
         if (selected) {
             favoriteAuctionIds.add(auctionId);
+            WishlistStateStore.add(auctionId);
         } else {
             favoriteAuctionIds.remove(auctionId);
+            WishlistStateStore.remove(auctionId);
         }
+        updateWishlistButton();
 
         if (auction.getId() == null) {
             return;
@@ -327,6 +335,12 @@ public class CategoryController {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private void updateWishlistButton() {
+        if (wishlistButton != null) {
+            wishlistButton.setText("\u2661 " + WishlistStateStore.count());
+        }
     }
 
     @FXML

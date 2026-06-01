@@ -206,7 +206,7 @@ public class AutoBidDialogController {
         try {
             maxAmount = parseMoney(maxBidInputField.getText());
         } catch (NumberFormatException e) {
-            showError("Maximum bid must be a valid number.");
+            showError("Only numbers are allowed.");
             return;
         }
 
@@ -486,10 +486,9 @@ public class AutoBidDialogController {
             throw new NumberFormatException("empty amount");
         }
 
-        String normalized = text.replaceAll("[^0-9.]", "");
-
-        if (normalized.isBlank()) {
-            throw new NumberFormatException("empty amount");
+        String normalized = text.trim();
+        if (!normalized.matches("\\d+(\\.\\d+)?")) {
+            throw new NumberFormatException("invalid amount");
         }
 
         return Double.parseDouble(normalized);

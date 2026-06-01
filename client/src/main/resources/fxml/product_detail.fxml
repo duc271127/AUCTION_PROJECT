@@ -47,7 +47,11 @@
 
                     <Button focusTraversable="false" onAction="#handleOpenWonAuctions" styleClass="market-wallet-button" text="Wins" />
 
-                    <Button focusTraversable="false" styleClass="market-icon-button" text="&#9825;" />
+                    <Button fx:id="wishlistButton"
+                            focusTraversable="false"
+                            onAction="#handleGoToForYou"
+                            styleClass="market-icon-button"
+                            text="&#9825; 0" />
 
                     <Label styleClass="market-user-icon" text="User" />
 

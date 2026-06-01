@@ -44,6 +44,11 @@
 
                             <Label fx:id="connectionStatusLabel" styleClass="connection-badge" />
 
+                            <Button fx:id="wishlistButton"
+                                    onAction="#handleOpenWishlist"
+                                    styleClass="market-icon-button"
+                                    text="&#9825; 0" />
+
                             <Button onAction="#handleLogout" styleClass="live-logout-button" text="Logout" />
                         </HBox>
 
@@ -56,6 +61,11 @@
                                 <Label fx:id="currentBidLabel" styleClass="current-bid-label" />
 
                                 <Label fx:id="leaderLabel" styleClass="leader-label" text="Leader: -" />
+
+                                <Button fx:id="liveFavoriteButton"
+                                        onAction="#handleToggleFavorite"
+                                        styleClass="market-icon-button"
+                                        text="&#9825; 0" />
 
                                 <Label fx:id="reservePriceLabel" styleClass="reserve-price-label" text="Reserve price: -" />
 

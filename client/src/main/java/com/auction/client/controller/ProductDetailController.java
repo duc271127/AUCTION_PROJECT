@@ -1,6 +1,7 @@
 package com.auction.client.controller;
 
 import com.auction.client.dto.response.AuctionListResponse;
+import com.auction.client.dto.response.AuctionDetailResponse;
 import com.auction.client.dto.response.PublicItemDetailResponse;
 import com.auction.client.model.AuctionItem;
 import com.auction.client.navigation.SceneManager;
@@ -11,10 +12,12 @@ import com.auction.client.util.MockData;
 import com.auction.client.util.AuctionStateViewHelper;
 import com.auction.client.util.FavoriteUiStateStore;
 import com.auction.client.util.SearchNavigationContext;
+import com.auction.client.util.WishlistStateStore;
 import com.auction.client.dto.response.WalletBalanceResponse;
 import com.auction.client.service.WalletApiService;
 import com.auction.client.dto.response.BidPlacementResponse;
 import com.auction.client.dto.response.AutoBidResponse;
+import com.auction.client.service.FavoriteApiService;
 
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -77,6 +80,7 @@ public class ProductDetailController {
 
     @FXML private TextField bidAmountField;
     @FXML private TextField searchField;
+    @FXML private Button wishlistButton;
     @FXML private Button detailFavoriteButton;
     @FXML private Button placeBidButton;
     @FXML private Button autoBidButton;
@@ -86,6 +90,7 @@ public class ProductDetailController {
     private final AuctionApiService auctionApiService = new AuctionApiService();
     private final ItemApiService itemApiService = new ItemApiService();
     private final WalletApiService walletApiService = new WalletApiService();
+    private final FavoriteApiService favoriteApiService = new FavoriteApiService();
 
     private AuctionItem selectedItem;
     private AuctionListResponse currentAuction;
@@ -114,8 +119,10 @@ public class ProductDetailController {
     public void initialize() {
         bindSessionUsername();
         loadWalletBalance();
+        updateWishlistButton();
         renderFavoriteButton();
         selectedItem = MockData.getSelectedItem();
+        loadFavoritesAsync();
 
         if (selectedItem == null) {
             showEmptyState();
@@ -211,6 +218,8 @@ public class ProductDetailController {
             favoriteSelected = storedFavorite.selected();
             favoriteCount = storedFavorite.count();
             favoriteDirty = true;
+        } else if (WishlistStateStore.contains(auctionId)) {
+            favoriteSelected = true;
         } else if (!favoriteDirty) {
             favoriteCount = (int) Math.max(response.getFavoriteCount(), 0);
         }
@@ -814,13 +823,47 @@ public class ProductDetailController {
 
     @FXML
     private void handleToggleFavorite() {
+        String auctionId = resolveCurrentAuctionId();
+        if (auctionId == null || auctionId.isBlank()) {
+            showBidMessage("Auction is unavailable.");
+            return;
+        }
+
         favoriteSelected = !favoriteSelected;
         favoriteDirty = true;
         favoriteCount = favoriteSelected
                 ? favoriteCount + 1
                 : Math.max(0, favoriteCount - 1);
-        FavoriteUiStateStore.put(resolveCurrentAuctionId(), favoriteSelected, favoriteCount);
+        FavoriteUiStateStore.put(auctionId, favoriteSelected, favoriteCount);
+        if (favoriteSelected) {
+            WishlistStateStore.add(auctionId);
+        } else {
+            WishlistStateStore.remove(auctionId);
+        }
+        updateWishlistButton();
         renderFavoriteButton();
+
+        try {
+            if (favoriteSelected) {
+                favoriteApiService.addFavorite(auctionId);
+            } else {
+                favoriteApiService.removeFavorite(auctionId);
+            }
+        } catch (Exception e) {
+            favoriteSelected = !favoriteSelected;
+            favoriteCount = favoriteSelected
+                    ? favoriteCount + 1
+                    : Math.max(0, favoriteCount - 1);
+            FavoriteUiStateStore.put(auctionId, favoriteSelected, favoriteCount);
+            if (favoriteSelected) {
+                WishlistStateStore.add(auctionId);
+            } else {
+                WishlistStateStore.remove(auctionId);
+            }
+            updateWishlistButton();
+            renderFavoriteButton();
+            showBidMessage("Cannot update wishlist right now.");
+        }
     }
     @FXML
     private void handlePlaceBid() {
@@ -1077,6 +1120,38 @@ public class ProductDetailController {
         if (favoriteSelected) {
             detailFavoriteButton.getStyleClass().add("detail-favorite-active");
         }
+    }
+
+    private void updateWishlistButton() {
+        if (wishlistButton != null) {
+            wishlistButton.setText("\u2661 " + WishlistStateStore.count());
+        }
+    }
+
+    private void loadFavoritesAsync() {
+        if (!SessionManager.hasRole("BIDDER")) {
+            return;
+        }
+
+        CompletableFuture.supplyAsync(favoriteApiService::getFavorites)
+                .thenAccept(favorites -> Platform.runLater(() -> {
+                    List<String> favoriteIds = new ArrayList<>();
+                    if (favorites != null) {
+                        for (AuctionDetailResponse favorite : favorites) {
+                            if (favorite != null && favorite.getId() != null) {
+                                favoriteIds.add(favorite.getId().toString());
+                            }
+                        }
+                    }
+                    WishlistStateStore.replaceAll(favoriteIds);
+                    String currentAuctionId = resolveCurrentAuctionId();
+                    if (!favoriteDirty && currentAuctionId != null) {
+                        favoriteSelected = WishlistStateStore.contains(currentAuctionId);
+                        renderFavoriteButton();
+                    }
+                    updateWishlistButton();
+                }))
+                .exceptionally(error -> null);
     }
 
     private String resolveCurrentAuctionId() {

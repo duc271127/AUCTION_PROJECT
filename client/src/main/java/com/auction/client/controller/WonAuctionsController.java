@@ -11,10 +11,13 @@ import com.auction.client.session.SessionManager;
 import com.auction.client.ui.AuctionCardData;
 import com.auction.client.ui.AuctionCardViewFactory;
 import com.auction.client.util.AuctionStateViewHelper;
+import com.auction.client.util.DateTimeDisplayHelper;
 import com.auction.client.util.MockData;
 import com.auction.client.util.SearchNavigationContext;
+import com.auction.client.util.WishlistStateStore;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
@@ -25,7 +28,6 @@ import javafx.scene.layout.VBox;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -41,6 +43,7 @@ public class WonAuctionsController {
     @FXML private Label totalSpentLabel;
     @FXML private Label latestWinLabel;
     @FXML private Label wonMessageLabel;
+    @FXML private Button wishlistButton;
     @FXML private VBox notificationsBox;
     @FXML private TilePane wonAuctionGrid;
     @FXML private TextField searchField;
@@ -61,6 +64,7 @@ public class WonAuctionsController {
         }
 
         usernameLabel.setText(firstNonBlank(SessionManager.getUsername(), "Bidder"));
+        updateWishlistButton();
         loadFavorites();
         loadWonAuctions();
     }
@@ -73,9 +77,11 @@ public class WonAuctionsController {
                     favoriteAuctionIds.add(favorite.getId().toString());
                 }
             }
+            WishlistStateStore.replaceAll(favoriteAuctionIds);
         } catch (Exception ignored) {
             favoriteAuctionIds.clear();
         }
+        updateWishlistButton();
     }
 
     private void loadWonAuctions() {
@@ -277,9 +283,12 @@ public class WonAuctionsController {
         String auctionId = auction.getId() == null ? "" : auction.getId().toString();
         if (selected) {
             favoriteAuctionIds.add(auctionId);
+            WishlistStateStore.add(auctionId);
         } else {
             favoriteAuctionIds.remove(auctionId);
+            WishlistStateStore.remove(auctionId);
         }
+        updateWishlistButton();
 
         if (auction.getId() == null) {
             return;
@@ -377,26 +386,12 @@ public class WonAuctionsController {
     }
 
     private String formatDateTime(String value) {
-        if (value == null || value.isBlank()) {
-            return "N/A";
-        }
+        return DateTimeDisplayHelper.formatDateTime(value, "N/A");
+    }
 
-        try {
-            return DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
-                    .withZone(ZoneId.systemDefault())
-                    .format(Instant.parse(value));
-        } catch (Exception ignored) {
-        }
-
-        try {
-            String normalized = value.trim().replace(" ", "T");
-            if (normalized.length() > 19) {
-                normalized = normalized.substring(0, 19);
-            }
-            return DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
-                    .format(LocalDateTime.parse(normalized));
-        } catch (Exception ignored) {
-            return value;
+    private void updateWishlistButton() {
+        if (wishlistButton != null) {
+            wishlistButton.setText("\u2661 " + WishlistStateStore.count());
         }
     }
 

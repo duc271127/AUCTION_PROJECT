@@ -547,7 +547,7 @@ public class ItemServiceImpl implements ItemService {
             return null;
         }
         // trả về yyyy-MM-dd (frontend-friendly)
-        return LocalDate.ofInstant(value, ZoneOffset.UTC).toString();
+        return iso.format(value);
     }
 
     private void validateQuantity(Integer quantity) {

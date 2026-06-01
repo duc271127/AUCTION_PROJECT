@@ -10,11 +10,14 @@ import com.auction.client.model.AuctionItem;
 import com.auction.client.model.BidRecord;
 import com.auction.client.navigation.SceneManager;
 import com.auction.client.service.AuctionApiService;
+import com.auction.client.service.FavoriteApiService;
 import com.auction.client.service.RealtimeAuctionService;
 import com.auction.client.session.SessionManager;
 import com.auction.client.util.MockData;
 import com.auction.client.dto.response.AuctionListResponse;
 import com.auction.client.dto.response.AutoBidResponse;
+import com.auction.client.util.FavoriteUiStateStore;
+import com.auction.client.util.WishlistStateStore;
 
 import javafx.animation.KeyFrame;
 import javafx.animation.ScaleTransition;
@@ -61,6 +64,8 @@ public class LiveBiddingController {
     @FXML private Label reserveStatusLabel;
     @FXML private Label countdownLabel;
     @FXML private Label outbidAlertLabel;
+    @FXML private Button wishlistButton;
+    @FXML private Button liveFavoriteButton;
     @FXML private Button placeBidButton;
     @FXML private Button autoBidButton;
     @FXML private TextField bidInputField;
@@ -77,6 +82,7 @@ public class LiveBiddingController {
     @FXML private Label toastPriceLabel;
 
     private final AuctionApiService auctionApiService = new AuctionApiService();
+    private final FavoriteApiService favoriteApiService = new FavoriteApiService();
     private final RealtimeAuctionService realtimeAuctionService = new RealtimeAuctionService();
     private final ObservableList<BidRecord> bidHistory = FXCollections.observableArrayList();
     private final XYChart.Series<Number, Number> bidChartSeries = new XYChart.Series<>();
@@ -91,6 +97,8 @@ public class LiveBiddingController {
     private Long realtimeRemainingSeconds;
     private AutoBidResponse currentUserAutoBid;
     private final Set<String> handledEventIds = new HashSet<>();
+    private boolean favoriteSelected;
+    private int favoriteCount;
 
     @FXML
     public void initialize() {
@@ -99,10 +107,13 @@ public class LiveBiddingController {
         outbidAlertLabel.setText("");
         hideAutoBidBanner();
         hideNewBidToast();
+        updateWishlistButton();
+        renderFavoriteButton();
         bidHistoryListView.setItems(bidHistory);
         setupBidHistoryListView();
         setupRealtimeService();
         setupBidChart();
+        loadFavoritesAsync();
 
         if (selectedItem == null || selectedItem.getId() == null || selectedItem.getId().isBlank()) {
             showError("No selected auction.");
@@ -274,6 +285,7 @@ public class LiveBiddingController {
 
         currentBidLabel.setText(formatMoney(event.getCurrentPrice()));
         leaderLabel.setText("Leader: " + bidderName);
+        announceLeaderChange(bidderName);
         addBidHistory(bidderName, event.getCurrentPrice());
         playCurrentBidPulse();
         applyRealtimeCountdown(event);
@@ -293,8 +305,10 @@ public class LiveBiddingController {
             currentAuction.setCurrentPrice(event.getCurrentPrice());
         }
 
+        String leaderName = safeLeaderName(event.getLeaderName());
         currentBidLabel.setText(formatMoney(event.getCurrentPrice()));
-        leaderLabel.setText("Leader: " + safeLeaderName(event.getLeaderName()));
+        leaderLabel.setText("Leader: " + leaderName);
+        announceLeaderChange(leaderName);
         playCurrentBidPulse();
         applyRealtimeCountdown(event);
         showInfo(event.getMessage() == null ? "Leader changed." : event.getMessage());
@@ -345,6 +359,7 @@ public class LiveBiddingController {
         currentBidLabel.setText(formatMoney(auction.getCurrentPrice()));
         countdownLabel.setText(formatCountdown(auction.getEndTime()));
         leaderLabel.setText("Leader: " + safeLeaderName(auction.getLeaderName()));
+        applyFavoriteState(auction);
         updateReserveDisplay(auction);
 
         boolean finished = "FINISHED".equalsIgnoreCase(auction.getState()) || "CANCELLED".equalsIgnoreCase(auction.getState());
@@ -627,9 +642,12 @@ public class LiveBiddingController {
 
         double maxAmount;
         try {
-            maxAmount = Double.parseDouble(input.replaceAll("[^0-9.]", ""));
+            if (!input.matches("\\d+(\\.\\d+)?")) {
+                throw new NumberFormatException("invalid amount");
+            }
+            maxAmount = Double.parseDouble(input);
         } catch (NumberFormatException e) {
-            showError("Auto-bid max amount must be a valid number.");
+            showError("Only numbers are allowed.");
             return;
         }
 
@@ -906,6 +924,46 @@ public class LiveBiddingController {
         }
     }
 
+    @FXML
+    private void handleToggleFavorite() {
+        String auctionId = selectedItem == null ? null : selectedItem.getId();
+        if (auctionId == null || auctionId.isBlank()) {
+            showError("Auction is unavailable.");
+            return;
+        }
+
+        favoriteSelected = !favoriteSelected;
+        favoriteCount = favoriteSelected ? favoriteCount + 1 : Math.max(0, favoriteCount - 1);
+        FavoriteUiStateStore.put(auctionId, favoriteSelected, favoriteCount);
+        if (favoriteSelected) {
+            WishlistStateStore.add(auctionId);
+        } else {
+            WishlistStateStore.remove(auctionId);
+        }
+        updateWishlistButton();
+        renderFavoriteButton();
+
+        try {
+            if (favoriteSelected) {
+                favoriteApiService.addFavorite(auctionId);
+            } else {
+                favoriteApiService.removeFavorite(auctionId);
+            }
+        } catch (Exception e) {
+            favoriteSelected = !favoriteSelected;
+            favoriteCount = favoriteSelected ? favoriteCount + 1 : Math.max(0, favoriteCount - 1);
+            FavoriteUiStateStore.put(auctionId, favoriteSelected, favoriteCount);
+            if (favoriteSelected) {
+                WishlistStateStore.add(auctionId);
+            } else {
+                WishlistStateStore.remove(auctionId);
+            }
+            updateWishlistButton();
+            renderFavoriteButton();
+            showError("Cannot update wishlist right now.");
+        }
+    }
+
     private double parseMoneyText(String text) {
         if (text == null || text.isBlank()) {
             return 0;
@@ -1163,6 +1221,12 @@ public class LiveBiddingController {
     }
 
     @FXML
+    private void handleOpenWishlist() {
+        shutdownLiveUpdates();
+        SceneManager.goToShowroom();
+    }
+
+    @FXML
     private void handleBack() {
         shutdownLiveUpdates();
         SceneManager.goToProductDetail();
@@ -1187,5 +1251,70 @@ public class LiveBiddingController {
         }
 
         realtimeAuctionService.disconnect();
+    }
+
+    private void updateWishlistButton() {
+        if (wishlistButton != null) {
+            wishlistButton.setText("\u2661 " + WishlistStateStore.count());
+        }
+    }
+
+    private void renderFavoriteButton() {
+        if (liveFavoriteButton != null) {
+            liveFavoriteButton.setText((favoriteSelected ? "\u2665 " : "\u2661 ") + favoriteCount);
+        }
+    }
+
+    private void loadFavoritesAsync() {
+        if (!SessionManager.hasRole("BIDDER")) {
+            return;
+        }
+
+        CompletableFuture.supplyAsync(favoriteApiService::getFavorites)
+                .thenAccept(favorites -> runOnUiThread(() -> {
+                    Set<String> favoriteIds = new HashSet<>();
+                    if (favorites != null) {
+                        for (AuctionDetailResponse favorite : favorites) {
+                            if (favorite != null && favorite.getId() != null) {
+                                favoriteIds.add(favorite.getId().toString());
+                            }
+                        }
+                    }
+                    WishlistStateStore.replaceAll(favoriteIds);
+                    String auctionId = selectedItem == null ? null : selectedItem.getId();
+                    if (auctionId != null) {
+                        favoriteSelected = WishlistStateStore.contains(auctionId);
+                        renderFavoriteButton();
+                    }
+                    updateWishlistButton();
+                }))
+                .exceptionally(error -> null);
+    }
+
+    private void applyFavoriteState(AuctionDetailResponse auction) {
+        String auctionId = auction == null || auction.getId() == null ? null : auction.getId().toString();
+        FavoriteUiStateStore.FavoriteState storedFavorite = FavoriteUiStateStore.get(auctionId);
+        if (storedFavorite != null) {
+            favoriteSelected = storedFavorite.selected();
+            favoriteCount = storedFavorite.count();
+        } else {
+            favoriteSelected = WishlistStateStore.contains(auctionId);
+            favoriteCount = auction == null ? 0 : (int) Math.max(auction.getFavoriteCount(), 0);
+        }
+        renderFavoriteButton();
+    }
+
+    private void announceLeaderChange(String leaderName) {
+        if (leaderName == null || leaderName.isBlank()) {
+            return;
+        }
+
+        String currentUsername = SessionManager.getUsername();
+        if (currentUsername != null && currentUsername.equalsIgnoreCase(leaderName)) {
+            showSuccess("You are currently leading this auction.");
+            return;
+        }
+
+        showInfo("New leader: " + leaderName + ".");
     }
 }

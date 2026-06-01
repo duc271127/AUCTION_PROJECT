@@ -13,6 +13,7 @@ import com.auction.client.ui.AuctionCardViewFactory;
 import com.auction.client.util.AuctionStateViewHelper;
 import com.auction.client.util.DateTimeDisplayHelper;
 import com.auction.client.util.SearchNavigationContext;
+import com.auction.client.util.WishlistStateStore;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
@@ -40,6 +41,7 @@ public class TrendingController {
     @FXML private Button viewedFilterButton;
     @FXML private Button savedFilterButton;
     @FXML private Button loadMoreButton;
+    @FXML private Button wishlistButton;
     @FXML private TextField searchField;
 
     @FXML private Label activeBidsLabel;
@@ -75,6 +77,7 @@ public class TrendingController {
         if (searchField != null && currentQuery != null) {
             searchField.setText(currentQuery);
         }
+        updateWishlistButton();
         loadFavorites();
         loadTrendingAuctions(true);
     }
@@ -88,9 +91,11 @@ public class TrendingController {
                     favoriteAuctionIds.add(favorite.getId().toString());
                 }
             }
+            WishlistStateStore.replaceAll(favoriteAuctionIds);
         } catch (Exception ignored) {
             favoriteAuctionIds.clear();
         }
+        updateWishlistButton();
     }
 
     private void loadTrendingAuctions(boolean reset) {
@@ -242,9 +247,12 @@ public class TrendingController {
     private void toggleFavorite(TrendingCardItem item, boolean selected) {
         if (selected) {
             favoriteAuctionIds.add(item.id());
+            WishlistStateStore.add(item.id());
         } else {
             favoriteAuctionIds.remove(item.id());
+            WishlistStateStore.remove(item.id());
         }
+        updateWishlistButton();
 
         try {
             if (selected) {
@@ -416,6 +424,12 @@ public class TrendingController {
 
     private long responseFavoriteCount(TrendingCardItem item) {
         return item == null ? 0 : Math.max(item.saveCount(), 0);
+    }
+
+    private void updateWishlistButton() {
+        if (wishlistButton != null) {
+            wishlistButton.setText("\u2661 " + WishlistStateStore.count());
+        }
     }
 
     private boolean isNewAuction(TrendingCardItem item) {

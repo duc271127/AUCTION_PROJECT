@@ -72,6 +72,12 @@
                             styleClass="market-wallet-button"
                             onAction="#handleOpenWonAuctions"/>
 
+                    <Button fx:id="wishlistButton"
+                            text="&#9825; 0"
+                            focusTraversable="false"
+                            styleClass="market-icon-button"
+                            onAction="#handleGoToForYou"/>
+
                     <Label text="User" styleClass="market-user-icon"/>
 
                     <Label fx:id="usernameLabel"

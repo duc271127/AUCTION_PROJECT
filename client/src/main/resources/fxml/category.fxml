@@ -73,7 +73,8 @@
                             styleClass="market-wallet-button"
                             onAction="#handleOpenWonAuctions"/>
 
-                    <Button text="&#9825;"
+                    <Button fx:id="wishlistButton"
+                            text="&#9825; 0"
                             focusTraversable="false"
                             styleClass="market-icon-button"
                             onAction="#handleGoToForYou"/>

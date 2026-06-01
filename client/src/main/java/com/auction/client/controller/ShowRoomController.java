@@ -14,6 +14,7 @@ import com.auction.client.util.AuctionStateViewHelper;
 import com.auction.client.util.DateTimeDisplayHelper;
 import com.auction.client.util.MockData;
 import com.auction.client.util.SearchNavigationContext;
+import com.auction.client.util.WishlistStateStore;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
@@ -110,6 +111,7 @@ public class ShowRoomController {
         }).thenAccept(snapshot -> Platform.runLater(() -> {
             favoriteAuctionIds.clear();
             favoriteAuctionIds.addAll(snapshot.favoriteIds());
+            WishlistStateStore.replaceAll(snapshot.favoriteIds());
             items.clear();
             items.addAll(snapshot.items());
             renderAuctionGrid();
@@ -344,8 +346,10 @@ public class ShowRoomController {
     private void toggleFavorite(AuctionItem item, boolean selected) {
         if (selected) {
             favoriteAuctionIds.add(item.getId());
+            WishlistStateStore.add(item.getId());
         } else {
             favoriteAuctionIds.remove(item.getId());
+            WishlistStateStore.remove(item.getId());
         }
 
         try {
@@ -503,7 +507,7 @@ public class ShowRoomController {
     }
 
     private void updateWishlistUi() {
-        int count = favoriteAuctionIds.size();
+        int count = WishlistStateStore.count();
 
         if (wishlistButton != null) {
             wishlistButton.setText("\u2661 " + count);
