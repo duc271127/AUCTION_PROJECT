@@ -13,5 +13,8 @@ public class LoginByEmailDto {
 
     @NotBlank
     public String password;
+
+    @NotBlank
+    public String role;
 }
 

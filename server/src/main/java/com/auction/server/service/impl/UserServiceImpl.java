@@ -87,7 +87,7 @@ public class UserServiceImpl implements UserService {
         String username = dto.username == null ? null : dto.username.trim();
         String email = dto.email == null ? null : dto.email.trim().toLowerCase();
         String password = dto.password;
-        String role = dto.role == null ? null : dto.role.trim().toUpperCase();
+        String role = normalizeRole(dto.role);
 
         if (username == null || username.isEmpty()) {
             throw new BusinessRuleException("Username is required");
@@ -99,10 +99,6 @@ public class UserServiceImpl implements UserService {
 
         if (password == null || password.length() < 6) {
             throw new BusinessRuleException("Password must be at least 6 characters");
-        }
-
-        if (!("BIDDER".equals(role) || "SELLER".equals(role) || "ADMIN".equals(role))) {
-            throw new BusinessRuleException("Invalid role. Must be BIDDER, SELLER or ADMIN");
         }
 
         if (userRepository.findByUsername(username).isPresent()) {
@@ -144,6 +140,7 @@ public class UserServiceImpl implements UserService {
         if (dto == null) throw new BusinessRuleException("Login payload is required");
         String email = dto.email == null ? null : dto.email.trim().toLowerCase();
         String password = dto.password;
+        String requestedRole = normalizeRole(dto.role);
 
         if (email == null || email.isEmpty() || password == null) {
             throw new BusinessRuleException("Invalid email or password");
@@ -157,6 +154,7 @@ public class UserServiceImpl implements UserService {
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             throw new BusinessRuleException("Invalid email or password");
         }
+        validateRoleMatch(user, requestedRole);
         return toDto(user);
     }
 
@@ -172,16 +170,13 @@ public class UserServiceImpl implements UserService {
         if (dto == null) throw new BusinessRuleException("Register payload is required");
         String username = dto.username == null ? null : dto.username.trim();
         String password = dto.password;
-        String role = dto.role == null ? null : dto.role.trim().toUpperCase();
+        String role = normalizeRole(dto.role);
 
         if (username == null || username.isEmpty()) {
             throw new BusinessRuleException("Username is required");
         }
         if (password == null || password.length() < 6) {
             throw new BusinessRuleException("Password must be at least 6 characters");
-        }
-        if (!( "BIDDER".equals(role) || "SELLER".equals(role) || "ADMIN".equals(role) )) {
-            throw new BusinessRuleException("Invalid role. Must be BIDDER, SELLER or ADMIN");
         }
         if (userRepository.findByUsername(username).isPresent()) {
             throw new BusinessRuleException("Username already exists: " + username);
@@ -215,6 +210,7 @@ public class UserServiceImpl implements UserService {
         if (dto == null) throw new BusinessRuleException("Login payload is required");
         String username = dto.username == null ? null : dto.username.trim();
         String password = dto.password;
+        String requestedRole = normalizeRole(dto.role);
 
         if (username == null || username.isEmpty() || password == null) {
             throw new BusinessRuleException("Invalid username or password");
@@ -228,10 +224,26 @@ public class UserServiceImpl implements UserService {
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             throw new BusinessRuleException("Invalid username or password");
         }
+        validateRoleMatch(user, requestedRole);
         return toDto(user);
     }
 
     // helper
+    private String normalizeRole(String role) {
+        String normalizedRole = role == null ? null : role.trim().toUpperCase();
+        if (!("BIDDER".equals(normalizedRole) || "SELLER".equals(normalizedRole) || "ADMIN".equals(normalizedRole))) {
+            throw new BusinessRuleException("Invalid role. Must be BIDDER, SELLER or ADMIN");
+        }
+        return normalizedRole;
+    }
+
+    private void validateRoleMatch(User user, String requestedRole) {
+        String actualRole = normalizeRole(user.getRole());
+        if (!actualRole.equals(requestedRole)) {
+            throw new BusinessRuleException("Selected role does not match this account");
+        }
+    }
+
     private UserDto toDto(User u) {
         if (u == null) return null;
         UserDto d = new UserDto();

@@ -11,5 +11,8 @@ public class LoginDto {
 
     @NotBlank
     public String password;
+
+    @NotBlank
+    public String role;
 }
 

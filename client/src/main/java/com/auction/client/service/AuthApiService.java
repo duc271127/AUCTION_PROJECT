@@ -18,16 +18,17 @@ public class AuthApiService {
         this.objectMapper = new ObjectMapper();
     }
 
-    public LoginResponse login(String credential, String password) {
+    public LoginResponse login(String credential, String password, String role) {
         try {
             String responseBody;
+            String normalizedRole = role == null ? null : role.trim().toUpperCase();
 
             if (credential != null && credential.contains("@")) {
-                LoginByEmailRequest request = new LoginByEmailRequest(credential, password);
+                LoginByEmailRequest request = new LoginByEmailRequest(credential, password, normalizedRole);
                 String jsonBody = objectMapper.writeValueAsString(request);
                 responseBody = apiClient.post("/api/auth/login-email", jsonBody);
             } else {
-                LoginRequest request = new LoginRequest(credential, password);
+                LoginRequest request = new LoginRequest(credential, password, normalizedRole);
                 String jsonBody = objectMapper.writeValueAsString(request);
                 responseBody = apiClient.post("/api/auth/login", jsonBody);
             }
