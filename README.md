@@ -625,7 +625,7 @@ Nếu client báo lỗi kết nối, hãy kiểm tra:
 
 Cần thay các placeholder dưới đây bằng link thật trước khi nộp bài:
 
-- Báo cáo PDF: https://drive.google.com/file/d/1fZvMUNnufzo_n4_qBof3fe40M_IIAZw0/view?usp=sharing
+- Báo cáo PDF: https://drive.google.com/file/d/1U832VKPmsv2Tcjwwa7bu69op8BCIDAM3/view?usp=sharing
 - Video demo: https://drive.google.com/file/d/1SKrgVcBNg-Bd9XskpHlDGq_5HCOJzp23/view?usp=sharing
 
 ---
