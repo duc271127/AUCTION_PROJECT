@@ -49,6 +49,7 @@ jobs:
           Copy-Item $jar.FullName "$dist/auction-server.jar"
           Copy-Item "server/src/main/resources/application.properties" "$dist/application.properties"
 
+
           @'
           Auction Server Bundle
           =====================
