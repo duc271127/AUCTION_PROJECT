@@ -10,6 +10,7 @@ public class AdminStatsDto {
     private double auctionSuccessRate;
     private double revenue;
 
+    
     public AdminStatsDto() {
     }
 
